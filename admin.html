@@ -190,7 +190,8 @@
       <div class="paste-zone">📋 or just copy an image somewhere else and paste it here (Ctrl+V / Cmd+V)</div>
       <div class="preview-row" id="previewRow" style="display:none;">
         <img id="previewThumb" class="preview-thumb" src="" alt="Preview">
-        <span class="preview-hint" id="previewHint">Ready to upload</span>
+        <span class="preview-hint" id="previewHint">Ready to upload — paste/choose again anytime to replace it</span>
+        <button type="button" class="danger" id="removePreviewBtn" style="margin-top:0;padding:7px 10px;font-size:0.8rem;">✕ Remove</button>
       </div>
       <div class="checkbox-row">
         <input type="checkbox" id="watermarkToggle">
@@ -357,7 +358,7 @@
 
   async function renderPreview(){
     if (!currentFile) { previewRow.style.display = 'none'; return; }
-    previewHint.textContent = watermarkToggle.checked ? 'Preview (with watermark)' : 'Preview';
+    previewHint.textContent = (watermarkToggle.checked ? 'Preview (with watermark)' : 'Preview') + ' — paste/choose again to replace';
     const shown = watermarkToggle.checked ? await makeWatermarkedBlob(currentFile) : currentFile;
     previewThumb.src = URL.createObjectURL(shown);
     previewRow.style.display = 'flex';
@@ -369,8 +370,16 @@
     renderPreview();
   }
 
+  function clearCurrentFile(){
+    currentFile = null;
+    fileInput.value = '';
+    previewThumb.src = '';
+    previewRow.style.display = 'none';
+  }
+
   fileInput.addEventListener('change', () => setCurrentFile(fileInput.files[0]));
   watermarkToggle.addEventListener('change', renderPreview);
+  document.getElementById('removePreviewBtn').addEventListener('click', clearCurrentFile);
 
   document.addEventListener('paste', (e) => {
     // Only the "default" target — skip if a catalogue-photo or category-cover paste zone is focused instead.
@@ -436,9 +445,7 @@
 
     uploadMsg.textContent = 'Sticker added!';
     uploadMsg.className = 'msg ok';
-    fileInput.value = '';
-    currentFile = null;
-    previewRow.style.display = 'none';
+    clearCurrentFile();
     watermarkToggle.checked = false;
     document.getElementById('stickerName').value = '';
     document.getElementById('stickerCode').value = '';
