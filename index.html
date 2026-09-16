@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sips by Evve — Custom Snowglobe Tumblers Catalogue</title>
+<style>
+  :root{
+    --bg:#fbf3e9;
+    --card:#ffffff;
+    --ink:#3a2e22;
+    --muted:#8a7863;
+    --brown:#8b6d4f;
+    --brown-dark:#6b5138;
+    --line:#f0e2ce;
+    --wa:#25D366;
+    --wa-dark:#1ea952;
+    --radius:18px;
+    --shadow:0 8px 24px rgba(58,46,34,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.6;
+  }
+  .setup-note{
+    max-width:900px;
+    margin:0 auto;
+    padding:14px 20px 0;
+  }
+  .setup-note div{
+    background:#fff7e6;
+    border:1px solid #f1d999;
+    color:#7a5a10;
+    padding:10px 14px;
+    border-radius:12px;
+    font-size:0.82rem;
+  }
+  .hero{
+    text-align:center;
+    padding:48px 20px 20px;
+  }
+  .hero .snow{ font-size:2.2rem; }
+  .hero h1{
+    font-size:2.1rem;
+    margin:6px 0 4px;
+  }
+  .hero .catalog-tag{
+    color:var(--muted);
+    font-weight:600;
+    letter-spacing:1px;
+    margin-bottom:0;
+  }
+  main{
+    max-width:900px;
+    margin:0 auto;
+    padding:10px 20px 60px;
+  }
+  section.step{
+    margin:56px 0;
+  }
+  section.step h2{
+    font-size:1.6rem;
+    margin:0 0 4px;
+  }
+  section.step .note{
+    color:var(--muted);
+    font-style:italic;
+    margin:0 0 18px;
+  }
+  section.step img{
+    width:100%;
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    display:block;
+  }
+  .sticker-intro{
+    background:#eef6fb;
+    border:1px solid #d8ecf7;
+    color:#2c5a72;
+    padding:14px 16px;
+    border-radius:12px;
+    font-size:0.92rem;
+    margin-bottom:22px;
+  }
+  .sticker-intro p{ margin:4px 0; }
+  .cat-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+    gap:16px;
+  }
+  .cat-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 18px 16px;
+    box-shadow:var(--shadow);
+  }
+  .cat-card h3{
+    margin:0 0 10px;
+    font-size:1.05rem;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .cat-card .dot{
+    width:10px; height:10px; border-radius:50%; flex:none;
+  }
+  .cat-card .items{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .cat-card .items span{
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--ink);
+    font-size:0.78rem;
+    padding:4px 9px;
+    border-radius:999px;
+  }
+  .cat-card .empty{
+    color:var(--muted);
+    font-size:0.85rem;
+    font-style:italic;
+  }
+  .cat-card .sticker-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
+    gap:8px;
+  }
+  .sticker-thumb{
+    position:relative;
+    aspect-ratio:1/1;
+    border-radius:10px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    cursor:pointer;
+    background:#fff;
+  }
+  .sticker-thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .sticker-thumb.unavailable img{
+    filter:grayscale(1) brightness(1.05);
+  }
+  .sticker-thumb .badge{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    background:rgba(58,46,34,0.72);
+    color:#fff;
+    font-size:0.62rem;
+    font-weight:700;
+    letter-spacing:0.3px;
+    text-align:center;
+    padding:3px 2px;
+    text-transform:uppercase;
+  }
+  .sticker-thumb .name-tip{
+    position:absolute;
+    top:0; left:0; right:0;
+    background:linear-gradient(rgba(0,0,0,0.55),transparent);
+    color:#fff;
+    font-size:0.6rem;
+    padding:3px 5px;
+    opacity:0;
+    transition:opacity .15s;
+  }
+  .sticker-thumb:hover .name-tip{ opacity:1; }
+  .gallery-status{
+    color:var(--muted);
+    font-size:0.85rem;
+    font-style:italic;
+  }
+
+  .lightbox-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(30,22,15,0.75);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:24px;
+  }
+  .lightbox-overlay.open{ display:flex; }
+  .lightbox-box{
+    background:#fff;
+    border-radius:18px;
+    max-width:420px;
+    width:100%;
+    overflow:hidden;
+    box-shadow:0 20px 50px rgba(0,0,0,0.3);
+  }
+  .lightbox-box img{
+    width:100%;
+    display:block;
+  }
+  .lightbox-box img.unavailable{ filter:grayscale(1); }
+  .lightbox-info{
+    padding:16px 18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .lightbox-info .n{ font-weight:600; }
+  .lightbox-info .s{
+    font-size:0.75rem;
+    font-weight:700;
+    text-transform:uppercase;
+    padding:4px 10px;
+    border-radius:999px;
+    background:var(--bg);
+    color:var(--brown-dark);
+  }
+  .lightbox-close{
+    position:absolute;
+    top:14px; right:14px;
+    background:rgba(255,255,255,0.9);
+    border:none;
+    border-radius:50%;
+    width:32px; height:32px;
+    font-size:1.1rem;
+    cursor:pointer;
+  }
+
+  .addons{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:16px;
+  }
+  .addon-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px;
+    box-shadow:var(--shadow);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .addon-card .name{ font-weight:600; }
+  .addon-card .price{
+    font-weight:700;
+    color:var(--brown-dark);
+  }
+
+  .cta-row{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:22px;
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 20px;
+    border-radius:14px;
+    text-decoration:none;
+    font-weight:600;
+    font-size:0.95rem;
+    color:#fff;
+  }
+  .btn svg{ width:19px; height:19px; flex:none; }
+  .btn-whatsapp{ background:var(--wa); }
+  .btn-whatsapp:hover{ background:var(--wa-dark); }
+
+  footer{
+    text-align:center;
+    padding:30px 20px 50px;
+    color:var(--muted);
+    font-size:0.85rem;
+  }
+  footer .foot-links{
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+  footer a{
+    color:var(--brown-dark);
+    font-weight:600;
+    text-decoration:none;
+  }
+</style>
+</head>
+<body>
+
+<div class="setup-note">
+  <div>
+    ⚠️ Before you publish: search this file for <code>PASTE_YOUR_WHATSAPP_LINK_HERE</code> and replace it with your WhatsApp link. (Supabase is already connected.)
+  </div>
+</div>
+
+<div class="hero">
+  <div class="snow">❄️</div>
+  <h1>Custom Snowglobe Tumblers ✨</h1>
+  <p class="catalog-tag">— Catalog · Katalog · 目录 —</p>
+</div>
+
+<main>
+
+  <section class="step">
+    <h2>① Choose your tumbler ❄️</h2>
+    <p class="note">(Screenshot it!)</p>
+    <img src="assets/tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
+  </section>
+
+  <section class="step">
+    <h2>② Choose your sticker 🎀 <em>Free!</em></h2>
+    <p class="note">(Screenshot it!) — tumbler price already includes 1 sticker —</p>
+    <div class="sticker-intro">
+      <p>🖼️ <strong>EN:</strong> Browse the designs below and pick one — just tell us the name when you send your screenshot. Greyed-out ones are preorder or sold out for now, but you can still tap to see them.</p>
+      <p><strong>MY:</strong> Pratonton design stiker di bawah — beritahu kami nama design semasa hantar screenshot anda. Yang kelabu masih boleh tekan untuk tengok, cuma preorder / habis stok buat masa ini.</p>
+    </div>
+    <p class="gallery-status" id="stickerStatus">Loading stickers…</p>
+    <div class="cat-grid" id="stickerCats"></div>
+  </section>
+
+  <section class="step">
+    <h2>③ Take a look at our patterns</h2>
+    <p class="note">(you can decide during your live date)</p>
+    <img src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)">
+  </section>
+
+  <section class="step">
+    <h2>④ Read this before you buy ⚠️</h2>
+    <img src="assets/read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu">
+  </section>
+
+  <section class="step">
+    <h2>⑤ Send me your screenshot!</h2>
+    <p class="note">(and wait for your date! 💛)</p>
+    <img src="assets/order-process.jpg" alt="Order process — screenshot and send, stock check, payment request, pay within 2 days, queue slot given, made live">
+    <div class="cta-row">
+      <a class="btn btn-whatsapp" href="PASTE_YOUR_WHATSAPP_LINK_HERE" target="_blank" rel="noopener">
+        <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.001 3C9.383 3 4 8.383 4 15.001c0 2.386.7 4.611 1.902 6.483L4 29l7.723-1.867A11.94 11.94 0 0 0 16.001 27C22.619 27 28 21.617 28 15.001 28 8.383 22.619 3 16.001 3zm0 21.818c-1.94 0-3.751-.55-5.286-1.503l-.379-.226-4.583 1.108 1.128-4.463-.247-.396A9.77 9.77 0 0 1 5.182 15c0-5.965 4.854-10.818 10.819-10.818S26.818 9.035 26.818 15 21.965 24.818 16.001 24.818z"/></svg>
+        Send Screenshot on WhatsApp
+      </a>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2>🧊 Add-Ons · Aksesori Tambahan · 配件</h2>
+    <div class="addons">
+      <div class="addon-card">
+        <span class="name">Glass Straw 玻璃吸管</span>
+        <span class="price">+RM7</span>
+      </div>
+      <div class="addon-card">
+        <span class="name">Custom Name 定制名字</span>
+        <span class="price">+RM5</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Made with love in Malaysia 🇲🇾 · Sips by Evve
+  <div class="foot-links">
+    <a href="PASTE_YOUR_WHATSAPP_LINK_HERE" target="_blank" rel="noopener">WhatsApp</a>
+  </div>
+</footer>
+
+<div class="lightbox-overlay" id="lightbox">
+  <div class="lightbox-box">
+    <img id="lightboxImg" src="" alt="">
+    <div class="lightbox-info">
+      <span class="n" id="lightboxName"></span>
+      <span class="s" id="lightboxStatus"></span>
+    </div>
+  </div>
+  <button class="lightbox-close" id="lightboxClose" aria-label="Close">✕</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+  // ---- Fill these in from Supabase → Project Settings → API ----
+  const SUPABASE_URL = "https://heeatmscxouwevoonpti.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhlZWF0bXNjeG91d2V2b29ucHRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1MzgxMDEsImV4cCI6MjEwNTExNDEwMX0.kOl03t_7qAhM91uft_AVRducgmmWkxYTRGZCIPdqYOw";
+  // ----------------------------------------------------------------
+
+  const STATUS_LABEL = { available: "In Stock", preorder: "Preorder", sold_out: "Sold Out" };
+
+  const catGrid = document.getElementById('stickerCats');
+  const statusEl = document.getElementById('stickerStatus');
+  const catColors = ["#a97452","#4f7cd6","#8858c7","#4f9e5c","#e07a3f","#c74f4f","#7a7a7a","#3d8b8b","#b5548f"];
+
+  function colorFor(category, order){
+    return catColors[order % catColors.length];
+  }
+
+  function publicImageUrl(client, path){
+    return client.storage.from('stickers').getPublicUrl(path).data.publicUrl;
+  }
+
+  function openLightbox(sticker, imgUrl){
+    document.getElementById('lightboxImg').src = imgUrl;
+    document.getElementById('lightboxImg').className = sticker.status === 'available' ? '' : 'unavailable';
+    document.getElementById('lightboxName').textContent = sticker.name;
+    document.getElementById('lightboxStatus').textContent = STATUS_LABEL[sticker.status] || sticker.status;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  document.getElementById('lightboxClose').addEventListener('click', () => {
+    document.getElementById('lightbox').classList.remove('open');
+  });
+  document.getElementById('lightbox').addEventListener('click', (e) => {
+    if (e.target.id === 'lightbox') document.getElementById('lightbox').classList.remove('open');
+  });
+
+  async function loadStickers(){
+    if (SUPABASE_URL.startsWith("PASTE_") || SUPABASE_ANON_KEY.startsWith("PASTE_")) {
+      statusEl.textContent = "Sticker gallery isn't connected yet — add your Supabase URL and anon key in index.html.";
+      return;
+    }
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await client
+      .from('stickers')
+      .select('*')
+      .order('category', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      statusEl.textContent = "Couldn't load stickers right now — please try again later.";
+      console.error(error);
+      return;
+    }
+    if (!data || data.length === 0) {
+      statusEl.textContent = "No stickers uploaded yet — check back soon!";
+      return;
+    }
+
+    statusEl.style.display = 'none';
+
+    const byCategory = {};
+    data.forEach(s => {
+      (byCategory[s.category] = byCategory[s.category] || []).push(s);
+    });
+
+    catGrid.innerHTML = Object.entries(byCategory).map(([category, stickers], i) => `
+      <div class="cat-card">
+        <h3><span class="dot" style="background:${colorFor(category, i)}"></span>${category}</h3>
+        <div class="sticker-grid">
+          ${stickers.map(s => {
+            const url = publicImageUrl(client, s.image_path);
+            const unavailable = s.status !== 'available';
+            return `
+              <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
+                <img src="${url}" alt="${s.name}" loading="lazy">
+                <div class="name-tip">${s.name}</div>
+                ${unavailable ? `<div class="badge">${STATUS_LABEL[s.status] || s.status}</div>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `).join('');
+
+    catGrid.querySelectorAll('.sticker-thumb').forEach(el => {
+      el.addEventListener('click', () => {
+        const s = data.find(x => x.id === el.dataset.id);
+        const url = publicImageUrl(client, s.image_path);
+        openLightbox(s, url);
+      });
+    });
+  }
+
+  loadStickers();
+</script>
+
+</body>
+</html>
