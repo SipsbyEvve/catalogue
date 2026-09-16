@@ -312,7 +312,7 @@
   <section class="step">
     <h2>① Choose your tumbler ❄️</h2>
     <p class="note">(Screenshot it!)</p>
-    <img src="assets/tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
+    <img id="img-step1_tumbler" src="assets/tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
   </section>
 
   <section class="step">
@@ -329,18 +329,18 @@
   <section class="step">
     <h2>③ Take a look at our patterns</h2>
     <p class="note">(you can decide during your live date)</p>
-    <img src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)">
+    <img id="img-step3_patterns" src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)">
   </section>
 
   <section class="step">
     <h2>④ Read this before you buy ⚠️</h2>
-    <img src="assets/read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu">
+    <img id="img-step4_rules" src="assets/read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu">
   </section>
 
   <section class="step">
     <h2>⑤ Send me your screenshot!</h2>
     <p class="note">(and wait for your date! 💛)</p>
-    <img src="assets/order-process.jpg" alt="Order process — screenshot and send, stock check, payment request, pay within 2 days, queue slot given, made live">
+    <img id="img-step5_order" src="assets/order-process.jpg" alt="Order process — screenshot and send, stock check, payment request, pay within 2 days, queue slot given, made live">
     <div class="cta-row">
       <a class="btn btn-whatsapp" href="PASTE_YOUR_WHATSAPP_LINK_HERE" target="_blank" rel="noopener">
         <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.001 3C9.383 3 4 8.383 4 15.001c0 2.386.7 4.611 1.902 6.483L4 29l7.723-1.867A11.94 11.94 0 0 0 16.001 27C22.619 27 28 21.617 28 15.001 28 8.383 22.619 3 16.001 3zm0 21.818c-1.94 0-3.751-.55-5.286-1.503l-.379-.226-4.583 1.108 1.128-4.463-.247-.396A9.77 9.77 0 0 1 5.182 15c0-5.965 4.854-10.818 10.819-10.818S26.818 9.035 26.818 15 21.965 24.818 16.001 24.818z"/></svg>
@@ -351,7 +351,7 @@
 
   <section class="step">
     <h2>🧊 Add-Ons · Aksesori Tambahan · 配件</h2>
-    <div class="addons">
+    <div class="addons" id="addonsGrid">
       <div class="addon-card">
         <span class="name">Glass Straw 玻璃吸管</span>
         <span class="price">+RM7</span>
@@ -391,6 +391,8 @@
   // ----------------------------------------------------------------
 
   const STATUS_LABEL = { available: "In Stock", preorder: "Preorder", sold_out: "Sold Out" };
+  const CONFIGURED = !SUPABASE_URL.startsWith("PASTE_") && !SUPABASE_ANON_KEY.startsWith("PASTE_");
+  const client = CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
   const catGrid = document.getElementById('stickerCats');
   const statusEl = document.getElementById('stickerStatus');
@@ -400,11 +402,12 @@
     return catColors[order % catColors.length];
   }
 
-  function publicImageUrl(client, path){
+  function publicImageUrl(path){
     return client.storage.from('stickers').getPublicUrl(path).data.publicUrl;
   }
 
   function openLightbox(sticker, imgUrl){
+    if (!client) return;
     document.getElementById('lightboxImg').src = imgUrl;
     document.getElementById('lightboxImg').className = sticker.status === 'available' ? '' : 'unavailable';
     document.getElementById('lightboxName').textContent = sticker.name;
@@ -419,11 +422,10 @@
   });
 
   async function loadStickers(){
-    if (SUPABASE_URL.startsWith("PASTE_") || SUPABASE_ANON_KEY.startsWith("PASTE_")) {
+    if (!client) {
       statusEl.textContent = "Sticker gallery isn't connected yet — add your Supabase URL and anon key in index.html.";
       return;
     }
-    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { data, error } = await client
       .from('stickers')
       .select('*')
@@ -452,7 +454,7 @@
         <h3><span class="dot" style="background:${colorFor(category, i)}"></span>${category}</h3>
         <div class="sticker-grid">
           ${stickers.map(s => {
-            const url = publicImageUrl(client, s.image_path);
+            const url = publicImageUrl(s.image_path);
             const unavailable = s.status !== 'available';
             return `
               <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
@@ -469,13 +471,41 @@
     catGrid.querySelectorAll('.sticker-thumb').forEach(el => {
       el.addEventListener('click', () => {
         const s = data.find(x => x.id === el.dataset.id);
-        const url = publicImageUrl(client, s.image_path);
+        const url = publicImageUrl(s.image_path);
         openLightbox(s, url);
       });
     });
   }
 
+  // ---- ① ③ ④ ⑤ catalogue photos (falls back to the bundled assets/*.* if not set) ----
+  async function loadCatalogueContent(){
+    if (!client) return;
+    const { data, error } = await client.from('catalogue_content').select('*');
+    if (error || !data) { console.error(error); return; }
+    data.forEach(row => {
+      if (!row.image_path) return; // keep the default bundled image
+      const img = document.getElementById(`img-${row.slot}`);
+      if (img) img.src = publicImageUrl(row.image_path);
+    });
+  }
+
+  // ---- Add-Ons list ----
+  async function loadAddons(){
+    if (!client) return;
+    const grid = document.getElementById('addonsGrid');
+    const { data, error } = await client.from('addons').select('*').order('sort_order', { ascending: true });
+    if (error || !data || data.length === 0) { console.error(error); return; } // keep the default cards
+    grid.innerHTML = data.map(a => `
+      <div class="addon-card">
+        <span class="name">${a.name}</span>
+        <span class="price">${a.price_label}</span>
+      </div>
+    `).join('');
+  }
+
   loadStickers();
+  loadCatalogueContent();
+  loadAddons();
 </script>
 
 </body>

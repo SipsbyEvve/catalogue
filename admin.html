@@ -54,6 +54,28 @@
   .top-bar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
   .top-bar span{ font-size:0.85rem; color:var(--muted); }
 
+  .preview-row{
+    display:flex; align-items:center; gap:14px; margin:10px 0 4px;
+  }
+  .preview-thumb{
+    width:96px; height:96px; border-radius:12px; object-fit:cover;
+    border:1px solid var(--line); background:var(--bg); flex:none;
+  }
+  .preview-hint{ font-size:0.82rem; color:var(--muted); }
+  .checkbox-row{
+    display:flex; align-items:center; gap:8px; margin:16px 0 0;
+  }
+  .checkbox-row input[type=checkbox]{ width:auto; }
+  .checkbox-row label{ margin:0; font-weight:600; font-size:0.88rem; }
+  .paste-zone{
+    border:1px dashed var(--line); border-radius:12px; padding:10px 12px;
+    font-size:0.82rem; color:var(--muted); margin-top:8px; text-align:center;
+  }
+
+  .cat-group{ margin-bottom:18px; }
+  .cat-group h3{
+    font-size:0.95rem; margin:0 0 8px; color:var(--brown-dark);
+  }
   .sticker-list{ display:flex; flex-direction:column; gap:10px; }
   .sticker-row{
     display:flex; align-items:center; gap:12px; border:1px solid var(--line);
@@ -66,6 +88,36 @@
   .sticker-row select{ width:auto; padding:6px 8px; font-size:0.82rem; }
   .sticker-row .row-actions{ display:flex; gap:6px; align-items:center; }
   .sticker-row button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
+
+  .hint{ color:var(--muted); font-size:0.85rem; margin:0 0 16px; }
+
+  .slot-row{
+    border-top:1px solid var(--line); padding-top:16px; margin-top:16px;
+  }
+  .slot-row:first-of-type{ border-top:none; padding-top:0; margin-top:0; }
+  .slot-row .slot-header{ font-weight:600; font-size:0.92rem; margin-bottom:8px; }
+  .slot-preview{
+    width:100%; max-width:100%; border-radius:12px; border:1px solid var(--line);
+    display:block; margin-bottom:8px; max-height:160px; object-fit:cover;
+  }
+  .slot-row .row-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .slot-row .row-actions button{ margin-top:0; padding:9px 14px; font-size:0.85rem; }
+  .slot-note{ font-size:0.76rem; color:var(--muted); margin:4px 0 0; }
+
+  .addon-row{
+    display:flex; gap:8px; align-items:center; border:1px solid var(--line);
+    border-radius:12px; padding:10px 12px; margin-bottom:10px;
+  }
+  .addon-row input[type=text]{ padding:8px 10px; font-size:0.9rem; }
+  .addon-row .aname{ flex:1; }
+  .addon-row .aprice{ width:100px; }
+  .addon-row .row-actions{ display:flex; gap:6px; }
+  .addon-row .row-actions button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
+  .add-new-btn{
+    background:transparent; border:1px dashed var(--line); color:var(--brown-dark);
+    width:100%; font-weight:600; font-size:0.85rem;
+  }
+  .add-new-btn:hover{ background:#fff7ee; }
 
   #appSection{ display:none; }
 </style>
@@ -104,6 +156,15 @@
       <h2 style="margin-top:0;font-size:1.1rem;">Add a new sticker</h2>
       <label for="stickerImage">Photo</label>
       <input type="file" id="stickerImage" accept="image/*">
+      <div class="paste-zone">📋 or just copy an image somewhere else and paste it here (Ctrl+V / Cmd+V)</div>
+      <div class="preview-row" id="previewRow" style="display:none;">
+        <img id="previewThumb" class="preview-thumb" src="" alt="Preview">
+        <span class="preview-hint" id="previewHint">Ready to upload</span>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="watermarkToggle">
+        <label for="watermarkToggle">Add watermark (tiled "SIPS BY EVVE", protects photo from being copied)</label>
+      </div>
       <label for="stickerName">Name (shown to customers)</label>
       <input type="text" id="stickerName" placeholder="e.g. Labubu 拉布布">
       <label for="stickerCategory">Category</label>
@@ -132,6 +193,19 @@
       <p class="msg" id="listMsg">Loading…</p>
       <div class="sticker-list" id="stickerList"></div>
     </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.1rem;">🖼️ Catalogue photos</h2>
+      <p class="hint">The big photos on steps ① ③ ④ ⑤ of your public page. Replace or remove them here — changes go live right away, no GitHub needed.</p>
+      <div id="catalogueSlots">Loading…</div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.1rem;">🧊 Add-Ons</h2>
+      <p class="hint">Shown at the bottom of your catalogue. Edit the name/price and press Save on that row.</p>
+      <div id="addonsList">Loading…</div>
+      <button class="add-new-btn" id="addAddonBtn">+ Add new add-on</button>
+    </div>
   </div>
 
 </div>
@@ -157,6 +231,8 @@
     appSection.style.display = 'block';
     document.getElementById('whoami').textContent = `Logged in as ${session.user.email}`;
     refreshList();
+    renderCatalogueSlots();
+    renderAddons();
   }
   function showLogin(){
     loginSection.style.display = 'block';
@@ -186,17 +262,93 @@
     if (data.session) showApp(data.session);
   });
 
+  // ---- image selection (file picker OR paste), preview, watermark ----
+  let currentFile = null; // the raw picked/pasted image (File or Blob)
+  const fileInput = document.getElementById('stickerImage');
+  const watermarkToggle = document.getElementById('watermarkToggle');
+  const previewRow = document.getElementById('previewRow');
+  const previewThumb = document.getElementById('previewThumb');
+  const previewHint = document.getElementById('previewHint');
+
+  function loadImageFromBlob(blob){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = URL.createObjectURL(blob);
+    });
+  }
+
+  async function makeWatermarkedBlob(sourceBlob, text = 'SIPS BY EVVE'){
+    const img = await loadImageFromBlob(sourceBlob);
+    const maxW = 1400;
+    const scale = Math.min(1, maxW / img.naturalWidth);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(120,120,120,0.35)';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(-28 * Math.PI / 180);
+    const stepX = 170, stepY = 90;
+    const diag = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
+    for (let y = -diag; y < diag; y += stepY) {
+      for (let x = -diag; x < diag; x += stepX) {
+        ctx.fillText(text, x, y);
+      }
+    }
+    ctx.restore();
+
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+  }
+
+  async function renderPreview(){
+    if (!currentFile) { previewRow.style.display = 'none'; return; }
+    previewHint.textContent = watermarkToggle.checked ? 'Preview (with watermark)' : 'Preview';
+    const shown = watermarkToggle.checked ? await makeWatermarkedBlob(currentFile) : currentFile;
+    previewThumb.src = URL.createObjectURL(shown);
+    previewRow.style.display = 'flex';
+  }
+
+  function setCurrentFile(file){
+    if (!file) return;
+    currentFile = file;
+    renderPreview();
+  }
+
+  fileInput.addEventListener('change', () => setCurrentFile(fileInput.files[0]));
+  watermarkToggle.addEventListener('change', renderPreview);
+
+  document.addEventListener('paste', (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          setCurrentFile(file);
+          e.preventDefault();
+        }
+        break;
+      }
+    }
+  });
+
   document.getElementById('uploadBtn').addEventListener('click', async () => {
     uploadMsg.textContent = '';
     uploadMsg.className = 'msg';
-    const fileInput = document.getElementById('stickerImage');
     const name = document.getElementById('stickerName').value.trim();
     const category = document.getElementById('stickerCategory').value.trim();
     const status = document.getElementById('stickerStatus').value;
-    const file = fileInput.files[0];
 
-    if (!file || !name || !category) {
-      uploadMsg.textContent = 'Please choose a photo, and fill in name + category.';
+    if (!currentFile || !name || !category) {
+      uploadMsg.textContent = 'Please choose/paste a photo, and fill in name + category.';
       uploadMsg.className = 'msg error';
       return;
     }
@@ -205,12 +357,15 @@
     uploadBtn.disabled = true;
     uploadMsg.textContent = 'Uploading…';
 
-    const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const finalBlob = watermarkToggle.checked ? await makeWatermarkedBlob(currentFile) : currentFile;
+    const originalName = currentFile.name || 'sticker.jpg';
+    const safeName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const path = `${category.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}-${safeName}`;
 
-    const { error: uploadError } = await client.storage.from('stickers').upload(path, file, {
+    const { error: uploadError } = await client.storage.from('stickers').upload(path, finalBlob, {
       cacheControl: '3600',
       upsert: false,
+      contentType: finalBlob.type || 'image/jpeg',
     });
     if (uploadError) {
       uploadMsg.textContent = uploadError.message;
@@ -232,6 +387,9 @@
     uploadMsg.textContent = 'Sticker added!';
     uploadMsg.className = 'msg ok';
     fileInput.value = '';
+    currentFile = null;
+    previewRow.style.display = 'none';
+    watermarkToggle.checked = false;
     document.getElementById('stickerName').value = '';
     document.getElementById('stickerCategory').value = '';
     document.getElementById('stickerStatus').value = 'available';
@@ -258,7 +416,10 @@
     }
     listMsg.textContent = '';
 
-    stickerList.innerHTML = data.map(s => {
+    const byCategory = {};
+    data.forEach(s => { (byCategory[s.category] = byCategory[s.category] || []).push(s); });
+
+    function stickerRowHtml(s){
       const url = client.storage.from('stickers').getPublicUrl(s.image_path).data.publicUrl;
       return `
         <div class="sticker-row" data-id="${s.id}">
@@ -278,7 +439,14 @@
           </div>
         </div>
       `;
-    }).join('');
+    }
+
+    stickerList.innerHTML = Object.entries(byCategory).map(([category, stickers]) => `
+      <div class="cat-group">
+        <h3>${category} <span style="color:var(--muted);font-weight:400;">(${stickers.length})</span></h3>
+        ${stickers.map(stickerRowHtml).join('')}
+      </div>
+    `).join('');
 
     stickerList.querySelectorAll('.sticker-row').forEach(row => {
       const id = row.dataset.id;
@@ -303,6 +471,165 @@
       });
     });
   }
+
+  // ==================================================================
+  // Catalogue photos (① ③ ④ ⑤) — one row per fixed "slot"
+  // ==================================================================
+  const SLOTS = [
+    { key: 'step1_tumbler', label: '① Tumbler options photo', fallback: 'assets/tumbler-options.png' },
+    { key: 'step3_patterns', label: '③ Patterns photo', fallback: 'assets/patterns.jpg' },
+    { key: 'step4_rules', label: '④ Read-before-you-buy photo', fallback: 'assets/read-before-buy.jpg' },
+    { key: 'step5_order', label: '⑤ Order process photo', fallback: 'assets/order-process.jpg' },
+  ];
+  const pendingSlotFile = {};
+  let activeSlotForPaste = null;
+
+  async function renderCatalogueSlots(){
+    const container = document.getElementById('catalogueSlots');
+    const { data, error } = await client.from('catalogue_content').select('*');
+    if (error) { container.textContent = error.message; return; }
+    const rows = {};
+    (data || []).forEach(r => { rows[r.slot] = r; });
+
+    container.innerHTML = SLOTS.map(slot => {
+      const row = rows[slot.key];
+      const currentUrl = row && row.image_path
+        ? client.storage.from('stickers').getPublicUrl(row.image_path).data.publicUrl
+        : slot.fallback;
+      return `
+        <div class="slot-row" data-slot="${slot.key}">
+          <div class="slot-header">${slot.label}</div>
+          <img class="slot-preview" id="slotPreview-${slot.key}" src="${currentUrl}" alt="${slot.label}">
+          <input type="file" id="slotFile-${slot.key}" accept="image/*">
+          <div class="paste-zone" tabindex="0" id="slotPaste-${slot.key}">📋 or click here then paste an image (Ctrl+V / Cmd+V)</div>
+          <div class="row-actions">
+            <button class="secondary slot-save-btn">Save new photo</button>
+            <button class="danger slot-remove-btn">Remove (use default)</button>
+          </div>
+          <p class="msg slot-msg" id="slotMsg-${slot.key}"></p>
+        </div>
+      `;
+    }).join('');
+
+    SLOTS.forEach(slot => {
+      const fileEl = document.getElementById(`slotFile-${slot.key}`);
+      const pasteEl = document.getElementById(`slotPaste-${slot.key}`);
+      const previewEl = document.getElementById(`slotPreview-${slot.key}`);
+      const msgEl = document.getElementById(`slotMsg-${slot.key}`);
+      const rowEl = container.querySelector(`.slot-row[data-slot="${slot.key}"]`);
+
+      fileEl.addEventListener('change', () => {
+        if (fileEl.files[0]) {
+          pendingSlotFile[slot.key] = fileEl.files[0];
+          previewEl.src = URL.createObjectURL(fileEl.files[0]);
+          msgEl.textContent = 'New photo ready — click "Save new photo" to publish it.';
+          msgEl.className = 'msg slot-msg';
+        }
+      });
+      pasteEl.addEventListener('focus', () => { activeSlotForPaste = slot.key; });
+      pasteEl.addEventListener('click', () => pasteEl.focus());
+
+      rowEl.querySelector('.slot-save-btn').addEventListener('click', async () => {
+        const file = pendingSlotFile[slot.key];
+        if (!file) {
+          msgEl.textContent = 'Choose or paste a photo first.';
+          msgEl.className = 'msg slot-msg error';
+          return;
+        }
+        msgEl.textContent = 'Saving…';
+        msgEl.className = 'msg slot-msg';
+        const safeName = (file.name || 'photo.jpg').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const path = `catalogue/${slot.key}-${Date.now()}-${safeName}`;
+        const { error: upErr } = await client.storage.from('stickers').upload(path, file, {
+          cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg',
+        });
+        if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg slot-msg error'; return; }
+
+        const { error: dbErr } = await client.from('catalogue_content')
+          .upsert({ slot: slot.key, image_path: path, updated_at: new Date().toISOString() });
+        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg slot-msg error'; return; }
+
+        delete pendingSlotFile[slot.key];
+        msgEl.textContent = 'Saved! Live on your catalogue now.';
+        msgEl.className = 'msg slot-msg ok';
+      });
+
+      rowEl.querySelector('.slot-remove-btn').addEventListener('click', async () => {
+        if (!confirm('Remove this photo? The default one will show again until you upload a new one.')) return;
+        const { error: dbErr } = await client.from('catalogue_content')
+          .upsert({ slot: slot.key, image_path: null, updated_at: new Date().toISOString() });
+        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg slot-msg error'; return; }
+        previewEl.src = slot.fallback;
+        msgEl.textContent = 'Removed — showing the default photo again.';
+        msgEl.className = 'msg slot-msg ok';
+      });
+    });
+  }
+
+  document.addEventListener('paste', (e) => {
+    if (!activeSlotForPaste) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        const slotKey = activeSlotForPaste;
+        pendingSlotFile[slotKey] = file;
+        document.getElementById(`slotPreview-${slotKey}`).src = URL.createObjectURL(file);
+        const msgEl = document.getElementById(`slotMsg-${slotKey}`);
+        msgEl.textContent = 'New photo ready — click "Save new photo" to publish it.';
+        msgEl.className = 'msg slot-msg';
+        e.preventDefault();
+        break;
+      }
+    }
+  });
+
+  // ==================================================================
+  // Add-Ons list
+  // ==================================================================
+  async function renderAddons(){
+    const container = document.getElementById('addonsList');
+    const { data, error } = await client.from('addons').select('*').order('sort_order', { ascending: true });
+    if (error) { container.textContent = error.message; return; }
+    if (!data || data.length === 0) { container.innerHTML = '<p class="hint">No add-ons yet.</p>'; return; }
+
+    container.innerHTML = data.map(a => `
+      <div class="addon-row" data-id="${a.id}">
+        <input type="text" class="aname" value="${a.name}">
+        <input type="text" class="aprice" value="${a.price_label}">
+        <div class="row-actions">
+          <button class="secondary addon-save-btn">Save</button>
+          <button class="danger addon-delete-btn">✕</button>
+        </div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.addon-row').forEach(row => {
+      const id = row.dataset.id;
+      row.querySelector('.addon-save-btn').addEventListener('click', async () => {
+        const name = row.querySelector('.aname').value.trim();
+        const price_label = row.querySelector('.aprice').value.trim();
+        const { error } = await client.from('addons').update({ name, price_label }).eq('id', id);
+        if (error) alert(error.message);
+      });
+      row.querySelector('.addon-delete-btn').addEventListener('click', async () => {
+        if (!confirm('Delete this add-on?')) return;
+        const { error } = await client.from('addons').delete().eq('id', id);
+        if (error) { alert(error.message); return; }
+        renderAddons();
+      });
+    });
+  }
+
+  document.getElementById('addAddonBtn').addEventListener('click', async () => {
+    const { error } = await client.from('addons').insert({
+      name: 'New add-on', price_label: '+RM0', sort_order: 999,
+    });
+    if (error) { alert(error.message); return; }
+    renderAddons();
+  });
 </script>
 
 </body>
