@@ -192,6 +192,9 @@
   .sticker-thumb.unavailable{
     background:#d9d5cc;
   }
+  .sticker-thumb.sold-out img{
+    filter:grayscale(0.75) brightness(1.02);
+  }
   .sticker-thumb .info{
     display:flex;
     align-items:center;
@@ -216,6 +219,7 @@
     flex:none;
   }
   .sticker-thumb .badge.status-available{ background:#e8f5ea; color:#2f7a4f; }
+  .sticker-thumb .badge.status-preorder{ background:#fbe2e2; color:#b23b3b; }
   .sticker-thumb .badge.status-unavailable{ background:#efe6d8; color:#8a7863; }
   .gallery-status{
     color:var(--muted);
@@ -255,7 +259,6 @@
     background:var(--bg);
     cursor:zoom-in;
   }
-  .lightbox-box img.unavailable{ filter:grayscale(1); }
   .zoom-hint{
     display:block; width:100%; text-align:center; background:none; border:none;
     color:var(--muted); font-size:0.76rem; padding:6px 0 0; cursor:pointer; font-family:inherit;
@@ -276,9 +279,11 @@
     text-transform:uppercase;
     padding:4px 10px;
     border-radius:999px;
-    background:var(--bg);
-    color:var(--brown-dark);
+    background:#e8f5ea;
+    color:#2f7a4f;
   }
+  .lightbox-info .s.status-preorder{ background:#fbe2e2; color:#b23b3b; }
+  .lightbox-info .s.status-unavailable{ background:#efe6d8; color:#8a7863; }
   .lightbox-close{
     position:absolute;
     top:14px; right:14px;
@@ -462,9 +467,10 @@
   function openLightbox(sticker, imgUrl){
     if (!client) return;
     document.getElementById('lightboxImg').src = imgUrl;
-    document.getElementById('lightboxImg').className = sticker.status === 'available' ? '' : 'unavailable';
     document.getElementById('lightboxCode').textContent = sticker.code ? `Code: ${sticker.code}` : sticker.name;
+    const statusBadgeClass = sticker.status === 'available' ? 'status-available' : (sticker.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
     document.getElementById('lightboxStatus').textContent = STATUS_LABEL[sticker.status] || sticker.status;
+    document.getElementById('lightboxStatus').className = `s ${statusBadgeClass}`;
     const openFullSize = () => window.open(imgUrl, '_blank');
     document.getElementById('lightboxImg').onclick = openFullSize;
     document.getElementById('lightboxZoom').onclick = openFullSize;
@@ -484,13 +490,14 @@
   function stickerThumbsHtml(stickers){
     return stickers.map(s => {
       const url = publicImageUrl(s.image_path);
-      const unavailable = s.status !== 'available';
+      const soldOut = s.status === 'sold_out';
+      const badgeClass = s.status === 'available' ? 'status-available' : (s.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
       return `
-        <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
+        <div class="sticker-thumb ${soldOut ? 'sold-out' : ''}" data-id="${s.id}">
           <img src="${url}" alt="${s.code || s.name}" loading="lazy">
           <div class="info">
             <span class="code-tag">${s.code ? s.code : s.name}</span>
-            <span class="badge ${unavailable ? 'status-unavailable' : 'status-available'}">${STATUS_LABEL[s.status] || s.status}</span>
+            <span class="badge ${badgeClass}">${STATUS_LABEL[s.status] || s.status}</span>
           </div>
         </div>
       `;
