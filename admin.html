@@ -198,8 +198,6 @@
         <input type="checkbox" id="watermarkToggle">
         <label for="watermarkToggle">Add watermark (tiled "SIPS BY EVVE", protects photo from being copied)</label>
       </div>
-      <label for="stickerName">Name (shown to customers)</label>
-      <input type="text" id="stickerName" placeholder="e.g. Labubu 拉布布">
       <label for="stickerCode">Code (shown to customers — e.g. from your supplier's sticker sheet)</label>
       <input type="text" id="stickerCode" placeholder="e.g. K001">
       <label for="stickerCategory">Category</label>
@@ -420,14 +418,14 @@
   document.getElementById('uploadBtn').addEventListener('click', async () => {
     uploadMsg.textContent = '';
     uploadMsg.className = 'msg';
-    const name = document.getElementById('stickerName').value.trim();
     const code = document.getElementById('stickerCode').value.trim();
+    const name = code; // internal label only — customers only ever see the code
     const category = document.getElementById('stickerCategory').value.trim();
     const subcategory = document.getElementById('stickerSubcategory').value.trim();
     const status = document.getElementById('stickerStatus').value;
 
-    if (!currentFile || !name || !code || !category) {
-      uploadMsg.textContent = 'Please choose/paste a photo, and fill in name + code + category.';
+    if (!currentFile || !code || !category) {
+      uploadMsg.textContent = 'Please choose/paste a photo, and fill in code + category.';
       uploadMsg.className = 'msg error';
       return;
     }
@@ -467,7 +465,6 @@
     uploadMsg.className = 'msg ok';
     clearCurrentFile();
     watermarkToggle.checked = false;
-    document.getElementById('stickerName').value = '';
     document.getElementById('stickerCode').value = '';
     document.getElementById('stickerCategory').value = '';
     document.getElementById('stickerSubcategory').value = '';
