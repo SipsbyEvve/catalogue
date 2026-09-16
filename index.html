@@ -43,7 +43,15 @@
     text-align:center;
     padding:48px 20px 20px;
   }
-  .hero .snow{ font-size:2.2rem; }
+  .hero .brand-logo{
+    max-width:340px; width:100%; height:auto; object-fit:contain;
+    display:none; margin:0 auto 8px;
+  }
+  .hero .brand-name{
+    font-weight:700; letter-spacing:0.5px; color:var(--brown-dark);
+    margin:0 0 2px; font-size:1.05rem;
+  }
+  .hero .brand-name.hidden{ display:none; }
   .hero h1{
     font-size:2.1rem;
     margin:6px 0 4px;
@@ -132,6 +140,39 @@
     grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
     gap:8px;
   }
+  .cat-cover-card{
+    position:relative;
+    aspect-ratio:4/3;
+    border-radius:var(--radius);
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    cursor:pointer;
+    background:var(--card);
+    border:1px solid var(--line);
+  }
+  .cat-cover-card img{
+    width:100%; height:100%; object-fit:cover; display:block;
+  }
+  .cat-cover-card .no-cover{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    font-size:2.2rem; background:var(--bg);
+  }
+  .cat-cover-card .label{
+    position:absolute; left:0; right:0; bottom:0;
+    background:linear-gradient(transparent, rgba(30,22,15,0.78));
+    color:#fff; padding:26px 12px 10px;
+  }
+  .cat-cover-card .label .name{ font-weight:700; font-size:0.95rem; display:block; }
+  .cat-cover-card .label .count{ font-size:0.72rem; opacity:0.85; }
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px;
+    background:#fff; border:1px solid var(--line); cursor:pointer;
+    color:var(--brown-dark); font-weight:700; font-size:0.9rem;
+    padding:9px 16px; margin-bottom:16px; border-radius:999px;
+    box-shadow:var(--shadow);
+  }
+  .back-link:hover{ background:var(--brown-dark); color:#fff; border-color:var(--brown-dark); }
+  .active-cat-title{ font-size:1.1rem; margin:0 0 12px; }
   .sticker-thumb{
     position:relative;
     aspect-ratio:1/1;
@@ -173,6 +214,18 @@
     transition:opacity .15s;
   }
   .sticker-thumb:hover .name-tip{ opacity:1; }
+  .sticker-thumb .code-tag{
+    position:absolute;
+    top:4px; left:4px;
+    background:rgba(255,255,255,0.92);
+    color:var(--brown-dark);
+    font-size:0.62rem;
+    font-weight:800;
+    letter-spacing:0.3px;
+    padding:2px 6px;
+    border-radius:6px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.15);
+  }
   .gallery-status{
     color:var(--muted);
     font-size:0.85rem;
@@ -210,7 +263,9 @@
     justify-content:space-between;
     gap:10px;
   }
+  .lightbox-info .text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
   .lightbox-info .n{ font-weight:600; }
+  .lightbox-info .code{ font-size:0.78rem; color:var(--muted); font-weight:700; }
   .lightbox-info .s{
     font-size:0.75rem;
     font-weight:700;
@@ -295,14 +350,9 @@
 </head>
 <body>
 
-<div class="setup-note">
-  <div>
-    ⚠️ Before you publish: search this file for <code>PASTE_YOUR_WHATSAPP_LINK_HERE</code> and replace it with your WhatsApp link. (Supabase is already connected.)
-  </div>
-</div>
-
 <div class="hero">
-  <div class="snow">❄️</div>
+  <img id="brandLogo" class="brand-logo" src="" alt="Sips by Evve logo">
+  <p class="brand-name" id="brandName">Sips by Evve</p>
   <h1>Custom Snowglobe Tumblers ✨</h1>
   <p class="catalog-tag">— Catalog · Katalog · 目录 —</p>
 </div>
@@ -318,10 +368,6 @@
   <section class="step">
     <h2>② Choose your sticker 🎀 <em>Free!</em></h2>
     <p class="note">(Screenshot it!) — tumbler price already includes 1 sticker —</p>
-    <div class="sticker-intro">
-      <p>🖼️ <strong>EN:</strong> Browse the designs below and pick one — just tell us the name when you send your screenshot. Greyed-out ones are preorder or sold out for now, but you can still tap to see them.</p>
-      <p><strong>MY:</strong> Pratonton design stiker di bawah — beritahu kami nama design semasa hantar screenshot anda. Yang kelabu masih boleh tekan untuk tengok, cuma preorder / habis stok buat masa ini.</p>
-    </div>
     <p class="gallery-status" id="stickerStatus">Loading stickers…</p>
     <div class="cat-grid" id="stickerCats"></div>
   </section>
@@ -376,7 +422,10 @@
   <div class="lightbox-box">
     <img id="lightboxImg" src="" alt="">
     <div class="lightbox-info">
-      <span class="n" id="lightboxName"></span>
+      <span class="text">
+        <span class="n" id="lightboxName"></span>
+        <span class="code" id="lightboxCode"></span>
+      </span>
       <span class="s" id="lightboxStatus"></span>
     </div>
   </div>
@@ -411,6 +460,7 @@
     document.getElementById('lightboxImg').src = imgUrl;
     document.getElementById('lightboxImg').className = sticker.status === 'available' ? '' : 'unavailable';
     document.getElementById('lightboxName').textContent = sticker.name;
+    document.getElementById('lightboxCode').textContent = sticker.code ? `Code: ${sticker.code}` : '';
     document.getElementById('lightboxStatus').textContent = STATUS_LABEL[sticker.status] || sticker.status;
     document.getElementById('lightbox').classList.add('open');
   }
@@ -421,69 +471,120 @@
     if (e.target.id === 'lightbox') document.getElementById('lightbox').classList.remove('open');
   });
 
+  let allStickers = [];
+  let allCategories = [];
+
+  function renderCategoryGrid(){
+    const byCategory = {};
+    allStickers.forEach(s => { (byCategory[s.category] = byCategory[s.category] || []).push(s); });
+
+    // categories table first (keeps sort_order + shows empty categories too), then
+    // any category that only exists on a sticker row (in case it's not in the table yet)
+    const known = new Set(allCategories.map(c => c.name));
+    const extra = Object.keys(byCategory).filter(name => !known.has(name)).map(name => ({ name, cover_image_path: null }));
+    const list = [...allCategories, ...extra];
+
+    if (list.length === 0) {
+      statusEl.textContent = "No stickers uploaded yet — check back soon!";
+      statusEl.style.display = 'block';
+      catGrid.innerHTML = '';
+      return;
+    }
+    statusEl.style.display = 'none';
+
+    catGrid.className = 'cat-grid';
+    catGrid.innerHTML = list.map(c => {
+      const count = (byCategory[c.name] || []).length;
+      const cover = c.cover_image_path ? publicImageUrl(c.cover_image_path) : null;
+      return `
+        <div class="cat-cover-card" data-category="${c.name}">
+          ${cover ? `<img src="${cover}" alt="${c.name}" loading="lazy">` : `<div class="no-cover">🎀</div>`}
+          <div class="label">
+            <span class="name">${c.name}</span>
+            <span class="count">${count} design${count === 1 ? '' : 's'}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    catGrid.querySelectorAll('.cat-cover-card').forEach(el => {
+      el.addEventListener('click', () => renderCategoryDetail(el.dataset.category));
+    });
+  }
+
+  function renderCategoryDetail(categoryName){
+    const stickers = allStickers.filter(s => s.category === categoryName);
+    catGrid.className = '';
+    catGrid.innerHTML = `
+      <button class="back-link" id="backToCats">← Back to all categories</button>
+      <h3 class="active-cat-title">${categoryName}</h3>
+      <div class="sticker-grid">
+        ${stickers.length ? stickers.map(s => {
+          const url = publicImageUrl(s.image_path);
+          const unavailable = s.status !== 'available';
+          return `
+            <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
+              <img src="${url}" alt="${s.name}" loading="lazy">
+              ${s.code ? `<div class="code-tag">${s.code}</div>` : ''}
+              <div class="name-tip">${s.name}</div>
+              ${unavailable ? `<div class="badge">${STATUS_LABEL[s.status] || s.status}</div>` : ''}
+            </div>
+          `;
+        }).join('') : `<p class="gallery-status" style="display:block;">No stickers in this category yet.</p>`}
+      </div>
+    `;
+    document.getElementById('backToCats').addEventListener('click', renderCategoryGrid);
+    catGrid.querySelectorAll('.sticker-thumb').forEach(el => {
+      el.addEventListener('click', () => {
+        const s = allStickers.find(x => x.id === el.dataset.id);
+        openLightbox(s, publicImageUrl(s.image_path));
+      });
+    });
+  }
+
   async function loadStickers(){
     if (!client) {
       statusEl.textContent = "Sticker gallery isn't connected yet — add your Supabase URL and anon key in index.html.";
       return;
     }
-    const { data, error } = await client
-      .from('stickers')
-      .select('*')
-      .order('category', { ascending: true })
-      .order('created_at', { ascending: true });
+    const [stickersRes, categoriesRes] = await Promise.all([
+      client.from('stickers').select('*').order('created_at', { ascending: true }),
+      client.from('categories').select('*').order('sort_order', { ascending: true }),
+    ]);
 
-    if (error) {
+    if (stickersRes.error) {
       statusEl.textContent = "Couldn't load stickers right now — please try again later.";
-      console.error(error);
+      console.error('Sticker load error:', stickersRes.error.message || JSON.stringify(stickersRes.error));
       return;
     }
-    if (!data || data.length === 0) {
-      statusEl.textContent = "No stickers uploaded yet — check back soon!";
-      return;
+    if (categoriesRes.error) {
+      console.warn('Categories load error (showing categories from stickers instead):', categoriesRes.error.message || JSON.stringify(categoriesRes.error));
     }
-
-    statusEl.style.display = 'none';
-
-    const byCategory = {};
-    data.forEach(s => {
-      (byCategory[s.category] = byCategory[s.category] || []).push(s);
-    });
-
-    catGrid.innerHTML = Object.entries(byCategory).map(([category, stickers], i) => `
-      <div class="cat-card">
-        <h3><span class="dot" style="background:${colorFor(category, i)}"></span>${category}</h3>
-        <div class="sticker-grid">
-          ${stickers.map(s => {
-            const url = publicImageUrl(s.image_path);
-            const unavailable = s.status !== 'available';
-            return `
-              <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
-                <img src="${url}" alt="${s.name}" loading="lazy">
-                <div class="name-tip">${s.name}</div>
-                ${unavailable ? `<div class="badge">${STATUS_LABEL[s.status] || s.status}</div>` : ''}
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    `).join('');
-
-    catGrid.querySelectorAll('.sticker-thumb').forEach(el => {
-      el.addEventListener('click', () => {
-        const s = data.find(x => x.id === el.dataset.id);
-        const url = publicImageUrl(s.image_path);
-        openLightbox(s, url);
-      });
-    });
+    allStickers = stickersRes.data || [];
+    allCategories = categoriesRes.data || [];
+    renderCategoryGrid();
   }
 
   // ---- ① ③ ④ ⑤ catalogue photos (falls back to the bundled assets/*.* if not set) ----
+  // ---- + shop logo (site_logo slot — no bundled fallback, stays hidden until set) ----
   async function loadCatalogueContent(){
     if (!client) return;
     const { data, error } = await client.from('catalogue_content').select('*');
-    if (error || !data) { console.error(error); return; }
+    if (error) { console.error('Catalogue photos load error:', error.message || JSON.stringify(error)); return; }
+    if (!data) return;
     data.forEach(row => {
-      if (!row.image_path) return; // keep the default bundled image
+      if (!row.image_path) return; // keep the default bundled image (or hidden logo)
+      if (row.slot === 'site_logo') {
+        const logo = document.getElementById('brandLogo');
+        if (logo) {
+          logo.src = publicImageUrl(row.image_path);
+          logo.style.display = 'block';
+        }
+        // The logo image already has your shop name on it, so hide the plain text underneath it.
+        const brandName = document.getElementById('brandName');
+        if (brandName) brandName.classList.add('hidden');
+        return;
+      }
       const img = document.getElementById(`img-${row.slot}`);
       if (img) img.src = publicImageUrl(row.image_path);
     });
@@ -494,7 +595,8 @@
     if (!client) return;
     const grid = document.getElementById('addonsGrid');
     const { data, error } = await client.from('addons').select('*').order('sort_order', { ascending: true });
-    if (error || !data || data.length === 0) { console.error(error); return; } // keep the default cards
+    if (error) { console.error('Add-ons load error:', error.message || JSON.stringify(error)); return; }
+    if (!data || data.length === 0) return; // legitimately empty — keep the default cards, not an error
     grid.innerHTML = data.map(a => `
       <div class="addon-card">
         <span class="name">${a.name}</span>

@@ -86,6 +86,7 @@
   .sticker-row .info .n{ font-weight:600; font-size:0.9rem; }
   .sticker-row .info .c{ font-size:0.78rem; color:var(--muted); }
   .sticker-row select{ width:auto; padding:6px 8px; font-size:0.82rem; }
+  .sticker-row .code-input{ width:64px; padding:6px 8px; font-size:0.8rem; text-align:center; }
   .sticker-row .row-actions{ display:flex; gap:6px; align-items:center; }
   .sticker-row button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
 
@@ -118,6 +119,36 @@
     width:100%; font-weight:600; font-size:0.85rem;
   }
   .add-new-btn:hover{ background:#fff7ee; }
+
+  .slot-preview.no-cover-box{
+    display:flex; align-items:center; justify-content:center;
+    height:120px; background:var(--bg); color:var(--muted); font-size:0.85rem;
+  }
+  .slot-header{ display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+
+  .cat-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:12px; }
+  .cat-cover-card{
+    position:relative; aspect-ratio:4/3; border-radius:var(--radius); overflow:hidden;
+    box-shadow:var(--shadow); cursor:pointer; background:var(--card); border:1px solid var(--line);
+  }
+  .cat-cover-card img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .cat-cover-card .no-cover{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    font-size:2rem; background:var(--bg);
+  }
+  .cat-cover-card .label{
+    position:absolute; left:0; right:0; bottom:0;
+    background:linear-gradient(transparent, rgba(30,22,15,0.78)); color:#fff; padding:22px 10px 8px;
+  }
+  .cat-cover-card .label .name{ font-weight:700; font-size:0.82rem; display:block; }
+  .cat-cover-card .label .count{ font-size:0.68rem; opacity:0.85; }
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line);
+    cursor:pointer; color:var(--brown-dark); font-weight:700; font-size:0.9rem;
+    padding:9px 16px; margin:0 0 16px; border-radius:999px; box-shadow:var(--shadow);
+  }
+  .back-link:hover{ background:var(--brown-dark); color:#fff; border-color:var(--brown-dark); }
+  .active-cat-title{ font-size:1.05rem; margin:0 0 12px; }
 
   #appSection{ display:none; }
 </style>
@@ -167,6 +198,8 @@
       </div>
       <label for="stickerName">Name (shown to customers)</label>
       <input type="text" id="stickerName" placeholder="e.g. Labubu 拉布布">
+      <label for="stickerCode">Code (shown to customers — e.g. from your supplier's sticker sheet)</label>
+      <input type="text" id="stickerCode" placeholder="e.g. K001">
       <label for="stickerCategory">Category</label>
       <input type="text" id="stickerCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
       <datalist id="categoryList">
@@ -189,9 +222,22 @@
     </div>
 
     <div class="card">
+      <h2 style="margin-top:0;font-size:1.1rem;">🗂️ Sticker Categories</h2>
+      <p class="hint">Add a cover photo for each category — customers see this on the main gallery page before they click in. You can also rename a category or add a brand-new one.</p>
+      <div id="categoriesList">Loading…</div>
+      <div class="slot-row">
+        <div class="slot-header">+ Add a new category</div>
+        <input type="text" id="newCategoryName" placeholder="e.g. K-pop · 韩流">
+        <button class="secondary" id="addCategoryBtn">Add category</button>
+        <p class="msg" id="newCategoryMsg"></p>
+      </div>
+    </div>
+
+    <div class="card">
       <h2 style="margin-top:0;font-size:1.1rem;">Existing stickers</h2>
+      <p class="hint">Browse by category, just like customers do — click a category to see and manage its stickers.</p>
       <p class="msg" id="listMsg">Loading…</p>
-      <div class="sticker-list" id="stickerList"></div>
+      <div id="stickerList"></div>
     </div>
 
     <div class="card">
@@ -226,10 +272,11 @@
   const listMsg = document.getElementById('listMsg');
   const stickerList = document.getElementById('stickerList');
 
-  function showApp(session){
+  async function showApp(session){
     loginSection.style.display = 'none';
     appSection.style.display = 'block';
     document.getElementById('whoami').textContent = `Logged in as ${session.user.email}`;
+    await renderCategories(); // load categories first so the sticker gallery below can show cover photos + counts
     refreshList();
     renderCatalogueSlots();
     renderAddons();
@@ -326,6 +373,8 @@
   watermarkToggle.addEventListener('change', renderPreview);
 
   document.addEventListener('paste', (e) => {
+    // Only the "default" target — skip if a catalogue-photo or category-cover paste zone is focused instead.
+    if (activeSlotForPaste || (activeCatForPaste !== null && activeCatForPaste !== undefined)) return;
     const items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
     for (const item of items) {
@@ -344,11 +393,12 @@
     uploadMsg.textContent = '';
     uploadMsg.className = 'msg';
     const name = document.getElementById('stickerName').value.trim();
+    const code = document.getElementById('stickerCode').value.trim();
     const category = document.getElementById('stickerCategory').value.trim();
     const status = document.getElementById('stickerStatus').value;
 
-    if (!currentFile || !name || !category) {
-      uploadMsg.textContent = 'Please choose/paste a photo, and fill in name + category.';
+    if (!currentFile || !name || !code || !category) {
+      uploadMsg.textContent = 'Please choose/paste a photo, and fill in name + code + category.';
       uploadMsg.className = 'msg error';
       return;
     }
@@ -375,7 +425,7 @@
     }
 
     const { error: insertError } = await client.from('stickers').insert({
-      name, category, status, image_path: path,
+      name, code: code || null, category, status, image_path: path,
     });
     if (insertError) {
       uploadMsg.textContent = insertError.message;
@@ -391,11 +441,14 @@
     previewRow.style.display = 'none';
     watermarkToggle.checked = false;
     document.getElementById('stickerName').value = '';
+    document.getElementById('stickerCode').value = '';
     document.getElementById('stickerCategory').value = '';
     document.getElementById('stickerStatus').value = 'available';
     uploadBtn.disabled = false;
     refreshList();
   });
+
+  let allStickersAdmin = [];
 
   async function refreshList(){
     listMsg.textContent = 'Loading…';
@@ -410,64 +463,98 @@
       listMsg.textContent = error.message;
       return;
     }
-    if (!data || data.length === 0) {
+    allStickersAdmin = data || [];
+    if (allStickersAdmin.length === 0) {
       listMsg.textContent = 'No stickers uploaded yet.';
       return;
     }
     listMsg.textContent = '';
+    renderStickerCategoryGrid();
+  }
 
+  // Same two-level browsing as the customer page: category cards first, click in to see/manage that category's stickers.
+  function renderStickerCategoryGrid(){
     const byCategory = {};
-    data.forEach(s => { (byCategory[s.category] = byCategory[s.category] || []).push(s); });
+    allStickersAdmin.forEach(s => { (byCategory[s.category] = byCategory[s.category] || []).push(s); });
+    const known = new Set(categoriesData.map(c => c.name));
+    const extra = Object.keys(byCategory).filter(name => !known.has(name)).map(name => ({ name, cover_image_path: null }));
+    const list = [...categoriesData, ...extra];
 
-    function stickerRowHtml(s){
-      const url = client.storage.from('stickers').getPublicUrl(s.image_path).data.publicUrl;
+    stickerList.className = 'cat-grid';
+    stickerList.innerHTML = list.map(c => {
+      const count = (byCategory[c.name] || []).length;
+      const cover = c.cover_image_path ? client.storage.from('stickers').getPublicUrl(c.cover_image_path).data.publicUrl : null;
       return `
-        <div class="sticker-row" data-id="${s.id}">
-          <img src="${url}" alt="${s.name}">
-          <div class="info">
-            <div class="n">${s.name}</div>
-            <div class="c">${s.category}</div>
-          </div>
-          <select class="status-select">
-            <option value="available" ${s.status === 'available' ? 'selected' : ''}>In Stock</option>
-            <option value="preorder" ${s.status === 'preorder' ? 'selected' : ''}>Preorder</option>
-            <option value="sold_out" ${s.status === 'sold_out' ? 'selected' : ''}>Sold Out</option>
-          </select>
-          <div class="row-actions">
-            <button class="secondary save-btn">Save</button>
-            <button class="danger delete-btn">Delete</button>
+        <div class="cat-cover-card" data-category="${c.name}">
+          ${cover ? `<img src="${cover}" alt="${c.name}" loading="lazy">` : `<div class="no-cover">🎀</div>`}
+          <div class="label">
+            <span class="name">${c.name}</span>
+            <span class="count">${count} sticker${count === 1 ? '' : 's'}</span>
           </div>
         </div>
       `;
-    }
+    }).join('');
 
-    stickerList.innerHTML = Object.entries(byCategory).map(([category, stickers]) => `
-      <div class="cat-group">
-        <h3>${category} <span style="color:var(--muted);font-weight:400;">(${stickers.length})</span></h3>
-        ${stickers.map(stickerRowHtml).join('')}
+    stickerList.querySelectorAll('.cat-cover-card').forEach(el => {
+      el.addEventListener('click', () => renderStickerCategoryDetail(el.dataset.category));
+    });
+  }
+
+  function stickerRowHtml(s){
+    const url = client.storage.from('stickers').getPublicUrl(s.image_path).data.publicUrl;
+    return `
+      <div class="sticker-row" data-id="${s.id}">
+        <img src="${url}" alt="${s.name}">
+        <div class="info">
+          <div class="n">${s.name}</div>
+          <div class="c">${s.category}</div>
+        </div>
+        <input type="text" class="code-input" value="${s.code || ''}" placeholder="Code">
+        <select class="status-select">
+          <option value="available" ${s.status === 'available' ? 'selected' : ''}>In Stock</option>
+          <option value="preorder" ${s.status === 'preorder' ? 'selected' : ''}>Preorder</option>
+          <option value="sold_out" ${s.status === 'sold_out' ? 'selected' : ''}>Sold Out</option>
+        </select>
+        <div class="row-actions">
+          <button class="secondary save-btn">Save</button>
+          <button class="danger delete-btn">Delete</button>
+        </div>
       </div>
-    `).join('');
+    `;
+  }
+
+  function renderStickerCategoryDetail(categoryName){
+    const stickers = allStickersAdmin.filter(s => s.category === categoryName);
+    stickerList.className = '';
+    stickerList.innerHTML = `
+      <button class="back-link" id="backToStickerCats">← Back to all categories</button>
+      <h3 class="active-cat-title">${categoryName}</h3>
+      <div class="sticker-list">
+        ${stickers.length ? stickers.map(stickerRowHtml).join('') : '<p class="hint">No stickers in this category yet.</p>'}
+      </div>
+    `;
+    document.getElementById('backToStickerCats').addEventListener('click', renderStickerCategoryGrid);
 
     stickerList.querySelectorAll('.sticker-row').forEach(row => {
       const id = row.dataset.id;
-      const sticker = data.find(s => s.id === id);
+      const sticker = allStickersAdmin.find(s => s.id === id);
 
       row.querySelector('.save-btn').addEventListener('click', async () => {
         const newStatus = row.querySelector('.status-select').value;
-        const { error } = await client.from('stickers').update({ status: newStatus }).eq('id', id);
-        listMsg.textContent = error ? error.message : 'Saved.';
-        if (!error) setTimeout(() => { listMsg.textContent = ''; }, 1500);
+        const newCode = row.querySelector('.code-input').value.trim();
+        const { error } = await client.from('stickers').update({ status: newStatus, code: newCode || null }).eq('id', id);
+        if (error) { alert(error.message); return; }
+        sticker.status = newStatus;
+        sticker.code = newCode || null;
       });
 
       row.querySelector('.delete-btn').addEventListener('click', async () => {
         if (!confirm(`Delete "${sticker.name}"? This can't be undone.`)) return;
         await client.storage.from('stickers').remove([sticker.image_path]);
         const { error } = await client.from('stickers').delete().eq('id', id);
-        if (error) {
-          listMsg.textContent = error.message;
-        } else {
-          refreshList();
-        }
+        if (error) { alert(error.message); return; }
+        allStickersAdmin = allStickersAdmin.filter(s => s.id !== id);
+        renderStickerCategoryDetail(categoryName);
       });
     });
   }
@@ -480,9 +567,23 @@
     { key: 'step3_patterns', label: '③ Patterns photo', fallback: 'assets/patterns.jpg' },
     { key: 'step4_rules', label: '④ Read-before-you-buy photo', fallback: 'assets/read-before-buy.jpg' },
     { key: 'step5_order', label: '⑤ Order process photo', fallback: 'assets/order-process.jpg' },
+    { key: 'site_logo', label: '🖼️ Shop logo (shown at the top of your page)', fallback: '' },
   ];
   const pendingSlotFile = {};
   let activeSlotForPaste = null;
+
+  // Swaps an <img> preview and an empty "no photo yet" placeholder box, whichever is currently there.
+  function setPreviewEl(id, url){
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'IMG') { el.src = url; return; }
+    const img = document.createElement('img');
+    img.className = 'slot-preview';
+    img.id = id;
+    img.alt = '';
+    img.src = url;
+    el.replaceWith(img);
+  }
 
   async function renderCatalogueSlots(){
     const container = document.getElementById('catalogueSlots');
@@ -495,16 +596,18 @@
       const row = rows[slot.key];
       const currentUrl = row && row.image_path
         ? client.storage.from('stickers').getPublicUrl(row.image_path).data.publicUrl
-        : slot.fallback;
+        : (slot.fallback || null);
       return `
         <div class="slot-row" data-slot="${slot.key}">
           <div class="slot-header">${slot.label}</div>
-          <img class="slot-preview" id="slotPreview-${slot.key}" src="${currentUrl}" alt="${slot.label}">
+          ${currentUrl
+            ? `<img class="slot-preview" id="slotPreview-${slot.key}" src="${currentUrl}" alt="${slot.label}">`
+            : `<div class="slot-preview no-cover-box" id="slotPreview-${slot.key}">🖼️ No logo uploaded yet</div>`}
           <input type="file" id="slotFile-${slot.key}" accept="image/*">
           <div class="paste-zone" tabindex="0" id="slotPaste-${slot.key}">📋 or click here then paste an image (Ctrl+V / Cmd+V)</div>
           <div class="row-actions">
             <button class="secondary slot-save-btn">Save new photo</button>
-            <button class="danger slot-remove-btn">Remove (use default)</button>
+            <button class="danger slot-remove-btn">Remove${slot.fallback ? ' (use default)' : ''}</button>
           </div>
           <p class="msg slot-msg" id="slotMsg-${slot.key}"></p>
         </div>
@@ -514,14 +617,13 @@
     SLOTS.forEach(slot => {
       const fileEl = document.getElementById(`slotFile-${slot.key}`);
       const pasteEl = document.getElementById(`slotPaste-${slot.key}`);
-      const previewEl = document.getElementById(`slotPreview-${slot.key}`);
       const msgEl = document.getElementById(`slotMsg-${slot.key}`);
       const rowEl = container.querySelector(`.slot-row[data-slot="${slot.key}"]`);
 
       fileEl.addEventListener('change', () => {
         if (fileEl.files[0]) {
           pendingSlotFile[slot.key] = fileEl.files[0];
-          previewEl.src = URL.createObjectURL(fileEl.files[0]);
+          setPreviewEl(`slotPreview-${slot.key}`, URL.createObjectURL(fileEl.files[0]));
           msgEl.textContent = 'New photo ready — click "Save new photo" to publish it.';
           msgEl.className = 'msg slot-msg';
         }
@@ -555,12 +657,25 @@
       });
 
       rowEl.querySelector('.slot-remove-btn').addEventListener('click', async () => {
-        if (!confirm('Remove this photo? The default one will show again until you upload a new one.')) return;
+        const confirmMsg = slot.fallback
+          ? 'Remove this photo? The default one will show again until you upload a new one.'
+          : 'Remove this logo? Your shop name will show on its own until you upload a new one.';
+        if (!confirm(confirmMsg)) return;
         const { error: dbErr } = await client.from('catalogue_content')
           .upsert({ slot: slot.key, image_path: null, updated_at: new Date().toISOString() });
         if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg slot-msg error'; return; }
-        previewEl.src = slot.fallback;
-        msgEl.textContent = 'Removed — showing the default photo again.';
+        delete pendingSlotFile[slot.key];
+        if (slot.fallback) {
+          setPreviewEl(`slotPreview-${slot.key}`, slot.fallback);
+        } else {
+          const el = document.getElementById(`slotPreview-${slot.key}`);
+          const placeholder = document.createElement('div');
+          placeholder.className = 'slot-preview no-cover-box';
+          placeholder.id = `slotPreview-${slot.key}`;
+          placeholder.textContent = '🖼️ No logo uploaded yet';
+          el.replaceWith(placeholder);
+        }
+        msgEl.textContent = 'Removed.';
         msgEl.className = 'msg slot-msg ok';
       });
     });
@@ -576,7 +691,7 @@
         if (!file) continue;
         const slotKey = activeSlotForPaste;
         pendingSlotFile[slotKey] = file;
-        document.getElementById(`slotPreview-${slotKey}`).src = URL.createObjectURL(file);
+        setPreviewEl(`slotPreview-${slotKey}`, URL.createObjectURL(file));
         const msgEl = document.getElementById(`slotMsg-${slotKey}`);
         msgEl.textContent = 'New photo ready — click "Save new photo" to publish it.';
         msgEl.className = 'msg slot-msg';
@@ -584,6 +699,168 @@
         break;
       }
     }
+  });
+
+  // ==================================================================
+  // Sticker Categories — cover photo, rename, add new
+  // ==================================================================
+  let categoriesData = [];
+  const pendingCatFile = {};
+  let activeCatForPaste = null;
+
+  function populateCategoryDatalist(){
+    if (!categoriesData.length) return; // keep the built-in fallback list in the HTML
+    const dl = document.getElementById('categoryList');
+    dl.innerHTML = categoriesData.map(c => `<option value="${c.name}">`).join('');
+  }
+
+  async function renderCategories(){
+    const container = document.getElementById('categoriesList');
+    const [catRes, stkRes] = await Promise.all([
+      client.from('categories').select('*').order('sort_order', { ascending: true }),
+      client.from('stickers').select('category'),
+    ]);
+    if (catRes.error) { container.textContent = catRes.error.message; return; }
+    categoriesData = catRes.data || [];
+    populateCategoryDatalist();
+
+    const counts = {};
+    (stkRes.data || []).forEach(s => { counts[s.category] = (counts[s.category] || 0) + 1; });
+
+    if (categoriesData.length === 0) {
+      container.innerHTML = '<p class="hint">No categories yet — add one below.</p>';
+      return;
+    }
+
+    container.innerHTML = categoriesData.map((cat, idx) => {
+      const coverUrl = cat.cover_image_path
+        ? client.storage.from('stickers').getPublicUrl(cat.cover_image_path).data.publicUrl
+        : null;
+      const count = counts[cat.name] || 0;
+      return `
+        <div class="slot-row" data-cat="${idx}">
+          <div class="slot-header">
+            <span>${cat.name} <span style="font-weight:400;color:var(--muted);">(${count} sticker${count === 1 ? '' : 's'})</span></span>
+            <button class="secondary cat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
+          </div>
+          ${coverUrl
+            ? `<img class="slot-preview" id="catPreview-${idx}" src="${coverUrl}" alt="${cat.name}">`
+            : `<div class="slot-preview no-cover-box" id="catPreview-${idx}">🎀 No cover photo yet</div>`}
+          <input type="file" id="catFile-${idx}" accept="image/*">
+          <div class="paste-zone" tabindex="0" id="catPaste-${idx}">📋 or click here then paste an image (Ctrl+V / Cmd+V)</div>
+          <div class="row-actions">
+            <button class="secondary cat-save-btn">Save cover photo</button>
+            <button class="danger cat-remove-btn">Remove cover</button>
+          </div>
+          <p class="msg cat-msg" id="catMsg-${idx}"></p>
+        </div>
+      `;
+    }).join('');
+
+    categoriesData.forEach((cat, idx) => {
+      const rowEl = container.querySelector(`.slot-row[data-cat="${idx}"]`);
+      const fileEl = document.getElementById(`catFile-${idx}`);
+      const pasteEl = document.getElementById(`catPaste-${idx}`);
+      const msgEl = document.getElementById(`catMsg-${idx}`);
+
+      fileEl.addEventListener('change', () => {
+        if (fileEl.files[0]) {
+          pendingCatFile[idx] = fileEl.files[0];
+          setPreviewEl(`catPreview-${idx}`, URL.createObjectURL(fileEl.files[0]));
+          msgEl.textContent = 'New cover ready — click "Save cover photo" to publish it.';
+          msgEl.className = 'msg cat-msg';
+        }
+      });
+      pasteEl.addEventListener('focus', () => { activeCatForPaste = idx; });
+      pasteEl.addEventListener('click', () => pasteEl.focus());
+
+      rowEl.querySelector('.cat-save-btn').addEventListener('click', async () => {
+        const file = pendingCatFile[idx];
+        if (!file) {
+          msgEl.textContent = 'Choose or paste a photo first.';
+          msgEl.className = 'msg cat-msg error';
+          return;
+        }
+        msgEl.textContent = 'Saving…';
+        msgEl.className = 'msg cat-msg';
+        const safeName = (file.name || 'cover.jpg').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const path = `categories/${cat.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}-${safeName}`;
+        const { error: upErr } = await client.storage.from('stickers').upload(path, file, {
+          cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg',
+        });
+        if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg cat-msg error'; return; }
+
+        const { error: dbErr } = await client.from('categories').update({ cover_image_path: path }).eq('name', cat.name);
+        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg cat-msg error'; return; }
+
+        delete pendingCatFile[idx];
+        msgEl.textContent = 'Saved! Live on your catalogue now.';
+        msgEl.className = 'msg cat-msg ok';
+        renderCategories();
+        if (allStickersAdmin.length) renderStickerCategoryGrid();
+      });
+
+      rowEl.querySelector('.cat-remove-btn').addEventListener('click', async () => {
+        if (!confirm(`Remove the cover photo for "${cat.name}"?`)) return;
+        const { error: dbErr } = await client.from('categories').update({ cover_image_path: null }).eq('name', cat.name);
+        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg cat-msg error'; return; }
+        renderCategories();
+        if (allStickersAdmin.length) renderStickerCategoryGrid();
+      });
+
+      rowEl.querySelector('.cat-rename-btn').addEventListener('click', async () => {
+        const newName = prompt('New category name:', cat.name);
+        if (!newName || !newName.trim() || newName.trim() === cat.name) return;
+        const trimmed = newName.trim();
+        if (!confirm(`Rename "${cat.name}" to "${trimmed}"? This also updates every sticker already in this category.`)) return;
+        msgEl.textContent = 'Renaming…';
+        msgEl.className = 'msg cat-msg';
+        const { error: stkErr } = await client.from('stickers').update({ category: trimmed }).eq('category', cat.name);
+        if (stkErr) { msgEl.textContent = stkErr.message; msgEl.className = 'msg cat-msg error'; return; }
+        const { error: catErr } = await client.from('categories').update({ name: trimmed }).eq('name', cat.name);
+        if (catErr) { msgEl.textContent = catErr.message; msgEl.className = 'msg cat-msg error'; return; }
+        renderCategories();
+        refreshList();
+      });
+    });
+  }
+
+  document.addEventListener('paste', (e) => {
+    if (activeCatForPaste === null || activeCatForPaste === undefined) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        const idx = activeCatForPaste;
+        pendingCatFile[idx] = file;
+        setPreviewEl(`catPreview-${idx}`, URL.createObjectURL(file));
+        const msgEl = document.getElementById(`catMsg-${idx}`);
+        msgEl.textContent = 'New cover ready — click "Save cover photo" to publish it.';
+        msgEl.className = 'msg cat-msg';
+        e.preventDefault();
+        break;
+      }
+    }
+  });
+
+  document.getElementById('addCategoryBtn').addEventListener('click', async () => {
+    const input = document.getElementById('newCategoryName');
+    const name = input.value.trim();
+    const msgEl = document.getElementById('newCategoryMsg');
+    if (!name) { msgEl.textContent = 'Type a category name first.'; msgEl.className = 'msg error'; return; }
+    if (categoriesData.some(c => c.name === name)) {
+      msgEl.textContent = 'That category already exists.'; msgEl.className = 'msg error'; return;
+    }
+    const maxSort = categoriesData.reduce((m, c) => Math.max(m, c.sort_order || 0), 0);
+    const { error } = await client.from('categories').insert({ name, sort_order: maxSort + 1 });
+    if (error) { msgEl.textContent = error.message; msgEl.className = 'msg error'; return; }
+    msgEl.textContent = 'Category added!';
+    msgEl.className = 'msg ok';
+    input.value = '';
+    renderCategories();
+    if (allStickersAdmin.length) renderStickerCategoryGrid();
   });
 
   // ==================================================================
