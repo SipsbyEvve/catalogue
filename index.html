@@ -189,8 +189,13 @@
     object-fit:cover;
     display:block;
   }
+  .sticker-thumb.unavailable{
+    background:#d9d5cc;
+    padding:6px;
+    box-sizing:border-box;
+  }
   .sticker-thumb.unavailable img{
-    filter:grayscale(1) brightness(1.05);
+    border-radius:7px;
   }
   .sticker-thumb .badge{
     position:absolute;
@@ -203,18 +208,8 @@
     text-align:center;
     padding:3px 2px;
     text-transform:uppercase;
+    z-index:2;
   }
-  .sticker-thumb .name-tip{
-    position:absolute;
-    top:0; left:0; right:0;
-    background:linear-gradient(rgba(0,0,0,0.55),transparent);
-    color:#fff;
-    font-size:0.6rem;
-    padding:3px 5px;
-    opacity:0;
-    transition:opacity .15s;
-  }
-  .sticker-thumb:hover .name-tip{ opacity:1; }
   .sticker-thumb .code-tag{
     position:absolute;
     top:4px; left:4px;
@@ -226,6 +221,7 @@
     padding:2px 6px;
     border-radius:6px;
     box-shadow:0 1px 4px rgba(0,0,0,0.15);
+    z-index:2;
   }
   .gallery-status{
     color:var(--muted);
@@ -258,7 +254,8 @@
   }
   .lightbox-box img{
     width:100%;
-    max-height:65vh;
+    aspect-ratio:4/3;
+    max-height:48vh;
     object-fit:contain;
     display:block;
     background:var(--bg);
@@ -278,8 +275,7 @@
     gap:10px;
   }
   .lightbox-info .text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
-  .lightbox-info .n{ font-weight:600; }
-  .lightbox-info .code{ font-size:0.78rem; color:var(--muted); font-weight:700; }
+  .lightbox-info .code{ font-size:0.95rem; color:var(--brown-dark); font-weight:700; }
   .lightbox-info .s{
     font-size:0.75rem;
     font-weight:700;
@@ -402,7 +398,7 @@
     <p class="note">(and wait for your date! 💛)</p>
     <img id="img-step5_order" src="assets/order-process.jpg" alt="Order process — screenshot and send, stock check, payment request, pay within 2 days, queue slot given, made live">
     <div class="cta-row">
-      <a class="btn btn-whatsapp" href="PASTE_YOUR_WHATSAPP_LINK_HERE" target="_blank" rel="noopener">
+      <a class="btn btn-whatsapp" href="https://wa.me/evvyne" target="_blank" rel="noopener">
         <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.001 3C9.383 3 4 8.383 4 15.001c0 2.386.7 4.611 1.902 6.483L4 29l7.723-1.867A11.94 11.94 0 0 0 16.001 27C22.619 27 28 21.617 28 15.001 28 8.383 22.619 3 16.001 3zm0 21.818c-1.94 0-3.751-.55-5.286-1.503l-.379-.226-4.583 1.108 1.128-4.463-.247-.396A9.77 9.77 0 0 1 5.182 15c0-5.965 4.854-10.818 10.819-10.818S26.818 9.035 26.818 15 21.965 24.818 16.001 24.818z"/></svg>
         Send Screenshot on WhatsApp
       </a>
@@ -428,7 +424,7 @@
 <footer>
   Made with love in Malaysia 🇲🇾 · Sips by Evve
   <div class="foot-links">
-    <a href="PASTE_YOUR_WHATSAPP_LINK_HERE" target="_blank" rel="noopener">WhatsApp</a>
+    <a href="https://wa.me/evvyne" target="_blank" rel="noopener">WhatsApp</a>
   </div>
 </footer>
 
@@ -438,7 +434,6 @@
     <button type="button" class="zoom-hint" id="lightboxZoom">🔍 Tap photo to view full size</button>
     <div class="lightbox-info">
       <span class="text">
-        <span class="n" id="lightboxName"></span>
         <span class="code" id="lightboxCode"></span>
       </span>
       <span class="s" id="lightboxStatus"></span>
@@ -474,8 +469,7 @@
     if (!client) return;
     document.getElementById('lightboxImg').src = imgUrl;
     document.getElementById('lightboxImg').className = sticker.status === 'available' ? '' : 'unavailable';
-    document.getElementById('lightboxName').textContent = sticker.name;
-    document.getElementById('lightboxCode').textContent = sticker.code ? `Code: ${sticker.code}` : '';
+    document.getElementById('lightboxCode').textContent = sticker.code ? `Code: ${sticker.code}` : sticker.name;
     document.getElementById('lightboxStatus').textContent = STATUS_LABEL[sticker.status] || sticker.status;
     const openFullSize = () => window.open(imgUrl, '_blank');
     document.getElementById('lightboxImg').onclick = openFullSize;
@@ -499,9 +493,8 @@
       const unavailable = s.status !== 'available';
       return `
         <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
-          <img src="${url}" alt="${s.name}" loading="lazy">
+          <img src="${url}" alt="${s.code || s.name}" loading="lazy">
           ${s.code ? `<div class="code-tag">${s.code}</div>` : ''}
-          <div class="name-tip">${s.name}</div>
           ${unavailable ? `<div class="badge">${STATUS_LABEL[s.status] || s.status}</div>` : ''}
         </div>
       `;
