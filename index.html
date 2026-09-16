@@ -136,9 +136,9 @@
     font-style:italic;
   }
   .cat-card .sticker-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
-    gap:8px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
   }
   .cat-cover-card{
     position:relative;
@@ -176,53 +176,47 @@
   .subcat-divider{ font-size:0.85rem; color:var(--muted); margin:18px 0 10px; font-weight:700; }
   .sticker-thumb{
     position:relative;
-    aspect-ratio:1/1;
-    border-radius:10px;
+    border-radius:12px;
     overflow:hidden;
     border:1px solid var(--line);
     cursor:pointer;
     background:#fff;
+    box-shadow:var(--shadow);
   }
   .sticker-thumb img{
     width:100%;
-    height:100%;
-    object-fit:cover;
+    height:auto;
     display:block;
+    background:var(--bg);
   }
   .sticker-thumb.unavailable{
     background:#d9d5cc;
-    padding:6px;
-    box-sizing:border-box;
   }
-  .sticker-thumb.unavailable img{
-    border-radius:7px;
-  }
-  .sticker-thumb .badge{
-    position:absolute;
-    left:0; right:0; bottom:0;
-    background:rgba(58,46,34,0.72);
-    color:#fff;
-    font-size:0.62rem;
-    font-weight:700;
-    letter-spacing:0.3px;
-    text-align:center;
-    padding:3px 2px;
-    text-transform:uppercase;
-    z-index:2;
+  .sticker-thumb .info{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:9px 13px;
+    border-top:1px solid var(--line);
   }
   .sticker-thumb .code-tag{
-    position:absolute;
-    top:4px; left:4px;
-    background:rgba(255,255,255,0.92);
     color:var(--brown-dark);
-    font-size:0.62rem;
+    font-size:0.92rem;
     font-weight:800;
     letter-spacing:0.3px;
-    padding:2px 6px;
-    border-radius:6px;
-    box-shadow:0 1px 4px rgba(0,0,0,0.15);
-    z-index:2;
   }
+  .sticker-thumb .badge{
+    font-size:0.65rem;
+    font-weight:700;
+    letter-spacing:0.3px;
+    text-transform:uppercase;
+    padding:3px 10px;
+    border-radius:999px;
+    flex:none;
+  }
+  .sticker-thumb .badge.status-available{ background:#e8f5ea; color:#2f7a4f; }
+  .sticker-thumb .badge.status-unavailable{ background:#efe6d8; color:#8a7863; }
   .gallery-status{
     color:var(--muted);
     font-size:0.85rem;
@@ -494,8 +488,10 @@
       return `
         <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
           <img src="${url}" alt="${s.code || s.name}" loading="lazy">
-          ${s.code ? `<div class="code-tag">${s.code}</div>` : ''}
-          ${unavailable ? `<div class="badge">${STATUS_LABEL[s.status] || s.status}</div>` : ''}
+          <div class="info">
+            <span class="code-tag">${s.code ? s.code : s.name}</span>
+            <span class="badge ${unavailable ? 'status-unavailable' : 'status-available'}">${STATUS_LABEL[s.status] || s.status}</span>
+          </div>
         </div>
       `;
     }).join('');
