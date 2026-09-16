@@ -81,6 +81,12 @@
     display:flex; align-items:center; gap:12px; border:1px solid var(--line);
     border-radius:12px; padding:10px 12px;
   }
+  .sticker-row .reorder-btns{ display:flex; flex-direction:column; gap:3px; flex:none; }
+  .sticker-row .reorder-btn{
+    margin-top:0; padding:2px 7px; font-size:0.7rem; line-height:1.4;
+    border:1px solid var(--line); background:#fff; border-radius:6px; cursor:pointer;
+  }
+  .sticker-row .reorder-btn:hover{ background:var(--bg); }
   .sticker-row img{ width:52px; height:52px; object-fit:cover; border-radius:8px; flex:none; }
   .sticker-row .info{ flex:1; min-width:0; }
   .sticker-row .info .n{ font-weight:600; font-size:0.9rem; }
@@ -451,8 +457,13 @@
       return;
     }
 
+    const siblingMax = allStickersAdmin
+      .filter(s => s.category === category && (s.subcategory || null) === (subcategory || null))
+      .reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
+
     const { error: insertError } = await client.from('stickers').insert({
       name, code: code || null, category, subcategory: subcategory || null, status, image_path: path,
+      sort_order: siblingMax + 1,
     });
     if (insertError) {
       uploadMsg.textContent = insertError.message;
@@ -482,7 +493,7 @@
       .from('stickers')
       .select('*')
       .order('category', { ascending: true })
-      .order('created_at', { ascending: false });
+      .order('sort_order', { ascending: true });
 
     if (error) {
       listMsg.textContent = error.message;
@@ -529,6 +540,10 @@
     const url = client.storage.from('stickers').getPublicUrl(s.image_path).data.publicUrl;
     return `
       <div class="sticker-row" data-id="${s.id}">
+        <div class="reorder-btns">
+          <button type="button" class="reorder-btn move-up" title="Move up">▲</button>
+          <button type="button" class="reorder-btn move-down" title="Move down">▼</button>
+        </div>
         <img src="${url}" alt="${s.name}">
         <div class="info">
           <div class="n">${s.name}</div>
@@ -636,7 +651,36 @@
         allStickersAdmin = allStickersAdmin.filter(s => s.id !== id);
         onDeleteRerender();
       });
+
+      row.querySelector('.move-up').addEventListener('click', () => moveStickerInList(stickers, id, 'up', onDeleteRerender));
+      row.querySelector('.move-down').addEventListener('click', () => moveStickerInList(stickers, id, 'down', onDeleteRerender));
     });
+  }
+
+  // Swaps sort_order between a sticker and its neighbour within the same
+  // category/sub-category list, saves both to Supabase, then re-renders
+  // in place (keeps you on the same category/sub-category screen).
+  async function moveStickerInList(list, id, direction, rerender){
+    const idx = list.findIndex(s => s.id === id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (idx === -1 || swapIdx < 0 || swapIdx >= list.length) return;
+    const a = list[idx], b = list[swapIdx];
+    const aOrder = a.sort_order || 0;
+    const bOrder = b.sort_order || 0;
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      client.from('stickers').update({ sort_order: bOrder }).eq('id', a.id),
+      client.from('stickers').update({ sort_order: aOrder }).eq('id', b.id),
+    ]);
+    if (e1 || e2) { alert((e1 || e2).message); return; }
+    a.sort_order = bOrder;
+    b.sort_order = aOrder;
+    allStickersAdmin.sort((x, y) => {
+      if (x.category !== y.category) return x.category < y.category ? -1 : 1;
+      const xs = x.subcategory || '', ys = y.subcategory || '';
+      if (xs !== ys) return xs < ys ? -1 : 1;
+      return (x.sort_order || 0) - (y.sort_order || 0);
+    });
+    rerender();
   }
 
   // ==================================================================
@@ -794,6 +838,23 @@
     dl.innerHTML = categoriesData.map(c => `<option value="${c.name}">`).join('');
   }
 
+  // Shared reorder helper for categories AND sub-categories (both have id + sort_order).
+  // Swaps sort_order with the neighbour at idx±1 in the given (already-ordered) list,
+  // saves both rows, then re-fetches via rerenderFn to reflect the new order.
+  async function moveCategoryOrSubcat(list, idx, direction, tableName, rerenderFn){
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= list.length) return;
+    const a = list[idx], b = list[swapIdx];
+    const aOrder = a.sort_order || 0;
+    const bOrder = b.sort_order || 0;
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      client.from(tableName).update({ sort_order: bOrder }).eq('id', a.id),
+      client.from(tableName).update({ sort_order: aOrder }).eq('id', b.id),
+    ]);
+    if (e1 || e2) { alert((e1 || e2).message); return; }
+    rerenderFn();
+  }
+
   async function renderCategories(){
     const container = document.getElementById('categoriesList');
     const [catRes, stkRes] = await Promise.all([
@@ -821,7 +882,11 @@
         <div class="slot-row" data-cat="${idx}">
           <div class="slot-header">
             <span>${cat.name} <span style="font-weight:400;color:var(--muted);">(${count} sticker${count === 1 ? '' : 's'})</span></span>
-            <button class="secondary cat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
+            <span style="display:flex;gap:6px;">
+              <button class="secondary cat-move-up" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▲</button>
+              <button class="secondary cat-move-down" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▼</button>
+              <button class="secondary cat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
+            </span>
           </div>
           ${coverUrl
             ? `<img class="slot-preview" id="catPreview-${idx}" src="${coverUrl}" alt="${cat.name}">`
@@ -887,6 +952,9 @@
         renderCategories();
         if (allStickersAdmin.length) renderStickerCategoryGrid();
       });
+
+      rowEl.querySelector('.cat-move-up').addEventListener('click', () => moveCategoryOrSubcat(categoriesData, idx, 'up', 'categories', renderCategories));
+      rowEl.querySelector('.cat-move-down').addEventListener('click', () => moveCategoryOrSubcat(categoriesData, idx, 'down', 'categories', renderCategories));
 
       rowEl.querySelector('.cat-rename-btn').addEventListener('click', async () => {
         const newName = prompt('New category name:', cat.name);
@@ -1001,7 +1069,11 @@
         <div class="slot-row" data-subcat="${idx}">
           <div class="slot-header">
             <span>${sc.name}</span>
-            <button class="secondary subcat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
+            <span style="display:flex;gap:6px;">
+              <button class="secondary subcat-move-up" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▲</button>
+              <button class="secondary subcat-move-down" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▼</button>
+              <button class="secondary subcat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
+            </span>
           </div>
           ${coverUrl
             ? `<img class="slot-preview" id="subcatPreview-${idx}" src="${coverUrl}" alt="${sc.name}">`
@@ -1067,6 +1139,9 @@
         renderSubcategories();
         if (allStickersAdmin.length) renderStickerCategoryGrid();
       });
+
+      rowEl.querySelector('.subcat-move-up').addEventListener('click', () => moveCategoryOrSubcat(list, idx, 'up', 'subcategories', renderSubcategories));
+      rowEl.querySelector('.subcat-move-down').addEventListener('click', () => moveCategoryOrSubcat(list, idx, 'down', 'subcategories', renderSubcategories));
 
       rowEl.querySelector('.subcat-rename-btn').addEventListener('click', async () => {
         const newName = prompt('New sub-category name:', sc.name);

@@ -622,7 +622,7 @@
       return;
     }
     const [stickersRes, categoriesRes, subcategoriesRes] = await Promise.all([
-      client.from('stickers').select('*').order('created_at', { ascending: true }),
+      client.from('stickers').select('*').order('sort_order', { ascending: true }),
       client.from('categories').select('*').order('sort_order', { ascending: true }),
       client.from('subcategories').select('*').order('sort_order', { ascending: true }),
     ]);
