@@ -77,6 +77,31 @@
     font-size:0.95rem; margin:0 0 8px; color:var(--brown-dark);
   }
   .sticker-list{ display:flex; flex-direction:column; gap:10px; }
+  .section-header-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+  .section-header-row button{ margin-top:0; font-size:0.82rem; padding:8px 12px; white-space:nowrap; }
+  .restock-toolbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:10px; font-size:0.85rem; color:var(--muted);
+  }
+  .restock-toolbar label{ display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .restock-count{
+    background:#efe6d8; color:var(--brown-dark); font-size:0.75rem; font-weight:700;
+    padding:2px 8px; border-radius:999px;
+  }
+  .restock-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+  .restock-row{
+    display:flex; align-items:center; gap:10px; border:1px solid var(--line);
+    border-radius:10px; padding:8px 10px; background:#fff; cursor:pointer;
+  }
+  .restock-row.checked{ border-color:var(--brown); background:var(--bg); }
+  .restock-row input[type="checkbox"]{ width:18px; height:18px; accent-color:var(--brown); cursor:pointer; flex:none; }
+  .restock-row img{ width:44px; height:44px; object-fit:cover; border-radius:8px; flex:none; background:var(--bg); }
+  .restock-row .info{ flex:1; }
+  .restock-row .code{ font-weight:700; font-size:0.92rem; }
+  .restock-row .cat{ font-size:0.75rem; color:var(--muted); }
+  .restock-actions{ display:flex; gap:10px; }
   .sticker-row{
     display:flex; align-items:center; gap:12px; border:1px solid var(--line);
     border-radius:12px; padding:10px 12px;
@@ -257,7 +282,10 @@
     </div>
 
     <div class="card">
-      <h2 style="margin-top:0;font-size:1.1rem;">Existing stickers</h2>
+      <div class="section-header-row">
+        <h2 style="margin-top:0;font-size:1.1rem;">Existing stickers</h2>
+        <button class="secondary" id="restockModeBtn" type="button">📦 Restock: Preorder → In Stock</button>
+      </div>
       <p class="hint">Browse by category, just like customers do — click a category to see and manage its stickers.</p>
       <p class="msg" id="listMsg">Loading…</p>
       <div id="stickerList"></div>
@@ -294,6 +322,97 @@
   const uploadMsg = document.getElementById('uploadMsg');
   const listMsg = document.getElementById('listMsg');
   const stickerList = document.getElementById('stickerList');
+  const restockModeBtn = document.getElementById('restockModeBtn');
+  let restockMode = false;
+
+  function toggleRestockMode(){
+    restockMode = !restockMode;
+    if (restockMode) {
+      restockModeBtn.textContent = '← Back to categories';
+      renderRestockList();
+    } else {
+      restockModeBtn.textContent = '📦 Restock: Preorder → In Stock';
+      renderStickerCategoryGrid();
+    }
+  }
+
+  function renderRestockList(){
+    const preorderStickers = allStickersAdmin.filter(s => s.status === 'preorder');
+    stickerList.className = '';
+
+    if (preorderStickers.length === 0) {
+      stickerList.innerHTML = '<p class="hint">No stickers are currently marked Preorder. 🎉</p>';
+      return;
+    }
+
+    stickerList.innerHTML = `
+      <div class="restock-toolbar">
+        <label><input type="checkbox" id="restockSelectAll"> Select all</label>
+        <span class="restock-count" id="restockCount">0 selected</span>
+      </div>
+      <div class="restock-list">
+        ${preorderStickers.map(s => {
+          const url = client.storage.from('stickers').getPublicUrl(s.image_path).data.publicUrl;
+          return `
+            <label class="restock-row" data-id="${s.id}">
+              <input type="checkbox" class="restock-check">
+              <img src="${url}" alt="${s.code || s.name}">
+              <div class="info">
+                <div class="code">${s.code || s.name}</div>
+                <div class="cat">${s.category}${s.subcategory ? ' · ' + s.subcategory : ''}</div>
+              </div>
+            </label>
+          `;
+        }).join('')}
+      </div>
+      <div class="restock-actions">
+        <button id="restockConfirmBtn" type="button">Convert selected to In Stock (0)</button>
+        <button class="secondary" id="restockCancelBtn" type="button">Cancel</button>
+      </div>
+    `;
+
+    const rows = () => Array.from(stickerList.querySelectorAll('.restock-row'));
+    const checkboxes = () => Array.from(stickerList.querySelectorAll('.restock-check'));
+
+    const updateCount = () => {
+      const n = checkboxes().filter(c => c.checked).length;
+      document.getElementById('restockCount').textContent = `${n} selected`;
+      document.getElementById('restockConfirmBtn').textContent = `Convert selected to In Stock (${n})`;
+      rows().forEach(row => {
+        row.classList.toggle('checked', row.querySelector('.restock-check').checked);
+      });
+    };
+
+    checkboxes().forEach(cb => cb.addEventListener('change', updateCount));
+
+    document.getElementById('restockSelectAll').addEventListener('change', (e) => {
+      checkboxes().forEach(cb => { cb.checked = e.target.checked; });
+      updateCount();
+    });
+
+    document.getElementById('restockCancelBtn').addEventListener('click', toggleRestockMode);
+
+    document.getElementById('restockConfirmBtn').addEventListener('click', async () => {
+      const ids = rows()
+        .filter(row => row.querySelector('.restock-check').checked)
+        .map(row => row.dataset.id);
+      if (ids.length === 0) { alert('Select at least one sticker first.'); return; }
+      const btn = document.getElementById('restockConfirmBtn');
+      btn.disabled = true;
+      const { error } = await client.from('stickers').update({ status: 'available' }).in('id', ids);
+      btn.disabled = false;
+      if (error) { alert(error.message); return; }
+      ids.forEach(id => {
+        const s = allStickersAdmin.find(x => x.id === id);
+        if (s) s.status = 'available';
+      });
+      restockMode = false;
+      restockModeBtn.textContent = '📦 Restock: Preorder → In Stock';
+      renderStickerCategoryGrid();
+    });
+  }
+
+  restockModeBtn.addEventListener('click', toggleRestockMode);
 
   async function showApp(session){
     loginSection.style.display = 'none';
