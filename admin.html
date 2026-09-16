@@ -149,6 +149,7 @@
   }
   .back-link:hover{ background:var(--brown-dark); color:#fff; border-color:var(--brown-dark); }
   .active-cat-title{ font-size:1.05rem; margin:0 0 12px; }
+  .subcat-divider{ font-size:0.85rem; color:var(--muted); margin:18px 0 10px; font-weight:700; }
 
   #appSection{ display:none; }
 </style>
@@ -212,6 +213,9 @@
         <option value="Sports · 运动">
         <option value="Others · 其他">
       </datalist>
+      <label for="stickerSubcategory">Sub-category (optional — only if this category has smaller groups, e.g. "Stitch" inside Disney)</label>
+      <input type="text" id="stickerSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
+      <datalist id="subcategoryList"></datalist>
       <label for="stickerStatus">Stock status</label>
       <select id="stickerStatus">
         <option value="available">In Stock</option>
@@ -231,6 +235,20 @@
         <input type="text" id="newCategoryName" placeholder="e.g. K-pop · 韩流">
         <button class="secondary" id="addCategoryBtn">Add category</button>
         <p class="msg" id="newCategoryMsg"></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.1rem;">🗂️ Sticker Sub-categories</h2>
+      <p class="hint">Some categories have smaller groups inside them — like "Stitch", "Winnie the Pooh", "Marie Cat" inside "Disney / Pixar" — each with its own cover photo. This is optional; only add it for categories that need the extra layer.</p>
+      <label for="subcatCategoryPicker">Category</label>
+      <select id="subcatCategoryPicker"></select>
+      <div id="subcategoriesList" style="margin-top:12px;">Loading…</div>
+      <div class="slot-row">
+        <div class="slot-header">+ Add a new sub-category to this category</div>
+        <input type="text" id="newSubcategoryName" placeholder="e.g. Stitch 史迪奇">
+        <button class="secondary" id="addSubcategoryBtn">Add sub-category</button>
+        <p class="msg" id="newSubcategoryMsg"></p>
       </div>
     </div>
 
@@ -278,6 +296,7 @@
     appSection.style.display = 'block';
     document.getElementById('whoami').textContent = `Logged in as ${session.user.email}`;
     await renderCategories(); // load categories first so the sticker gallery below can show cover photos + counts
+    await renderSubcategories(); // needs categoriesData for the category picker
     refreshList();
     renderCatalogueSlots();
     renderAddons();
@@ -404,6 +423,7 @@
     const name = document.getElementById('stickerName').value.trim();
     const code = document.getElementById('stickerCode').value.trim();
     const category = document.getElementById('stickerCategory').value.trim();
+    const subcategory = document.getElementById('stickerSubcategory').value.trim();
     const status = document.getElementById('stickerStatus').value;
 
     if (!currentFile || !name || !code || !category) {
@@ -434,7 +454,7 @@
     }
 
     const { error: insertError } = await client.from('stickers').insert({
-      name, code: code || null, category, status, image_path: path,
+      name, code: code || null, category, subcategory: subcategory || null, status, image_path: path,
     });
     if (insertError) {
       uploadMsg.textContent = insertError.message;
@@ -450,6 +470,7 @@
     document.getElementById('stickerName').value = '';
     document.getElementById('stickerCode').value = '';
     document.getElementById('stickerCategory').value = '';
+    document.getElementById('stickerSubcategory').value = '';
     document.getElementById('stickerStatus').value = 'available';
     uploadBtn.disabled = false;
     refreshList();
@@ -530,21 +551,76 @@
     `;
   }
 
+  // Same as the category page: sub-category cover cards first (if any), then any stickers
+  // filed directly under the category with no sub-category.
   function renderStickerCategoryDetail(categoryName){
-    const stickers = allStickersAdmin.filter(s => s.category === categoryName);
+    const stickersInCat = allStickersAdmin.filter(s => s.category === categoryName);
+    const directStickers = stickersInCat.filter(s => !s.subcategory);
+    const bySubcat = {};
+    stickersInCat.forEach(s => { if (s.subcategory) (bySubcat[s.subcategory] = bySubcat[s.subcategory] || []).push(s); });
+
+    const knownSubcats = subcategoriesData.filter(sc => sc.category === categoryName);
+    const knownNames = new Set(knownSubcats.map(sc => sc.name));
+    const extraSubcats = Object.keys(bySubcat).filter(name => !knownNames.has(name)).map(name => ({ category: categoryName, name, cover_image_path: null }));
+    const subcatList = [...knownSubcats, ...extraSubcats];
+
+    const subcatGridHtml = subcatList.length ? `
+      <div class="cat-grid">
+        ${subcatList.map(sc => {
+          const count = (bySubcat[sc.name] || []).length;
+          const cover = sc.cover_image_path ? client.storage.from('stickers').getPublicUrl(sc.cover_image_path).data.publicUrl : null;
+          return `
+            <div class="cat-cover-card" data-subcategory="${sc.name}">
+              ${cover ? `<img src="${cover}" alt="${sc.name}" loading="lazy">` : `<div class="no-cover">🎀</div>`}
+              <div class="label">
+                <span class="name">${sc.name}</span>
+                <span class="count">${count} sticker${count === 1 ? '' : 's'}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '';
+
+    const directListHtml = directStickers.length
+      ? `${subcatList.length ? `<h4 class="subcat-divider">More stickers (no sub-category)</h4>` : ''}<div class="sticker-list">${directStickers.map(stickerRowHtml).join('')}</div>`
+      : (subcatList.length === 0 ? '<p class="hint">No stickers in this category yet.</p>' : '');
+
     stickerList.className = '';
     stickerList.innerHTML = `
       <button class="back-link" id="backToStickerCats">← Back to all categories</button>
       <h3 class="active-cat-title">${categoryName}</h3>
-      <div class="sticker-list">
-        ${stickers.length ? stickers.map(stickerRowHtml).join('') : '<p class="hint">No stickers in this category yet.</p>'}
-      </div>
+      ${subcatGridHtml}
+      ${directListHtml}
     `;
     document.getElementById('backToStickerCats').addEventListener('click', renderStickerCategoryGrid);
 
+    stickerList.querySelectorAll('.cat-cover-card').forEach(el => {
+      el.addEventListener('click', () => renderStickerSubcategoryDetail(categoryName, el.dataset.subcategory));
+    });
+    wireStickerRows(directStickers, () => renderStickerCategoryDetail(categoryName));
+  }
+
+  // Sub-category detail: this sub-category's stickers, with a back button to its parent category.
+  function renderStickerSubcategoryDetail(categoryName, subcategoryName){
+    const stickers = allStickersAdmin.filter(s => s.category === categoryName && s.subcategory === subcategoryName);
+    stickerList.className = '';
+    stickerList.innerHTML = `
+      <button class="back-link" id="backToStickerCat">← Back to ${categoryName}</button>
+      <h3 class="active-cat-title">${subcategoryName}</h3>
+      <div class="sticker-list">
+        ${stickers.length ? stickers.map(stickerRowHtml).join('') : '<p class="hint">No stickers here yet.</p>'}
+      </div>
+    `;
+    document.getElementById('backToStickerCat').addEventListener('click', () => renderStickerCategoryDetail(categoryName));
+    wireStickerRows(stickers, () => renderStickerSubcategoryDetail(categoryName, subcategoryName));
+  }
+
+  function wireStickerRows(stickers, onDeleteRerender){
     stickerList.querySelectorAll('.sticker-row').forEach(row => {
       const id = row.dataset.id;
-      const sticker = allStickersAdmin.find(s => s.id === id);
+      const sticker = stickers.find(s => s.id === id);
+      if (!sticker) return;
 
       row.querySelector('.save-btn').addEventListener('click', async () => {
         const newStatus = row.querySelector('.status-select').value;
@@ -561,7 +637,7 @@
         const { error } = await client.from('stickers').delete().eq('id', id);
         if (error) { alert(error.message); return; }
         allStickersAdmin = allStickersAdmin.filter(s => s.id !== id);
-        renderStickerCategoryDetail(categoryName);
+        onDeleteRerender();
       });
     });
   }
@@ -819,14 +895,17 @@
         const newName = prompt('New category name:', cat.name);
         if (!newName || !newName.trim() || newName.trim() === cat.name) return;
         const trimmed = newName.trim();
-        if (!confirm(`Rename "${cat.name}" to "${trimmed}"? This also updates every sticker already in this category.`)) return;
+        if (!confirm(`Rename "${cat.name}" to "${trimmed}"? This also updates every sticker and sub-category already in this category.`)) return;
         msgEl.textContent = 'Renaming…';
         msgEl.className = 'msg cat-msg';
         const { error: stkErr } = await client.from('stickers').update({ category: trimmed }).eq('category', cat.name);
         if (stkErr) { msgEl.textContent = stkErr.message; msgEl.className = 'msg cat-msg error'; return; }
+        const { error: subErr } = await client.from('subcategories').update({ category: trimmed }).eq('category', cat.name);
+        if (subErr) { msgEl.textContent = subErr.message; msgEl.className = 'msg cat-msg error'; return; }
         const { error: catErr } = await client.from('categories').update({ name: trimmed }).eq('name', cat.name);
         if (catErr) { msgEl.textContent = catErr.message; msgEl.className = 'msg cat-msg error'; return; }
         renderCategories();
+        renderSubcategories();
         refreshList();
       });
     });
@@ -867,6 +946,188 @@
     msgEl.className = 'msg ok';
     input.value = '';
     renderCategories();
+    populateSubcatCategoryPicker();
+    if (allStickersAdmin.length) renderStickerCategoryGrid();
+  });
+
+  // ==================================================================
+  // Sticker Sub-categories — a smaller layer inside one category
+  // (e.g. "Stitch" inside "Disney / Pixar"), same pattern as Categories.
+  // ==================================================================
+  let subcategoriesData = []; // ALL sub-categories, across every category
+  const pendingSubcatFile = {};
+  let activeSubcatForPaste = null;
+
+  function populateSubcategoryDatalist(){
+    if (!subcategoriesData.length) return;
+    const dl = document.getElementById('subcategoryList');
+    dl.innerHTML = subcategoriesData.map(sc => `<option value="${sc.name}">`).join('');
+  }
+
+  function populateSubcatCategoryPicker(){
+    const picker = document.getElementById('subcatCategoryPicker');
+    const prevValue = picker.value;
+    picker.innerHTML = categoriesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    if (categoriesData.some(c => c.name === prevValue)) picker.value = prevValue;
+  }
+
+  async function renderSubcategories(){
+    const { data, error } = await client.from('subcategories').select('*').order('sort_order', { ascending: true });
+    const container = document.getElementById('subcategoriesList');
+    if (error) { container.textContent = error.message; return; }
+    subcategoriesData = data || [];
+    populateSubcategoryDatalist();
+    populateSubcatCategoryPicker();
+    renderSubcategoriesForSelectedCategory();
+  }
+
+  function renderSubcategoriesForSelectedCategory(){
+    const container = document.getElementById('subcategoriesList');
+    const picker = document.getElementById('subcatCategoryPicker');
+    const category = picker.value;
+    const list = subcategoriesData.filter(sc => sc.category === category);
+
+    if (!category) {
+      container.innerHTML = '<p class="hint">Add a category first (see the card above).</p>';
+      return;
+    }
+    if (list.length === 0) {
+      container.innerHTML = '<p class="hint">No sub-categories under this category yet — add one below, or just skip this if the category doesn\'t need the extra layer.</p>';
+      return;
+    }
+
+    container.innerHTML = list.map((sc, idx) => {
+      const coverUrl = sc.cover_image_path
+        ? client.storage.from('stickers').getPublicUrl(sc.cover_image_path).data.publicUrl
+        : null;
+      return `
+        <div class="slot-row" data-subcat="${idx}">
+          <div class="slot-header">
+            <span>${sc.name}</span>
+            <button class="secondary subcat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
+          </div>
+          ${coverUrl
+            ? `<img class="slot-preview" id="subcatPreview-${idx}" src="${coverUrl}" alt="${sc.name}">`
+            : `<div class="slot-preview no-cover-box" id="subcatPreview-${idx}">🎀 No cover photo yet</div>`}
+          <input type="file" id="subcatFile-${idx}" accept="image/*">
+          <div class="paste-zone" tabindex="0" id="subcatPaste-${idx}">📋 or click here then paste an image (Ctrl+V / Cmd+V)</div>
+          <div class="row-actions">
+            <button class="secondary subcat-save-btn">Save cover photo</button>
+            <button class="danger subcat-remove-btn">Remove cover</button>
+          </div>
+          <p class="msg subcat-msg" id="subcatMsg-${idx}"></p>
+        </div>
+      `;
+    }).join('');
+
+    list.forEach((sc, idx) => {
+      const rowEl = container.querySelector(`.slot-row[data-subcat="${idx}"]`);
+      const fileEl = document.getElementById(`subcatFile-${idx}`);
+      const pasteEl = document.getElementById(`subcatPaste-${idx}`);
+      const msgEl = document.getElementById(`subcatMsg-${idx}`);
+
+      fileEl.addEventListener('change', () => {
+        if (fileEl.files[0]) {
+          pendingSubcatFile[idx] = fileEl.files[0];
+          setPreviewEl(`subcatPreview-${idx}`, URL.createObjectURL(fileEl.files[0]));
+          msgEl.textContent = 'New cover ready — click "Save cover photo" to publish it.';
+          msgEl.className = 'msg subcat-msg';
+        }
+      });
+      pasteEl.addEventListener('focus', () => { activeSubcatForPaste = idx; });
+      pasteEl.addEventListener('click', () => pasteEl.focus());
+
+      rowEl.querySelector('.subcat-save-btn').addEventListener('click', async () => {
+        const file = pendingSubcatFile[idx];
+        if (!file) {
+          msgEl.textContent = 'Choose or paste a photo first.';
+          msgEl.className = 'msg subcat-msg error';
+          return;
+        }
+        msgEl.textContent = 'Saving…';
+        msgEl.className = 'msg subcat-msg';
+        const safeName = (file.name || 'cover.jpg').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const path = `subcategories/${sc.category.replace(/[^a-zA-Z0-9]/g, '_')}-${sc.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}-${safeName}`;
+        const { error: upErr } = await client.storage.from('stickers').upload(path, file, {
+          cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg',
+        });
+        if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+
+        const { error: dbErr } = await client.from('subcategories').update({ cover_image_path: path }).eq('id', sc.id);
+        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+
+        delete pendingSubcatFile[idx];
+        msgEl.textContent = 'Saved! Live on your catalogue now.';
+        msgEl.className = 'msg subcat-msg ok';
+        renderSubcategories();
+        if (allStickersAdmin.length) renderStickerCategoryGrid();
+      });
+
+      rowEl.querySelector('.subcat-remove-btn').addEventListener('click', async () => {
+        if (!confirm(`Remove the cover photo for "${sc.name}"?`)) return;
+        const { error: dbErr } = await client.from('subcategories').update({ cover_image_path: null }).eq('id', sc.id);
+        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        renderSubcategories();
+        if (allStickersAdmin.length) renderStickerCategoryGrid();
+      });
+
+      rowEl.querySelector('.subcat-rename-btn').addEventListener('click', async () => {
+        const newName = prompt('New sub-category name:', sc.name);
+        if (!newName || !newName.trim() || newName.trim() === sc.name) return;
+        const trimmed = newName.trim();
+        if (!confirm(`Rename "${sc.name}" to "${trimmed}"? This also updates every sticker already in this sub-category.`)) return;
+        msgEl.textContent = 'Renaming…';
+        msgEl.className = 'msg subcat-msg';
+        const { error: stkErr } = await client.from('stickers')
+          .update({ subcategory: trimmed }).eq('category', sc.category).eq('subcategory', sc.name);
+        if (stkErr) { msgEl.textContent = stkErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        const { error: scErr } = await client.from('subcategories').update({ name: trimmed }).eq('id', sc.id);
+        if (scErr) { msgEl.textContent = scErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        renderSubcategories();
+        refreshList();
+      });
+    });
+  }
+
+  document.getElementById('subcatCategoryPicker').addEventListener('change', renderSubcategoriesForSelectedCategory);
+
+  document.addEventListener('paste', (e) => {
+    if (activeSubcatForPaste === null || activeSubcatForPaste === undefined) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        const idx = activeSubcatForPaste;
+        pendingSubcatFile[idx] = file;
+        setPreviewEl(`subcatPreview-${idx}`, URL.createObjectURL(file));
+        const msgEl = document.getElementById(`subcatMsg-${idx}`);
+        msgEl.textContent = 'New cover ready — click "Save cover photo" to publish it.';
+        msgEl.className = 'msg subcat-msg';
+        e.preventDefault();
+        break;
+      }
+    }
+  });
+
+  document.getElementById('addSubcategoryBtn').addEventListener('click', async () => {
+    const category = document.getElementById('subcatCategoryPicker').value;
+    const input = document.getElementById('newSubcategoryName');
+    const name = input.value.trim();
+    const msgEl = document.getElementById('newSubcategoryMsg');
+    if (!category) { msgEl.textContent = 'Add a category first.'; msgEl.className = 'msg error'; return; }
+    if (!name) { msgEl.textContent = 'Type a sub-category name first.'; msgEl.className = 'msg error'; return; }
+    if (subcategoriesData.some(sc => sc.category === category && sc.name === name)) {
+      msgEl.textContent = 'That sub-category already exists under this category.'; msgEl.className = 'msg error'; return;
+    }
+    const maxSort = subcategoriesData.filter(sc => sc.category === category).reduce((m, sc) => Math.max(m, sc.sort_order || 0), 0);
+    const { error } = await client.from('subcategories').insert({ category, name, sort_order: maxSort + 1 });
+    if (error) { msgEl.textContent = error.message; msgEl.className = 'msg error'; return; }
+    msgEl.textContent = 'Sub-category added!';
+    msgEl.className = 'msg ok';
+    input.value = '';
+    renderSubcategories();
     if (allStickersAdmin.length) renderStickerCategoryGrid();
   });
 

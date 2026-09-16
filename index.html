@@ -173,6 +173,7 @@
   }
   .back-link:hover{ background:var(--brown-dark); color:#fff; border-color:var(--brown-dark); }
   .active-cat-title{ font-size:1.1rem; margin:0 0 12px; }
+  .subcat-divider{ font-size:0.85rem; color:var(--muted); margin:18px 0 10px; font-weight:700; }
   .sticker-thumb{
     position:relative;
     aspect-ratio:1/1;
@@ -473,6 +474,31 @@
 
   let allStickers = [];
   let allCategories = [];
+  let allSubcategories = [];
+
+  function stickerThumbsHtml(stickers){
+    return stickers.map(s => {
+      const url = publicImageUrl(s.image_path);
+      const unavailable = s.status !== 'available';
+      return `
+        <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
+          <img src="${url}" alt="${s.name}" loading="lazy">
+          ${s.code ? `<div class="code-tag">${s.code}</div>` : ''}
+          <div class="name-tip">${s.name}</div>
+          ${unavailable ? `<div class="badge">${STATUS_LABEL[s.status] || s.status}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function wireStickerThumbs(container, stickers){
+    container.querySelectorAll('.sticker-thumb').forEach(el => {
+      el.addEventListener('click', () => {
+        const s = stickers.find(x => x.id === el.dataset.id);
+        if (s) openLightbox(s, publicImageUrl(s.image_path));
+      });
+    });
+  }
 
   function renderCategoryGrid(){
     const byCategory = {};
@@ -512,34 +538,69 @@
     });
   }
 
+  // Category detail: shows this category's sub-categories (if any) as cover cards,
+  // plus any stickers filed directly under the category with no sub-category.
   function renderCategoryDetail(categoryName){
-    const stickers = allStickers.filter(s => s.category === categoryName);
+    const stickersInCat = allStickers.filter(s => s.category === categoryName);
+    const directStickers = stickersInCat.filter(s => !s.subcategory);
+    const bySubcat = {};
+    stickersInCat.forEach(s => { if (s.subcategory) (bySubcat[s.subcategory] = bySubcat[s.subcategory] || []).push(s); });
+
+    const knownSubcats = allSubcategories.filter(sc => sc.category === categoryName);
+    const knownNames = new Set(knownSubcats.map(sc => sc.name));
+    const extraSubcats = Object.keys(bySubcat).filter(name => !knownNames.has(name)).map(name => ({ category: categoryName, name, cover_image_path: null }));
+    const subcatList = [...knownSubcats, ...extraSubcats];
+
+    const subcatGridHtml = subcatList.length ? `
+      <div class="cat-grid">
+        ${subcatList.map(sc => {
+          const count = (bySubcat[sc.name] || []).length;
+          const cover = sc.cover_image_path ? publicImageUrl(sc.cover_image_path) : null;
+          return `
+            <div class="cat-cover-card" data-subcategory="${sc.name}">
+              ${cover ? `<img src="${cover}" alt="${sc.name}" loading="lazy">` : `<div class="no-cover">🎀</div>`}
+              <div class="label">
+                <span class="name">${sc.name}</span>
+                <span class="count">${count} design${count === 1 ? '' : 's'}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '';
+
+    const directGridHtml = directStickers.length
+      ? `${subcatList.length ? `<h4 class="subcat-divider">More designs</h4>` : ''}<div class="sticker-grid">${stickerThumbsHtml(directStickers)}</div>`
+      : (subcatList.length === 0 ? `<p class="gallery-status" style="display:block;">No stickers in this category yet.</p>` : '');
+
     catGrid.className = '';
     catGrid.innerHTML = `
       <button class="back-link" id="backToCats">← Back to all categories</button>
       <h3 class="active-cat-title">${categoryName}</h3>
+      ${subcatGridHtml}
+      ${directGridHtml}
+    `;
+
+    document.getElementById('backToCats').addEventListener('click', renderCategoryGrid);
+    catGrid.querySelectorAll('.cat-cover-card').forEach(el => {
+      el.addEventListener('click', () => renderSubcategoryDetail(categoryName, el.dataset.subcategory));
+    });
+    wireStickerThumbs(catGrid, directStickers);
+  }
+
+  // Sub-category detail: this sub-category's stickers, with a back button to its parent category.
+  function renderSubcategoryDetail(categoryName, subcategoryName){
+    const stickers = allStickers.filter(s => s.category === categoryName && s.subcategory === subcategoryName);
+    catGrid.className = '';
+    catGrid.innerHTML = `
+      <button class="back-link" id="backToCat">← Back to ${categoryName}</button>
+      <h3 class="active-cat-title">${subcategoryName}</h3>
       <div class="sticker-grid">
-        ${stickers.length ? stickers.map(s => {
-          const url = publicImageUrl(s.image_path);
-          const unavailable = s.status !== 'available';
-          return `
-            <div class="sticker-thumb ${unavailable ? 'unavailable' : ''}" data-id="${s.id}">
-              <img src="${url}" alt="${s.name}" loading="lazy">
-              ${s.code ? `<div class="code-tag">${s.code}</div>` : ''}
-              <div class="name-tip">${s.name}</div>
-              ${unavailable ? `<div class="badge">${STATUS_LABEL[s.status] || s.status}</div>` : ''}
-            </div>
-          `;
-        }).join('') : `<p class="gallery-status" style="display:block;">No stickers in this category yet.</p>`}
+        ${stickers.length ? stickerThumbsHtml(stickers) : `<p class="gallery-status" style="display:block;">No stickers here yet.</p>`}
       </div>
     `;
-    document.getElementById('backToCats').addEventListener('click', renderCategoryGrid);
-    catGrid.querySelectorAll('.sticker-thumb').forEach(el => {
-      el.addEventListener('click', () => {
-        const s = allStickers.find(x => x.id === el.dataset.id);
-        openLightbox(s, publicImageUrl(s.image_path));
-      });
-    });
+    document.getElementById('backToCat').addEventListener('click', () => renderCategoryDetail(categoryName));
+    wireStickerThumbs(catGrid, stickers);
   }
 
   async function loadStickers(){
@@ -547,9 +608,10 @@
       statusEl.textContent = "Sticker gallery isn't connected yet — add your Supabase URL and anon key in index.html.";
       return;
     }
-    const [stickersRes, categoriesRes] = await Promise.all([
+    const [stickersRes, categoriesRes, subcategoriesRes] = await Promise.all([
       client.from('stickers').select('*').order('created_at', { ascending: true }),
       client.from('categories').select('*').order('sort_order', { ascending: true }),
+      client.from('subcategories').select('*').order('sort_order', { ascending: true }),
     ]);
 
     if (stickersRes.error) {
@@ -560,8 +622,12 @@
     if (categoriesRes.error) {
       console.warn('Categories load error (showing categories from stickers instead):', categoriesRes.error.message || JSON.stringify(categoriesRes.error));
     }
+    if (subcategoriesRes.error) {
+      console.warn('Sub-categories load error (showing sub-categories from stickers instead):', subcategoriesRes.error.message || JSON.stringify(subcategoriesRes.error));
+    }
     allStickers = stickersRes.data || [];
     allCategories = categoriesRes.data || [];
+    allSubcategories = subcategoriesRes.data || [];
     renderCategoryGrid();
   }
 
