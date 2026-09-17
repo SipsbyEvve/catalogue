@@ -72,6 +72,46 @@
     font-size:0.82rem; color:var(--muted); margin-top:8px; text-align:center;
   }
 
+  /* ---- Add sticker: single vs bulk tabs ---- */
+  .add-tabs{ display:flex; gap:8px; margin-bottom:16px; }
+  .add-tab{
+    flex:1; text-align:center; padding:9px; border-radius:10px; border:1px solid var(--line);
+    background:#fff; font-weight:700; font-size:0.85rem; color:var(--muted); cursor:pointer;
+    margin-top:0;
+  }
+  .add-tab.active{ background:var(--brown); color:#fff; border-color:var(--brown); }
+  .add-tab:hover{ background:var(--bg); }
+  .add-tab.active:hover{ background:var(--brown-dark); }
+
+  .batch-grid{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+  .batch-item{
+    display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:12px;
+    padding:8px 10px;
+  }
+  .batch-item img{ width:52px; height:52px; object-fit:cover; border-radius:8px; flex:none; background:var(--bg); }
+  .batch-item .fields{ flex:1; display:flex; gap:8px; }
+  .batch-item input{ padding:7px 9px; font-size:0.82rem; margin:0; }
+  .batch-item .code-field{ width:80px; flex:none; }
+  .batch-item .keyword-field{ flex:1; }
+  .batch-item .remove-btn{
+    flex:none; width:26px; height:26px; border-radius:50%; border:1px solid var(--line);
+    background:#fff; color:var(--muted); font-size:0.8rem; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; margin-top:0; padding:0;
+  }
+  .batch-item .remove-btn:hover{ background:#fbe2e2; color:#b23b3b; }
+  .batch-item.batch-error{ border-color:#e0524f; }
+  .batch-item .batch-status{ font-size:0.72rem; color:var(--muted); flex:none; width:60px; text-align:center; }
+
+  /* ---- toast: brief "Saved!" confirmation ---- */
+  #toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#fff; font-size:0.88rem; font-weight:600;
+    padding:11px 20px; border-radius:999px; box-shadow:0 8px 24px rgba(0,0,0,0.25);
+    opacity:0; pointer-events:none; transition:opacity 0.2s, transform 0.2s; z-index:1000;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  #toast.error{ background:#b23b3b; }
+
   .cat-group{ margin-bottom:18px; }
   .cat-group h3{
     font-size:0.95rem; margin:0 0 8px; color:var(--brown-dark);
@@ -188,6 +228,8 @@
 </head>
 <body>
 
+<div id="toast"></div>
+
 <div class="setup-note">
   <div>
     ⚠️ Supabase is already connected. Keep this page's link private — anyone who logs in with your email/password can manage stickers. Make sure you've created your login (Authentication → Users) and the "stickers" bucket in Supabase — see SETUP-GUIDE.md.
@@ -217,25 +259,66 @@
     </div>
 
     <div class="card">
-      <h2 style="margin-top:0;font-size:1.1rem;">Add a new sticker</h2>
-      <label for="stickerImage">Photo</label>
-      <input type="file" id="stickerImage" accept="image/*">
-      <div class="paste-zone">📋 or just copy an image somewhere else and paste it here (Ctrl+V / Cmd+V)</div>
-      <div class="preview-row" id="previewRow" style="display:none;">
-        <img id="previewThumb" class="preview-thumb" src="" alt="Preview">
-        <span class="preview-hint" id="previewHint">Ready to upload — paste/choose again anytime to replace it</span>
-        <button type="button" class="danger" id="removePreviewBtn" style="margin-top:0;padding:7px 10px;font-size:0.8rem;">✕ Remove</button>
+      <h2 style="margin-top:0;font-size:1.1rem;">Add stickers</h2>
+      <div class="add-tabs">
+        <button type="button" class="add-tab active" id="tabSingleBtn">Single photo</button>
+        <button type="button" class="add-tab" id="tabBulkBtn">Bulk add (multiple photos)</button>
       </div>
-      <div class="checkbox-row">
-        <input type="checkbox" id="watermarkToggle">
-        <label for="watermarkToggle">Add watermark (tiled "SIPS BY EVVE", protects photo from being copied)</label>
+
+      <div id="singlePhotoPane">
+        <label for="stickerImage">Photo</label>
+        <input type="file" id="stickerImage" accept="image/*">
+        <div class="paste-zone">📋 or just copy an image somewhere else and paste it here (Ctrl+V / Cmd+V)</div>
+        <div class="preview-row" id="previewRow" style="display:none;">
+          <img id="previewThumb" class="preview-thumb" src="" alt="Preview">
+          <span class="preview-hint" id="previewHint">Ready to upload — paste/choose again anytime to replace it</span>
+          <button type="button" class="danger" id="removePreviewBtn" style="margin-top:0;padding:7px 10px;font-size:0.8rem;">✕ Remove</button>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="watermarkToggle">
+          <label for="watermarkToggle">Add watermark (tiled "SIPS BY EVVE", protects photo from being copied)</label>
+        </div>
+        <label for="stickerCode">Code (shown to customers — e.g. from your supplier's sticker sheet)</label>
+        <input type="text" id="stickerCode" placeholder="e.g. K001">
+        <label for="stickerKeyword">Search keyword (optional — only needed for a generic category like "Cartoons" or "Cute Stuff", so customers can search the character name)</label>
+        <input type="text" id="stickerKeyword" placeholder="e.g. Doraemon — leave blank if not needed">
+        <label for="stickerCategory">Category</label>
+        <input type="text" id="stickerCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
+        <label for="stickerSubcategory">Sub-category (optional — only if this category has smaller groups, e.g. "Stitch" inside Disney)</label>
+        <input type="text" id="stickerSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
+        <label for="stickerStatus">Stock status</label>
+        <select id="stickerStatus">
+          <option value="available">In Stock</option>
+          <option value="preorder">Preorder</option>
+          <option value="sold_out">Sold Out</option>
+        </select>
+        <button id="uploadBtn">Upload sticker</button>
+        <p class="msg" id="uploadMsg"></p>
       </div>
-      <label for="stickerCode">Code (shown to customers — e.g. from your supplier's sticker sheet)</label>
-      <input type="text" id="stickerCode" placeholder="e.g. K001">
-      <label for="stickerKeyword">Search keyword (optional — only needed for a generic category like "Cartoons" or "Cute Stuff", so customers can search the character name)</label>
-      <input type="text" id="stickerKeyword" placeholder="e.g. Doraemon — leave blank if not needed">
-      <label for="stickerCategory">Category</label>
-      <input type="text" id="stickerCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
+
+      <div id="bulkPhotoPane" style="display:none;">
+        <label for="bulkFiles">Photos (pick several at once, or paste one after another)</label>
+        <input type="file" id="bulkFiles" accept="image/*" multiple>
+        <div class="paste-zone" id="bulkPasteZone" tabindex="0">📋 or click here then paste images one after another (Ctrl+V / Cmd+V each time) — each paste adds one more to the batch below</div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="bulkWatermarkToggle">
+          <label for="bulkWatermarkToggle">Add watermark to all of these (tiled "SIPS BY EVVE")</label>
+        </div>
+        <label for="bulkCategory">Category (applies to this whole batch)</label>
+        <input type="text" id="bulkCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
+        <label for="bulkSubcategory">Sub-category (optional, applies to this whole batch)</label>
+        <input type="text" id="bulkSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
+        <label for="bulkStatus">Stock status (applies to this whole batch)</label>
+        <select id="bulkStatus">
+          <option value="available">In Stock</option>
+          <option value="preorder">Preorder</option>
+          <option value="sold_out">Sold Out</option>
+        </select>
+        <div class="batch-grid" id="bulkBatchGrid"></div>
+        <button id="bulkUploadBtn" style="display:none;">Upload all (0)</button>
+        <p class="msg" id="bulkUploadMsg"></p>
+      </div>
+
       <datalist id="categoryList">
         <option value="Disney / Pixar · 迪士尼 / 皮克斯动画">
         <option value="Sanrio · 三丽鸥">
@@ -245,17 +328,7 @@
         <option value="Sports · 运动">
         <option value="Others · 其他">
       </datalist>
-      <label for="stickerSubcategory">Sub-category (optional — only if this category has smaller groups, e.g. "Stitch" inside Disney)</label>
-      <input type="text" id="stickerSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
       <datalist id="subcategoryList"></datalist>
-      <label for="stickerStatus">Stock status</label>
-      <select id="stickerStatus">
-        <option value="available">In Stock</option>
-        <option value="preorder">Preorder</option>
-        <option value="sold_out">Sold Out</option>
-      </select>
-      <button id="uploadBtn">Upload sticker</button>
-      <p class="msg" id="uploadMsg"></p>
     </div>
 
     <div class="card">
@@ -501,6 +574,40 @@
     return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
   }
 
+  // ---- shrink + re-compress before upload (invisible to you — same photo, smaller file) ----
+  // Skips anything already small; otherwise caps the longer side at 1600px and
+  // re-encodes as JPEG at ~82% quality, which is usually not noticeable to the eye.
+  async function compressImageBlob(sourceBlob, maxDim = 1600, quality = 0.82){
+    if (!sourceBlob || sourceBlob.size < 200 * 1024) return sourceBlob;
+    try {
+      const img = await loadImageFromBlob(sourceBlob);
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const compressed = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+      // Only use the compressed version if it's actually smaller — otherwise keep the original.
+      return (compressed && compressed.size < sourceBlob.size) ? compressed : sourceBlob;
+    } catch (e) {
+      console.error('Compression skipped:', e.message || e);
+      return sourceBlob;
+    }
+  }
+
+  // ---- toast: brief "Saved!" style confirmation, used after quick in-place edits ----
+  let toastTimer = null;
+  function showToast(message, isError = false){
+    const el = document.getElementById('toast');
+    el.textContent = message;
+    el.className = isError ? 'error' : '';
+    // restart the show animation even if a toast is already visible
+    requestAnimationFrame(() => el.classList.add('show'));
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+  }
+
   async function renderPreview(){
     if (!currentFile) { previewRow.style.display = 'none'; return; }
     previewHint.textContent = (watermarkToggle.checked ? 'Preview (with watermark)' : 'Preview') + ' — paste/choose again to replace';
@@ -563,7 +670,8 @@
     uploadBtn.disabled = true;
     uploadMsg.textContent = 'Uploading…';
 
-    const finalBlob = watermarkToggle.checked ? await makeWatermarkedBlob(currentFile) : currentFile;
+    let finalBlob = watermarkToggle.checked ? await makeWatermarkedBlob(currentFile) : currentFile;
+    finalBlob = await compressImageBlob(finalBlob);
     const originalName = currentFile.name || 'sticker.jpg';
     const safeName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const path = `${category.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}-${safeName}`;
@@ -605,6 +713,179 @@
     document.getElementById('stickerSubcategory').value = '';
     document.getElementById('stickerStatus').value = 'available';
     uploadBtn.disabled = false;
+    refreshList();
+  });
+
+  // ---- Add sticker: single vs bulk tabs ----
+  const tabSingleBtn = document.getElementById('tabSingleBtn');
+  const tabBulkBtn = document.getElementById('tabBulkBtn');
+  const singlePhotoPane = document.getElementById('singlePhotoPane');
+  const bulkPhotoPane = document.getElementById('bulkPhotoPane');
+
+  tabSingleBtn.addEventListener('click', () => {
+    tabSingleBtn.classList.add('active');
+    tabBulkBtn.classList.remove('active');
+    singlePhotoPane.style.display = '';
+    bulkPhotoPane.style.display = 'none';
+  });
+  tabBulkBtn.addEventListener('click', () => {
+    tabBulkBtn.classList.add('active');
+    tabSingleBtn.classList.remove('active');
+    bulkPhotoPane.style.display = '';
+    singlePhotoPane.style.display = 'none';
+  });
+
+  // ---- Bulk add: stage several photos at once, each gets its own code, upload together ----
+  let bulkBatch = []; // { file, id, code, keyword }
+  let bulkBatchSeq = 0;
+  const bulkFailedIds = new Set();
+  const bulkBatchGrid = document.getElementById('bulkBatchGrid');
+  const bulkUploadBtn = document.getElementById('bulkUploadBtn');
+  const bulkUploadMsg = document.getElementById('bulkUploadMsg');
+  const bulkFilesInput = document.getElementById('bulkFiles');
+  const bulkPasteZone = document.getElementById('bulkPasteZone');
+
+  function addToBulkBatch(file){
+    bulkBatch.push({ file, id: 'b' + (bulkBatchSeq++), code: '', keyword: '' });
+    renderBulkBatch();
+  }
+
+  function markBulkItemResult(id, ok, errorMessage){
+    if (!ok) bulkFailedIds.add(id);
+    const el = bulkBatchGrid.querySelector(`.batch-item[data-id="${id}"]`);
+    if (!el) return;
+    el.classList.toggle('batch-error', !ok);
+    if (!ok && errorMessage) el.title = errorMessage;
+    const removeBtn = el.querySelector('.remove-btn');
+    if (removeBtn) removeBtn.outerHTML = `<span class="batch-status">${ok ? '✅ Done' : '❌ Failed'}</span>`;
+  }
+
+  function renderBulkBatch(){
+    bulkBatchGrid.innerHTML = bulkBatch.map(item => `
+      <div class="batch-item" data-id="${item.id}">
+        <img src="${URL.createObjectURL(item.file)}" alt="">
+        <div class="fields">
+          <input class="code-field" placeholder="Code" value="${item.code}">
+          <input class="keyword-field" placeholder="Keyword (optional)" value="${item.keyword}">
+        </div>
+        <button type="button" class="remove-btn" title="Remove">✕</button>
+      </div>
+    `).join('');
+
+    bulkBatchGrid.querySelectorAll('.batch-item').forEach(el => {
+      const id = el.dataset.id;
+      const item = bulkBatch.find(b => b.id === id);
+      if (!item) return;
+      el.querySelector('.code-field').addEventListener('input', (e) => { item.code = e.target.value; });
+      el.querySelector('.keyword-field').addEventListener('input', (e) => { item.keyword = e.target.value; });
+      const removeBtn = el.querySelector('.remove-btn');
+      if (removeBtn) removeBtn.addEventListener('click', () => {
+        bulkBatch = bulkBatch.filter(b => b.id !== id);
+        renderBulkBatch();
+      });
+    });
+
+    bulkUploadBtn.style.display = bulkBatch.length ? '' : 'none';
+    bulkUploadBtn.textContent = `Upload all (${bulkBatch.length})`;
+  }
+
+  bulkFilesInput.addEventListener('change', () => {
+    Array.from(bulkFilesInput.files).forEach(addToBulkBatch);
+    bulkFilesInput.value = '';
+  });
+
+  let activeBulkPaste = false;
+  bulkPasteZone.addEventListener('focus', () => { activeBulkPaste = true; });
+  bulkPasteZone.addEventListener('click', () => bulkPasteZone.focus());
+  bulkPasteZone.addEventListener('blur', () => { activeBulkPaste = false; });
+
+  document.addEventListener('paste', (e) => {
+    if (!activeBulkPaste) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    let added = false;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) { addToBulkBatch(file); added = true; }
+      }
+    }
+    if (added) e.preventDefault();
+  });
+
+  bulkUploadBtn.addEventListener('click', async () => {
+    const category = document.getElementById('bulkCategory').value.trim();
+    const subcategory = document.getElementById('bulkSubcategory').value.trim();
+    const status = document.getElementById('bulkStatus').value;
+    const watermark = document.getElementById('bulkWatermarkToggle').checked;
+
+    if (!category) {
+      bulkUploadMsg.textContent = 'Fill in a category for this batch first.';
+      bulkUploadMsg.className = 'msg error';
+      return;
+    }
+    if (bulkBatch.some(item => !item.code.trim())) {
+      bulkUploadMsg.textContent = 'Every photo needs its own code before uploading.';
+      bulkUploadMsg.className = 'msg error';
+      return;
+    }
+
+    bulkUploadBtn.disabled = true;
+    bulkFailedIds.clear();
+    const items = [...bulkBatch]; // snapshot — button is disabled so this can't shift mid-upload
+    const total = items.length;
+    let done = 0;
+    let failCount = 0;
+    let siblingMax = allStickersAdmin
+      .filter(s => s.category === category && (s.subcategory || null) === (subcategory || null))
+      .reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      bulkUploadMsg.textContent = `Uploading ${done + 1} of ${total}…`;
+      bulkUploadMsg.className = 'msg';
+
+      let finalBlob = watermark ? await makeWatermarkedBlob(item.file) : item.file;
+      finalBlob = await compressImageBlob(finalBlob);
+      const originalName = item.file.name || 'sticker.jpg';
+      const safeName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const path = `${category.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}-${i}-${safeName}`;
+
+      const { error: uploadError } = await client.storage.from('stickers').upload(path, finalBlob, {
+        cacheControl: '3600', upsert: false, contentType: finalBlob.type || 'image/jpeg',
+      });
+      if (uploadError) {
+        failCount++;
+        markBulkItemResult(item.id, false, uploadError.message);
+        done++;
+        continue;
+      }
+
+      siblingMax += 1;
+      const code = item.code.trim();
+      const { error: insertError } = await client.from('stickers').insert({
+        name: code, code: code || null, keyword: item.keyword.trim() || null,
+        category, subcategory: subcategory || null, status, image_path: path,
+        sort_order: siblingMax,
+      });
+      if (insertError) {
+        failCount++;
+        markBulkItemResult(item.id, false, insertError.message);
+      } else {
+        markBulkItemResult(item.id, true);
+      }
+      done++;
+    }
+
+    bulkUploadMsg.textContent = failCount
+      ? `Done — ${total - failCount} of ${total} uploaded, ${failCount} failed (still listed below — fix and try again).`
+      : `All ${total} sticker${total === 1 ? '' : 's'} uploaded!`;
+    bulkUploadMsg.className = failCount ? 'msg error' : 'msg ok';
+
+    // Keep only the failed ones staged so they're easy to retry; drop the ones that succeeded.
+    bulkBatch = bulkBatch.filter(b => bulkFailedIds.has(b.id));
+    renderBulkBatch();
+    bulkUploadBtn.disabled = false;
     refreshList();
   });
 
@@ -765,10 +1046,11 @@
         const newKeyword = row.querySelector('.keyword-input').value.trim();
         const { error } = await client.from('stickers')
           .update({ status: newStatus, code: newCode || null, keyword: newKeyword || null }).eq('id', id);
-        if (error) { alert(error.message); return; }
+        if (error) { showToast(error.message, true); return; }
         sticker.status = newStatus;
         sticker.code = newCode || null;
         sticker.keyword = newKeyword || null;
+        showToast('✅ Saved!');
       });
 
       row.querySelector('.delete-btn').addEventListener('click', async () => {
