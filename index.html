@@ -228,6 +228,68 @@
   .sticker-thumb .badge.status-available{ background:#e8f5ea; color:#2f7a4f; }
   .sticker-thumb .badge.status-preorder{ background:#fbe2e2; color:#b23b3b; }
   .sticker-thumb .badge.status-unavailable{ background:#efe6d8; color:#8a7863; }
+  .sticker-thumb .new-ribbon{
+    position:absolute; top:10px; left:10px; background:#e0524f; color:#fff; font-size:0.68rem;
+    font-weight:800; letter-spacing:0.5px; text-transform:uppercase; padding:3px 9px; border-radius:999px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15); z-index:1;
+  }
+
+  /* ---- search + filter dropdown, above the sticker gallery ---- */
+  .finder-row{ display:flex; gap:8px; margin-bottom:16px; position:relative; }
+  .finder-row .search-box{ flex:1; position:relative; }
+  .finder-row .search-box input{
+    width:100%; padding:11px 14px 11px 38px; border:1px solid var(--line); border-radius:12px;
+    font-size:0.92rem; background:#fff; color:var(--ink); font-family:inherit;
+  }
+  .finder-row .search-box .icon{
+    position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:0.95rem; opacity:0.6;
+  }
+  .filter-dropdown{ position:relative; flex:none; }
+  .filter-btn{
+    height:100%; padding:0 14px; border-radius:12px; border:1px solid var(--line);
+    background:#fff; color:var(--brown-dark); font-weight:700; font-size:0.85rem; font-family:inherit;
+    cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;
+  }
+  .filter-btn .chev{ font-size:0.65rem; opacity:0.6; transition:transform 0.15s; }
+  .filter-btn.open .chev{ transform:rotate(180deg); }
+  .filter-panel{
+    position:absolute; top:calc(100% + 8px); right:0; width:200px; background:#fff;
+    border:1px solid var(--line); border-radius:14px; box-shadow:0 12px 28px rgba(58,46,34,0.14);
+    overflow:hidden; z-index:20;
+  }
+  .filter-panel .opt{
+    display:flex; align-items:center; gap:10px; padding:11px 14px; font-size:0.88rem;
+    font-weight:600; color:var(--ink); cursor:pointer;
+  }
+  .filter-panel .opt:hover{ background:var(--bg); }
+  .filter-panel .opt.active{ background:#f3ecdf; color:var(--brown-dark); }
+  .filter-panel .opt .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .filter-panel .opt.all .dot{ background:var(--muted); }
+  .filter-panel .opt.new .dot{ background:#e0524f; }
+  .filter-panel .opt.stock .dot{ background:#2f7a4f; }
+  .filter-panel .opt.pre .dot{ background:#b23b3b; }
+  .filter-panel .opt.sold .dot{ background:#8a7863; }
+  .filter-panel .divider{ height:1px; background:var(--line); margin:2px 0; }
+
+  .search-results{
+    margin-bottom:16px; background:#fff; border:1px solid var(--line); border-radius:14px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.06); overflow:hidden;
+  }
+  .search-results .group-label{
+    font-size:0.72rem; text-transform:uppercase; letter-spacing:0.4px; color:var(--muted);
+    font-weight:700; padding:10px 14px 4px;
+  }
+  .search-results .result-row{
+    display:flex; align-items:center; gap:10px; padding:8px 14px; cursor:pointer;
+  }
+  .search-results .result-row:hover{ background:var(--bg); }
+  .search-results .result-row img{ width:36px; height:36px; object-fit:cover; border-radius:7px; flex:none; }
+  .search-results .result-row .cat-icon{
+    width:36px; height:36px; border-radius:7px; background:var(--bg); display:flex; align-items:center;
+    justify-content:center; font-size:1.1rem; flex:none;
+  }
+  .search-results .result-row .main{ font-weight:700; font-size:0.9rem; }
+  .search-results .result-row .sub{ font-size:0.76rem; color:var(--muted); }
   .gallery-status{
     color:var(--muted);
     font-size:0.85rem;
@@ -384,6 +446,24 @@
   <section class="step">
     <h2>② Choose your sticker 🎀 <em>Free!</em></h2>
     <p class="note">(Screenshot it!) — tumbler price already includes 1 sticker —</p>
+    <div class="finder-row">
+      <div class="search-box">
+        <span class="icon">🔍</span>
+        <input type="text" id="stickerSearchInput" placeholder="Search by code or category…" autocomplete="off">
+      </div>
+      <div class="filter-dropdown" id="filterDropdown">
+        <button class="filter-btn" id="filterBtn" type="button">Show: All <span class="chev">▾</span></button>
+        <div class="filter-panel" id="filterPanel" style="display:none;">
+          <div class="opt all active" data-filter="all"><span class="dot"></span>All</div>
+          <div class="divider"></div>
+          <div class="opt new" data-filter="new"><span class="dot"></span>🆕 New Arrivals</div>
+          <div class="opt stock" data-filter="available"><span class="dot"></span>In Stock</div>
+          <div class="opt pre" data-filter="preorder"><span class="dot"></span>Preorder</div>
+          <div class="opt sold" data-filter="sold_out"><span class="dot"></span>Sold Out</div>
+        </div>
+      </div>
+    </div>
+    <div class="search-results" id="searchResults" style="display:none;"></div>
     <p class="gallery-status" id="stickerStatus">Loading stickers…</p>
     <div class="cat-grid" id="stickerCats"></div>
   </section>
@@ -494,6 +574,14 @@
   let allCategories = [];
   let allSubcategories = [];
 
+  // ---- "New" badge: any sticker added within the last NEW_DAYS days ----
+  const NEW_DAYS = 5;
+  function isNew(s){
+    if (!s.created_at) return false;
+    const ageMs = Date.now() - new Date(s.created_at).getTime();
+    return ageMs >= 0 && ageMs <= NEW_DAYS * 24 * 60 * 60 * 1000;
+  }
+
   function stickerThumbsHtml(stickers){
     return stickers.map(s => {
       const url = publicImageUrl(s.image_path);
@@ -501,6 +589,7 @@
       const badgeClass = s.status === 'available' ? 'status-available' : (s.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
       return `
         <div class="sticker-thumb ${soldOut ? 'sold-out' : ''}" data-id="${s.id}">
+          ${isNew(s) ? '<span class="new-ribbon">🆕 New</span>' : ''}
           <img src="${url}" alt="${s.code || s.name}" loading="lazy">
           <div class="info">
             <span class="code-tag">${s.code ? s.code : s.name}</span>
@@ -623,6 +712,137 @@
     wireStickerThumbs(catGrid, stickers);
   }
 
+  // ---- Filter dropdown: flat list across every category, by status or "new" ----
+  const FILTER_TITLES = {
+    new: `🆕 New Arrivals (added in the last ${NEW_DAYS} days)`,
+    available: 'Showing: In Stock',
+    preorder: 'Showing: Preorder',
+    sold_out: 'Showing: Sold Out',
+  };
+
+  function renderFilteredList(filterKey){
+    const list = filterKey === 'new' ? allStickers.filter(isNew) : allStickers.filter(s => s.status === filterKey);
+    catGrid.className = '';
+    catGrid.innerHTML = `
+      <h3 class="active-cat-title">${FILTER_TITLES[filterKey] || ''}</h3>
+      <div class="sticker-grid">
+        ${list.length ? stickerThumbsHtml(list) : '<p class="gallery-status" style="display:block;">Nothing here right now.</p>'}
+      </div>
+    `;
+    wireStickerThumbs(catGrid, list);
+  }
+
+  // ---- Search: by sticker code, or by category / sub-category name ----
+  function searchIndex(query){
+    const q = query.trim().toLowerCase();
+    if (!q) return { cats: [], subs: [], stickers: [] };
+
+    const catNames = new Set([...allCategories.map(c => c.name), ...allStickers.map(s => s.category)]);
+    const cats = [...catNames].filter(name => name.toLowerCase().includes(q));
+
+    const subMap = new Map();
+    allSubcategories.forEach(sc => subMap.set(sc.category + '||' + sc.name, sc));
+    allStickers.forEach(s => { if (s.subcategory) subMap.set(s.category + '||' + s.subcategory, { category: s.category, name: s.subcategory }); });
+    const subs = [...subMap.values()].filter(sc => sc.name.toLowerCase().includes(q));
+
+    const stickers = allStickers.filter(s =>
+      (s.code || '').toLowerCase().includes(q) || (s.keyword || '').toLowerCase().includes(q)
+    );
+
+    return { cats, subs, stickers };
+  }
+
+  function renderSearchResults(query){
+    const panel = document.getElementById('searchResults');
+    if (!query.trim()) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
+
+    const { cats, subs, stickers } = searchIndex(query);
+    if (cats.length === 0 && subs.length === 0 && stickers.length === 0) {
+      panel.style.display = 'block';
+      panel.innerHTML = `<p class="gallery-status" style="display:block;padding:14px;margin:0;">No matches for "${query}".</p>`;
+      return;
+    }
+
+    panel.style.display = 'block';
+    panel.innerHTML = `
+      ${(cats.length || subs.length) ? `
+        <div class="group-label">Categories</div>
+        ${cats.map(name => `
+          <div class="result-row" data-cat="${name}">
+            <div class="cat-icon">🎀</div>
+            <div><div class="main">${name}</div></div>
+          </div>
+        `).join('')}
+        ${subs.map(sc => `
+          <div class="result-row" data-cat="${sc.category}" data-subcat="${sc.name}">
+            <div class="cat-icon">🎀</div>
+            <div><div class="main">${sc.name}</div><div class="sub">under ${sc.category}</div></div>
+          </div>
+        `).join('')}
+      ` : ''}
+      ${stickers.length ? `
+        <div class="group-label">Stickers</div>
+        ${stickers.slice(0, 20).map(s => `
+          <div class="result-row" data-sticker="${s.id}">
+            <img src="${publicImageUrl(s.image_path)}" alt="${s.code}" loading="lazy">
+            <div><div class="main">${s.code}</div><div class="sub">${s.category}${s.subcategory ? ' · ' + s.subcategory : ''}</div></div>
+          </div>
+        `).join('')}
+      ` : ''}
+    `;
+
+    panel.querySelectorAll('.result-row').forEach(row => {
+      row.addEventListener('click', () => {
+        if (row.dataset.sticker) {
+          const s = allStickers.find(x => x.id === row.dataset.sticker);
+          if (s) openLightbox(s, publicImageUrl(s.image_path));
+        } else if (row.dataset.subcat) {
+          renderSubcategoryDetail(row.dataset.cat, row.dataset.subcat);
+        } else if (row.dataset.cat) {
+          renderCategoryDetail(row.dataset.cat);
+        }
+        panel.style.display = 'none';
+        document.getElementById('stickerSearchInput').value = '';
+      });
+    });
+  }
+
+  document.getElementById('stickerSearchInput').addEventListener('input', (e) => {
+    renderSearchResults(e.target.value);
+  });
+
+  // ---- Filter dropdown wiring ----
+  const FILTER_LABELS = { all: 'All', new: '🆕 New Arrivals', available: 'In Stock', preorder: 'Preorder', sold_out: 'Sold Out' };
+  const filterBtn = document.getElementById('filterBtn');
+  const filterPanel = document.getElementById('filterPanel');
+  const filterDropdown = document.getElementById('filterDropdown');
+
+  filterBtn.addEventListener('click', () => {
+    const willOpen = filterPanel.style.display === 'none';
+    filterPanel.style.display = willOpen ? 'block' : 'none';
+    filterBtn.classList.toggle('open', willOpen);
+  });
+  document.addEventListener('click', (e) => {
+    if (!filterDropdown.contains(e.target)) {
+      filterPanel.style.display = 'none';
+      filterBtn.classList.remove('open');
+    }
+  });
+  filterPanel.querySelectorAll('.opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const key = opt.dataset.filter;
+      filterBtn.innerHTML = `Show: ${FILTER_LABELS[key]} <span class="chev">▾</span>`;
+      filterPanel.style.display = 'none';
+      filterBtn.classList.remove('open');
+      filterPanel.querySelectorAll('.opt').forEach(o => o.classList.toggle('active', o === opt));
+      if (key === 'all') {
+        renderCategoryGrid();
+      } else {
+        renderFilteredList(key);
+      }
+    });
+  });
+
   async function loadStickers(){
     if (!client) {
       statusEl.textContent = "Sticker gallery isn't connected yet — add your Supabase URL and anon key in index.html.";
@@ -653,10 +873,22 @@
 
   // ---- ① ③ ④ ⑤ catalogue photos (falls back to the bundled assets/*.* if not set) ----
   // ---- + shop logo (site_logo slot — no bundled fallback, stays hidden until set) ----
-  async function loadCatalogueContent(){
+  // Retries a couple of times on a transient network hiccup instead of giving up after one failed attempt.
+  async function loadCatalogueContent(attempt = 1){
     if (!client) return;
-    const { data, error } = await client.from('catalogue_content').select('*');
-    if (error) { console.error('Catalogue photos load error:', error.message || JSON.stringify(error)); return; }
+    let data, error;
+    try {
+      ({ data, error } = await client.from('catalogue_content').select('*'));
+    } catch (e) {
+      error = e;
+    }
+    if (error) {
+      console.error('Catalogue photos load error:', error.message || JSON.stringify(error));
+      if (attempt < 3) {
+        setTimeout(() => loadCatalogueContent(attempt + 1), 1200 * attempt);
+      }
+      return;
+    }
     if (!data) return;
     data.forEach(row => {
       if (!row.image_path) return; // keep the default bundled image (or hidden logo)

@@ -118,6 +118,7 @@
   .sticker-row .info .c{ font-size:0.78rem; color:var(--muted); }
   .sticker-row select{ width:auto; padding:6px 8px; font-size:0.82rem; }
   .sticker-row .code-input{ width:64px; padding:6px 8px; font-size:0.8rem; text-align:center; }
+  .sticker-row .keyword-input{ width:100px; padding:6px 8px; font-size:0.8rem; }
   .sticker-row .row-actions{ display:flex; gap:6px; align-items:center; }
   .sticker-row button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
 
@@ -231,6 +232,8 @@
       </div>
       <label for="stickerCode">Code (shown to customers — e.g. from your supplier's sticker sheet)</label>
       <input type="text" id="stickerCode" placeholder="e.g. K001">
+      <label for="stickerKeyword">Search keyword (optional — only needed for a generic category like "Cartoons" or "Cute Stuff", so customers can search the character name)</label>
+      <input type="text" id="stickerKeyword" placeholder="e.g. Doraemon — leave blank if not needed">
       <label for="stickerCategory">Category</label>
       <input type="text" id="stickerCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
       <datalist id="categoryList">
@@ -545,6 +548,7 @@
     uploadMsg.className = 'msg';
     const code = document.getElementById('stickerCode').value.trim();
     const name = code; // internal label only — customers only ever see the code
+    const keyword = document.getElementById('stickerKeyword').value.trim();
     const category = document.getElementById('stickerCategory').value.trim();
     const subcategory = document.getElementById('stickerSubcategory').value.trim();
     const status = document.getElementById('stickerStatus').value;
@@ -581,7 +585,7 @@
       .reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
 
     const { error: insertError } = await client.from('stickers').insert({
-      name, code: code || null, category, subcategory: subcategory || null, status, image_path: path,
+      name, code: code || null, keyword: keyword || null, category, subcategory: subcategory || null, status, image_path: path,
       sort_order: siblingMax + 1,
     });
     if (insertError) {
@@ -596,6 +600,7 @@
     clearCurrentFile();
     watermarkToggle.checked = false;
     document.getElementById('stickerCode').value = '';
+    document.getElementById('stickerKeyword').value = '';
     document.getElementById('stickerCategory').value = '';
     document.getElementById('stickerSubcategory').value = '';
     document.getElementById('stickerStatus').value = 'available';
@@ -669,6 +674,7 @@
           <div class="c">${s.category}</div>
         </div>
         <input type="text" class="code-input" value="${s.code || ''}" placeholder="Code">
+        <input type="text" class="keyword-input" value="${s.keyword || ''}" placeholder="Keyword (optional)">
         <select class="status-select">
           <option value="available" ${s.status === 'available' ? 'selected' : ''}>In Stock</option>
           <option value="preorder" ${s.status === 'preorder' ? 'selected' : ''}>Preorder</option>
@@ -756,10 +762,13 @@
       row.querySelector('.save-btn').addEventListener('click', async () => {
         const newStatus = row.querySelector('.status-select').value;
         const newCode = row.querySelector('.code-input').value.trim();
-        const { error } = await client.from('stickers').update({ status: newStatus, code: newCode || null }).eq('id', id);
+        const newKeyword = row.querySelector('.keyword-input').value.trim();
+        const { error } = await client.from('stickers')
+          .update({ status: newStatus, code: newCode || null, keyword: newKeyword || null }).eq('id', id);
         if (error) { alert(error.message); return; }
         sticker.status = newStatus;
         sticker.code = newCode || null;
+        sticker.keyword = newKeyword || null;
       });
 
       row.querySelector('.delete-btn').addEventListener('click', async () => {
