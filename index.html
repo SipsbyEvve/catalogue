@@ -577,8 +577,15 @@
   // ---- "New" badge: any sticker added within the last NEW_DAYS days ----
   const NEW_DAYS = 5;
   function isNew(s){
-    if (!s.created_at) return false;
-    const ageMs = Date.now() - new Date(s.created_at).getTime();
+    // "New" = either just added, OR a preorder that was just restocked to In Stock —
+    // whichever happened more recently.
+    const times = [s.created_at, s.restocked_at]
+      .filter(Boolean)
+      .map(t => new Date(t).getTime())
+      .filter(t => !isNaN(t));
+    if (!times.length) return false;
+    const mostRecent = Math.max(...times);
+    const ageMs = Date.now() - mostRecent;
     return ageMs >= 0 && ageMs <= NEW_DAYS * 24 * 60 * 60 * 1000;
   }
 

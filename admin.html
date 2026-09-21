@@ -475,12 +475,13 @@
       if (ids.length === 0) { alert('Select at least one sticker first.'); return; }
       const btn = document.getElementById('restockConfirmBtn');
       btn.disabled = true;
-      const { error } = await client.from('stickers').update({ status: 'available' }).in('id', ids);
+      const restockedAt = new Date().toISOString();
+      const { error } = await client.from('stickers').update({ status: 'available', restocked_at: restockedAt }).in('id', ids);
       btn.disabled = false;
       if (error) { alert(error.message); return; }
       ids.forEach(id => {
         const s = allStickersAdmin.find(x => x.id === id);
-        if (s) s.status = 'available';
+        if (s) { s.status = 'available'; s.restocked_at = restockedAt; }
       });
       restockMode = false;
       restockModeBtn.textContent = '📦 Restock: Preorder → In Stock';
