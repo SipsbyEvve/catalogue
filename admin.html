@@ -635,8 +635,14 @@
   document.getElementById('removePreviewBtn').addEventListener('click', clearCurrentFile);
 
   document.addEventListener('paste', (e) => {
-    // Only the "default" target — skip if a catalogue-photo or category-cover paste zone is focused instead.
-    if (activeSlotForPaste || (activeCatForPaste !== null && activeCatForPaste !== undefined)) return;
+    // Only the "default" target — skip if any other paste zone (catalogue photo, category
+    // cover, sub-category cover, or the bulk-upload batch) is focused instead.
+    if (
+      activeSlotForPaste ||
+      (activeCatForPaste !== null && activeCatForPaste !== undefined) ||
+      (typeof activeSubcatForPaste !== 'undefined' && activeSubcatForPaste !== null) ||
+      (typeof activeBulkPaste !== 'undefined' && activeBulkPaste)
+    ) return;
     const items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
     for (const item of items) {
@@ -1070,8 +1076,9 @@
         if (!confirm(`Delete "${sticker.name}"? This can't be undone.`)) return;
         await client.storage.from('stickers').remove([sticker.image_path]);
         const { error } = await client.from('stickers').delete().eq('id', id);
-        if (error) { alert(error.message); return; }
+        if (error) { showToast(error.message, true); return; }
         allStickersAdmin = allStickersAdmin.filter(s => s.id !== id);
+        showToast('✅ Deleted');
         onDeleteRerender();
       });
 
@@ -1176,6 +1183,7 @@
         }
       });
       pasteEl.addEventListener('focus', () => { activeSlotForPaste = slot.key; });
+      pasteEl.addEventListener('blur', () => { activeSlotForPaste = null; });
       pasteEl.addEventListener('click', () => pasteEl.focus());
 
       rowEl.querySelector('.slot-save-btn').addEventListener('click', async () => {
@@ -1201,6 +1209,7 @@
         delete pendingSlotFile[slot.key];
         msgEl.textContent = 'Saved! Live on your catalogue now.';
         msgEl.className = 'msg slot-msg ok';
+        showToast('✅ Saved!');
       });
 
       rowEl.querySelector('.slot-remove-btn').addEventListener('click', async () => {
@@ -1224,6 +1233,7 @@
         }
         msgEl.textContent = 'Removed.';
         msgEl.className = 'msg slot-msg ok';
+        showToast('✅ Removed');
       });
     });
   }
@@ -1340,6 +1350,7 @@
         }
       });
       pasteEl.addEventListener('focus', () => { activeCatForPaste = idx; });
+      pasteEl.addEventListener('blur', () => { activeCatForPaste = null; });
       pasteEl.addEventListener('click', () => pasteEl.focus());
 
       rowEl.querySelector('.cat-save-btn').addEventListener('click', async () => {
@@ -1364,6 +1375,7 @@
         delete pendingCatFile[idx];
         msgEl.textContent = 'Saved! Live on your catalogue now.';
         msgEl.className = 'msg cat-msg ok';
+        showToast('✅ Saved!');
         renderCategories();
         if (allStickersAdmin.length) renderStickerCategoryGrid();
       });
@@ -1371,7 +1383,8 @@
       rowEl.querySelector('.cat-remove-btn').addEventListener('click', async () => {
         if (!confirm(`Remove the cover photo for "${cat.name}"?`)) return;
         const { error: dbErr } = await client.from('categories').update({ cover_image_path: null }).eq('name', cat.name);
-        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg cat-msg error'; return; }
+        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg cat-msg error'; showToast(dbErr.message, true); return; }
+        showToast('✅ Removed');
         renderCategories();
         if (allStickersAdmin.length) renderStickerCategoryGrid();
       });
@@ -1392,6 +1405,7 @@
         if (subErr) { msgEl.textContent = subErr.message; msgEl.className = 'msg cat-msg error'; return; }
         const { error: catErr } = await client.from('categories').update({ name: trimmed }).eq('name', cat.name);
         if (catErr) { msgEl.textContent = catErr.message; msgEl.className = 'msg cat-msg error'; return; }
+        showToast('✅ Renamed!');
         renderCategories();
         renderSubcategories();
         refreshList();
@@ -1432,6 +1446,7 @@
     if (error) { msgEl.textContent = error.message; msgEl.className = 'msg error'; return; }
     msgEl.textContent = 'Category added!';
     msgEl.className = 'msg ok';
+    showToast('✅ Category added!');
     input.value = '';
     renderCategories();
     populateSubcatCategoryPicker();
@@ -1527,6 +1542,7 @@
         }
       });
       pasteEl.addEventListener('focus', () => { activeSubcatForPaste = idx; });
+      pasteEl.addEventListener('blur', () => { activeSubcatForPaste = null; });
       pasteEl.addEventListener('click', () => pasteEl.focus());
 
       rowEl.querySelector('.subcat-save-btn').addEventListener('click', async () => {
@@ -1551,6 +1567,7 @@
         delete pendingSubcatFile[idx];
         msgEl.textContent = 'Saved! Live on your catalogue now.';
         msgEl.className = 'msg subcat-msg ok';
+        showToast('✅ Saved!');
         renderSubcategories();
         if (allStickersAdmin.length) renderStickerCategoryGrid();
       });
@@ -1558,7 +1575,8 @@
       rowEl.querySelector('.subcat-remove-btn').addEventListener('click', async () => {
         if (!confirm(`Remove the cover photo for "${sc.name}"?`)) return;
         const { error: dbErr } = await client.from('subcategories').update({ cover_image_path: null }).eq('id', sc.id);
-        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg subcat-msg error'; showToast(dbErr.message, true); return; }
+        showToast('✅ Removed');
         renderSubcategories();
         if (allStickersAdmin.length) renderStickerCategoryGrid();
       });
@@ -1578,6 +1596,7 @@
         if (stkErr) { msgEl.textContent = stkErr.message; msgEl.className = 'msg subcat-msg error'; return; }
         const { error: scErr } = await client.from('subcategories').update({ name: trimmed }).eq('id', sc.id);
         if (scErr) { msgEl.textContent = scErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        showToast('✅ Renamed!');
         renderSubcategories();
         refreshList();
       });
@@ -1621,6 +1640,7 @@
     if (error) { msgEl.textContent = error.message; msgEl.className = 'msg error'; return; }
     msgEl.textContent = 'Sub-category added!';
     msgEl.className = 'msg ok';
+    showToast('✅ Sub-category added!');
     input.value = '';
     renderSubcategories();
     if (allStickersAdmin.length) renderStickerCategoryGrid();
@@ -1652,12 +1672,14 @@
         const name = row.querySelector('.aname').value.trim();
         const price_label = row.querySelector('.aprice').value.trim();
         const { error } = await client.from('addons').update({ name, price_label }).eq('id', id);
-        if (error) alert(error.message);
+        if (error) { showToast(error.message, true); return; }
+        showToast('✅ Saved!');
       });
       row.querySelector('.addon-delete-btn').addEventListener('click', async () => {
         if (!confirm('Delete this add-on?')) return;
         const { error } = await client.from('addons').delete().eq('id', id);
-        if (error) { alert(error.message); return; }
+        if (error) { showToast(error.message, true); return; }
+        showToast('✅ Deleted');
         renderAddons();
       });
     });
@@ -1667,7 +1689,8 @@
     const { error } = await client.from('addons').insert({
       name: 'New add-on', price_label: '+RM0', sort_order: 999,
     });
-    if (error) { alert(error.message); return; }
+    if (error) { showToast(error.message, true); return; }
+    showToast('✅ Add-on added!');
     renderAddons();
   });
 </script>
