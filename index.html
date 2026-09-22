@@ -234,6 +234,65 @@
     box-shadow:0 2px 6px rgba(0,0,0,0.15); z-index:1;
   }
 
+  /* ---- picking a tumbler / sticker / pattern for the order summary ---- */
+  .sticker-thumb{ cursor:pointer; border:2px solid transparent; transition:border-color 0.15s; }
+  .sticker-thumb.picked{ border-color:var(--brown-dark); }
+  .sticker-thumb.picked .info{ background:#f5efe3; }
+  .sticker-thumb .pick-check{
+    position:absolute; top:10px; right:10px; width:22px; height:22px; border-radius:50%;
+    background:var(--brown-dark); color:#fff; display:none; align-items:center; justify-content:center;
+    font-size:0.75rem; font-weight:700; z-index:1;
+  }
+  .sticker-thumb.picked .pick-check{ display:flex; }
+  .sticker-thumb .zoom-btn{
+    position:absolute; bottom:52px; right:8px; background:rgba(0,0,0,0.55); color:#fff; border:none;
+    border-radius:50%; width:26px; height:26px; font-size:0.8rem; cursor:pointer; z-index:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sticker-thumb.sold-out{ cursor:default; }
+  .notify-btn{
+    display:block; width:calc(100% - 20px); margin:8px 10px 10px; padding:7px; border:none; border-radius:10px;
+    background:var(--wa); color:#fff; font-size:0.72rem; font-weight:700; cursor:pointer;
+  }
+
+  .option-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:14px; }
+  .option-card{
+    border:2px solid var(--line); border-radius:14px; padding:12px; text-align:center; background:var(--card);
+    cursor:pointer; position:relative; box-shadow:var(--shadow);
+  }
+  .option-card .oname{ font-size:0.85rem; font-weight:700; display:block; color:var(--ink); }
+  .option-card .oprice{ font-size:0.78rem; color:var(--muted); margin-top:2px; display:block; }
+  .option-card.picked{ border-color:var(--brown-dark); background:#f5efe3; }
+  .option-card.picked::after{
+    content:"✓"; position:absolute; top:8px; right:10px; color:var(--brown-dark); font-weight:800;
+  }
+
+  .addon-card{ cursor:pointer; position:relative; }
+  .addon-card.picked{ border-color:var(--brown-dark); background:#f5efe3; }
+  .addon-card .pick-box{
+    width:18px; height:18px; border:2px solid var(--line); border-radius:5px; flex:none; margin-right:4px;
+    display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem; color:#fff;
+  }
+  .addon-card.picked .pick-box{ background:var(--brown-dark); border-color:var(--brown-dark); }
+
+  .order-summary{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px;
+    box-shadow:var(--shadow); margin-top:18px;
+  }
+  .order-summary h3{ margin:0 0 10px; font-size:1rem; }
+  .order-summary .pick-row{
+    display:flex; justify-content:space-between; gap:10px; font-size:0.85rem; padding:6px 0; border-bottom:1px dashed var(--line);
+  }
+  .order-summary .pick-row:last-of-type{ border-bottom:none; }
+  .order-summary .pick-row .lbl{ color:var(--muted); }
+  .order-summary .pick-row .val{ font-weight:700; text-align:right; }
+  .order-summary .val.missing{ color:#b23b3b; font-weight:600; }
+  .order-fields{ margin-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .order-fields label{ font-size:0.78rem; color:var(--muted); display:block; margin-bottom:4px; }
+  .order-fields input{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:0.9rem; font-family:inherit;
+  }
+
   /* ---- search + filter dropdown, above the sticker gallery ---- */
   .finder-row{ display:flex; gap:8px; margin-bottom:16px; position:relative; }
   .finder-row .search-box{ flex:1; position:relative; }
@@ -441,6 +500,8 @@
     <h2>① Choose your tumbler ❄️</h2>
     <p class="note">(Screenshot it!)</p>
     <img id="img-step1_tumbler" src="assets/tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
+    <p class="note" style="margin-top:14px;">Or tap your pick below so it's included in your order message:</p>
+    <div class="option-grid" id="tumblerOptions"></div>
   </section>
 
   <section class="step">
@@ -471,24 +532,46 @@
   <section class="step">
     <h2>③ Take a look at our patterns</h2>
     <p class="note">(you can decide during your live date)</p>
-    <img id="img-step3_patterns" src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)">
+    <img id="img-step3_patterns" src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
+    <p class="note" style="margin-top:14px;">Or tap your pick below so it's included in your order message:</p>
+    <div class="option-grid" id="patternOptions"></div>
   </section>
 
   <section class="step">
     <h2>④ Read this before you buy ⚠️</h2>
-    <img id="img-step4_rules" src="assets/read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu">
+    <img id="img-step4_rules" src="assets/read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu" loading="lazy">
   </section>
 
   <section class="step">
     <h2>⑤ Send me your screenshot!</h2>
     <p class="note">(and wait for your date! 💛)</p>
-    <img id="img-step5_order" src="assets/order-process.jpg" alt="Order process — screenshot and send, stock check, payment request, pay within 2 days, queue slot given, made live">
+    <img id="img-step5_order" src="assets/order-process.jpg" alt="Order process — screenshot and send, stock check, payment request, pay within 2 days, queue slot given, made live" loading="lazy">
+
+    <div class="order-summary">
+      <h3>📝 My order</h3>
+      <div class="pick-row"><span class="lbl">Tumbler</span><span class="val" id="pickTumbler">Not picked yet</span></div>
+      <div class="pick-row"><span class="lbl">Sticker</span><span class="val" id="pickSticker">Not picked yet</span></div>
+      <div class="pick-row"><span class="lbl">Pattern</span><span class="val" id="pickPattern">Not picked yet</span></div>
+      <div class="pick-row"><span class="lbl">Add-ons</span><span class="val" id="pickAddons">None</span></div>
+      <div class="order-fields">
+        <div>
+          <label for="orderTiktok">TikTok handle</label>
+          <input type="text" id="orderTiktok" placeholder="@yourhandle">
+        </div>
+        <div>
+          <label for="orderName">Name</label>
+          <input type="text" id="orderName" placeholder="Your name">
+        </div>
+      </div>
+    </div>
+
     <div class="cta-row">
-      <a class="btn btn-whatsapp" href="https://wa.me/evvyne" target="_blank" rel="noopener">
+      <a class="btn btn-whatsapp" id="whatsappOrderBtn" href="https://wa.me/evvyne" target="_blank" rel="noopener">
         <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.001 3C9.383 3 4 8.383 4 15.001c0 2.386.7 4.611 1.902 6.483L4 29l7.723-1.867A11.94 11.94 0 0 0 16.001 27C22.619 27 28 21.617 28 15.001 28 8.383 22.619 3 16.001 3zm0 21.818c-1.94 0-3.751-.55-5.286-1.503l-.379-.226-4.583 1.108 1.128-4.463-.247-.396A9.77 9.77 0 0 1 5.182 15c0-5.965 4.854-10.818 10.819-10.818S26.818 9.035 26.818 15 21.965 24.818 16.001 24.818z"/></svg>
-        Send Screenshot on WhatsApp
+        Send to WhatsApp
       </a>
     </div>
+    <p class="note">(Also attach your screenshot in the chat — this button just fills in the message for you!)</p>
   </section>
 
   <section class="step">
@@ -574,6 +657,101 @@
   let allCategories = [];
   let allSubcategories = [];
 
+  // ==================================================================
+  // "My order" — lets a customer tap a tumbler / sticker / pattern / add-ons
+  // and get a ready-made WhatsApp message in step ⑤, instead of typing it all
+  // out themselves. The reference photos stay exactly as they were — these are
+  // just extra tappable options added below each one.
+  // ==================================================================
+  const TUMBLER_OPTIONS = [
+    { id: 't1', label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55 },
+    { id: 't2', label: '02 · 700ml Acrylic', detail: '', price: 70 },
+    { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75 },
+    { id: 't4', label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85 },
+  ];
+  const PATTERN_OPTIONS = [
+    { id: 'p1', label: 'Normal Cateye', extra: 0 },
+    { id: 'p2', label: 'Swirl Flow Cateye', extra: 0 },
+    { id: 'p3', label: 'Lava', extra: 0 },
+    { id: 'p4', label: 'Full Glitter', extra: 5 },
+  ];
+
+  const myOrder = { tumbler: null, sticker: null, pattern: null, addons: [] };
+  let currentStickerView = null; // whichever sticker view is on screen — re-run after a pick to refresh the checkmark
+
+  function renderTumblerOptions(){
+    const el = document.getElementById('tumblerOptions');
+    if (!el) return;
+    el.innerHTML = TUMBLER_OPTIONS.map(o => `
+      <div class="option-card ${myOrder.tumbler && myOrder.tumbler.id === o.id ? 'picked' : ''}" data-id="${o.id}">
+        <span class="oname">${o.label}</span>
+        <span class="oprice">${o.detail ? o.detail + ' · ' : ''}RM${o.price}</span>
+      </div>
+    `).join('');
+    el.querySelectorAll('.option-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const o = TUMBLER_OPTIONS.find(x => x.id === card.dataset.id);
+        myOrder.tumbler = (myOrder.tumbler && myOrder.tumbler.id === o.id) ? null : o;
+        renderTumblerOptions();
+        updateOrderSummary();
+      });
+    });
+  }
+
+  function renderPatternOptions(){
+    const el = document.getElementById('patternOptions');
+    if (!el) return;
+    el.innerHTML = PATTERN_OPTIONS.map(o => `
+      <div class="option-card ${myOrder.pattern && myOrder.pattern.id === o.id ? 'picked' : ''}" data-id="${o.id}">
+        <span class="oname">${o.label}</span>
+        <span class="oprice">${o.extra ? '+RM' + o.extra : 'included'}</span>
+      </div>
+    `).join('');
+    el.querySelectorAll('.option-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const o = PATTERN_OPTIONS.find(x => x.id === card.dataset.id);
+        myOrder.pattern = (myOrder.pattern && myOrder.pattern.id === o.id) ? null : o;
+        renderPatternOptions();
+        updateOrderSummary();
+      });
+    });
+  }
+
+  function buildWhatsAppMessage(){
+    const lines = ["Hi! I'd like to order 🐳", ''];
+    lines.push(`Tumbler: ${myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : '(please tell me which one — see photo above)'}`);
+    lines.push(`Sticker: ${myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : '(please tell me the code)'}`);
+    lines.push(`Pattern: ${myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : '(can decide on your live date)'}`);
+    if (myOrder.addons.length) {
+      lines.push(`Add-ons: ${myOrder.addons.map(a => `${a.name} (${a.price_label})`).join(', ')}`);
+    }
+    lines.push('');
+    const tiktok = (document.getElementById('orderTiktok') || {}).value || '';
+    const name = (document.getElementById('orderName') || {}).value || '';
+    lines.push(`TikTok handle: ${tiktok}`);
+    lines.push(`Name: ${name}`);
+    return lines.join('\n');
+  }
+
+  function updateOrderSummary(){
+    const set = (id, text, missing) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = text;
+      el.className = 'val' + (missing ? ' missing' : '');
+    };
+    set('pickTumbler', myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : 'Not picked yet', !myOrder.tumbler);
+    set('pickSticker', myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : 'Not picked yet', !myOrder.sticker);
+    set('pickPattern', myOrder.pattern ? myOrder.pattern.label : 'Not picked yet', !myOrder.pattern);
+    set('pickAddons', myOrder.addons.length ? myOrder.addons.map(a => a.name).join(', ') : 'None', false);
+
+    const btn = document.getElementById('whatsappOrderBtn');
+    if (btn) btn.href = `https://wa.me/evvyne?text=${encodeURIComponent(buildWhatsAppMessage())}`;
+  }
+
+  document.getElementById('orderTiktok').addEventListener('input', updateOrderSummary);
+  document.getElementById('orderName').addEventListener('input', updateOrderSummary);
+
   // ---- "New" badge: any sticker added within the last NEW_DAYS days ----
   const NEW_DAYS = 5;
   function isNew(s){
@@ -593,15 +771,19 @@
     return stickers.map(s => {
       const url = publicImageUrl(s.image_path);
       const soldOut = s.status === 'sold_out';
+      const picked = myOrder.sticker && myOrder.sticker.id === s.id;
       const badgeClass = s.status === 'available' ? 'status-available' : (s.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
       return `
-        <div class="sticker-thumb ${soldOut ? 'sold-out' : ''}" data-id="${s.id}">
+        <div class="sticker-thumb ${soldOut ? 'sold-out' : ''} ${picked ? 'picked' : ''}" data-id="${s.id}">
           ${isNew(s) ? '<span class="new-ribbon">🆕 New</span>' : ''}
+          <span class="pick-check">✓</span>
+          <button type="button" class="zoom-btn" title="View full size">🔍</button>
           <img src="${url}" alt="${s.code || s.name}" loading="lazy">
           <div class="info">
             <span class="code-tag">${s.code ? s.code : s.name}</span>
             <span class="badge ${badgeClass}">${STATUS_LABEL[s.status] || s.status}</span>
           </div>
+          ${soldOut ? `<button type="button" class="notify-btn">🔔 Notify me when back</button>` : ''}
         </div>
       `;
     }).join('');
@@ -609,9 +791,29 @@
 
   function wireStickerThumbs(container, stickers){
     container.querySelectorAll('.sticker-thumb').forEach(el => {
+      const s = stickers.find(x => x.id === el.dataset.id);
+      if (!s) return;
+
+      el.querySelector('.zoom-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openLightbox(s, publicImageUrl(s.image_path));
+      });
+
+      const notifyBtn = el.querySelector('.notify-btn');
+      if (notifyBtn) {
+        notifyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const msg = `Hi! Please let me know when sticker ${s.code || s.name} is back in stock 🙏`;
+          window.open(`https://wa.me/evvyne?text=${encodeURIComponent(msg)}`, '_blank');
+        });
+        return; // sold-out stickers aren't pickable for an order
+      }
+
       el.addEventListener('click', () => {
-        const s = stickers.find(x => x.id === el.dataset.id);
-        if (s) openLightbox(s, publicImageUrl(s.image_path));
+        myOrder.sticker = (myOrder.sticker && myOrder.sticker.id === s.id) ? null : s;
+        // Re-render whichever sticker view is currently showing, so the picked border/checkmark updates.
+        if (currentStickerView) currentStickerView();
+        updateOrderSummary();
       });
     });
   }
@@ -702,6 +904,7 @@
       el.addEventListener('click', () => renderSubcategoryDetail(categoryName, el.dataset.subcategory));
     });
     wireStickerThumbs(catGrid, directStickers);
+    currentStickerView = () => renderCategoryDetail(categoryName);
   }
 
   // Sub-category detail: this sub-category's stickers, with a back button to its parent category.
@@ -717,6 +920,7 @@
     `;
     document.getElementById('backToCat').addEventListener('click', () => renderCategoryDetail(categoryName));
     wireStickerThumbs(catGrid, stickers);
+    currentStickerView = () => renderSubcategoryDetail(categoryName, subcategoryName);
   }
 
   // ---- Filter dropdown: flat list across every category, by status or "new" ----
@@ -737,6 +941,29 @@
       </div>
     `;
     wireStickerThumbs(catGrid, list);
+    currentStickerView = () => renderFilteredList(filterKey);
+  }
+
+  // ---- Quietly note down searches that found nothing, so Evvyne can see what customers
+  // look for but can't find. Debounced (only logs once typing pauses) and de-duped per visit
+  // so it doesn't spam the table while someone is still typing.
+  let searchMissTimer = null;
+  const loggedSearchMisses = new Set();
+  function scheduleSearchMissLog(query){
+    if (!client) return;
+    clearTimeout(searchMissTimer);
+    searchMissTimer = setTimeout(() => {
+      const q = query.trim().toLowerCase();
+      if (!q || loggedSearchMisses.has(q)) return;
+      loggedSearchMisses.add(q);
+      try {
+        client.from('search_misses').insert({ query: q }).then(({ error }) => {
+          if (error) console.error('search_misses log error:', error.message || JSON.stringify(error));
+        }).catch(err => console.error('search_misses log error:', err && err.message));
+      } catch (err) {
+        console.error('search_misses log error:', err && err.message);
+      }
+    }, 900);
   }
 
   // ---- Search: by sticker code, or by category / sub-category name ----
@@ -767,6 +994,7 @@
     if (cats.length === 0 && subs.length === 0 && stickers.length === 0) {
       panel.style.display = 'block';
       panel.innerHTML = `<p class="gallery-status" style="display:block;padding:14px;margin:0;">No matches for "${query}".</p>`;
+      scheduleSearchMissLog(query);
       return;
     }
 
@@ -923,16 +1151,44 @@
     if (error) { console.error('Add-ons load error:', error.message || JSON.stringify(error)); return; }
     if (!data || data.length === 0) return; // legitimately empty — keep the default cards, not an error
     grid.innerHTML = data.map(a => `
-      <div class="addon-card">
-        <span class="name">${a.name}</span>
+      <div class="addon-card" data-id="${a.id}">
+        <span><span class="pick-box"></span><span class="name">${a.name}</span></span>
         <span class="price">${a.price_label}</span>
       </div>
     `).join('');
+    grid.querySelectorAll('.addon-card').forEach(card => {
+      const a = data.find(x => x.id === card.dataset.id);
+      card.addEventListener('click', () => {
+        const idx = myOrder.addons.findIndex(x => x.id === a.id);
+        if (idx >= 0) { myOrder.addons.splice(idx, 1); card.classList.remove('picked'); }
+        else { myOrder.addons.push(a); card.classList.add('picked'); }
+        updateOrderSummary();
+      });
+    });
   }
 
+  // Core page setup happens first, unconditionally — nothing below this line
+  // should ever be able to stop the order-picker or the sticker gallery from
+  // rendering, no matter what else goes wrong.
+  renderTumblerOptions();
+  renderPatternOptions();
+  updateOrderSummary();
   loadStickers();
   loadCatalogueContent();
   loadAddons();
+
+  // Quietly log a page view so Evvyne can see roughly how much traffic the catalogue gets.
+  // Purely a nice-to-have: wrapped in try/catch so any failure here (network,
+  // misconfigured client, anything) can never take the rest of the page down with it.
+  try {
+    if (client) {
+      client.from('page_views').insert({}).then(({ error }) => {
+        if (error) console.error('page_views log error:', error.message || JSON.stringify(error));
+      }).catch(err => console.error('page_views log error:', err && err.message));
+    }
+  } catch (err) {
+    console.error('page_views log error:', err && err.message);
+  }
 </script>
 
 </body>

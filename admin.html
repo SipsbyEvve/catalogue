@@ -89,10 +89,13 @@
     padding:8px 10px;
   }
   .batch-item img{ width:52px; height:52px; object-fit:cover; border-radius:8px; flex:none; background:var(--bg); }
-  .batch-item .fields{ flex:1; display:flex; gap:8px; }
+  .batch-item .fields{ flex:1; display:flex; flex-wrap:wrap; gap:8px; }
   .batch-item input{ padding:7px 9px; font-size:0.82rem; margin:0; }
   .batch-item .code-field{ width:80px; flex:none; }
-  .batch-item .keyword-field{ flex:1; }
+  .batch-item .keyword-field{ flex:1 1 120px; }
+  .batch-item .stock-field{ width:90px; flex:none; }
+  .batch-item .category-field{ flex:1 1 130px; }
+  .batch-item .subcategory-field{ flex:1 1 130px; }
   .batch-item .remove-btn{
     flex:none; width:26px; height:26px; border-radius:50%; border:1px solid var(--line);
     background:#fff; color:var(--muted); font-size:0.8rem; cursor:pointer; display:flex;
@@ -111,6 +114,21 @@
   }
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
   #toast.error{ background:#b23b3b; }
+
+  /* ---- undo toast: shown after a delete, gives a few seconds to undo ---- */
+  #undoToast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#fff; font-size:0.88rem; font-weight:600;
+    padding:9px 10px 9px 20px; border-radius:999px; box-shadow:0 8px 24px rgba(0,0,0,0.25);
+    opacity:0; pointer-events:none; transition:opacity 0.2s, transform 0.2s; z-index:1000;
+    display:flex; align-items:center; gap:12px;
+  }
+  #undoToast.show{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+  #undoToastBtn{
+    margin-top:0; padding:6px 14px; font-size:0.82rem; font-weight:700;
+    border:none; border-radius:999px; background:#fff; color:var(--ink); cursor:pointer;
+  }
+  #undoToastBtn:hover{ background:#f0ece6; }
 
   .cat-group{ margin-bottom:18px; }
   .cat-group h3{
@@ -143,7 +161,7 @@
   .restock-row .cat{ font-size:0.75rem; color:var(--muted); }
   .restock-actions{ display:flex; gap:10px; }
   .sticker-row{
-    display:flex; align-items:center; gap:12px; border:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:12px; border:1px solid var(--line);
     border-radius:12px; padding:10px 12px;
   }
   .sticker-row .reorder-btns{ display:flex; flex-direction:column; gap:3px; flex:none; }
@@ -159,6 +177,7 @@
   .sticker-row select{ width:auto; padding:6px 8px; font-size:0.82rem; }
   .sticker-row .code-input{ width:64px; padding:6px 8px; font-size:0.8rem; text-align:center; }
   .sticker-row .keyword-input{ width:100px; padding:6px 8px; font-size:0.8rem; }
+  .sticker-row .stock-input{ width:64px; padding:6px 8px; font-size:0.8rem; text-align:center; }
   .sticker-row .row-actions{ display:flex; gap:6px; align-items:center; }
   .sticker-row button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
 
@@ -229,6 +248,10 @@
 <body>
 
 <div id="toast"></div>
+<div id="undoToast">
+  <span id="undoToastMsg"></span>
+  <button id="undoToastBtn" type="button">Undo</button>
+</div>
 
 <div class="setup-note">
   <div>
@@ -292,6 +315,8 @@
           <option value="preorder">Preorder</option>
           <option value="sold_out">Sold Out</option>
         </select>
+        <label for="stickerStockQty">Stock count (optional — leave blank if you don't want to track a number for this one; if you do, it'll auto-flip to Sold Out at 0)</label>
+        <input type="number" id="stickerStockQty" min="0" placeholder="e.g. 10">
         <button id="uploadBtn">Upload sticker</button>
         <p class="msg" id="uploadMsg"></p>
       </div>
@@ -304,10 +329,11 @@
           <input type="checkbox" id="bulkWatermarkToggle">
           <label for="bulkWatermarkToggle">Add watermark to all of these (tiled "SIPS BY EVVE")</label>
         </div>
-        <label for="bulkCategory">Category (applies to this whole batch)</label>
+        <label for="bulkCategory">Default category (used for any photo below that doesn't set its own)</label>
         <input type="text" id="bulkCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
-        <label for="bulkSubcategory">Sub-category (optional, applies to this whole batch)</label>
+        <label for="bulkSubcategory">Default sub-category (optional)</label>
         <input type="text" id="bulkSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
+        <p class="hint">Mixing categories in one batch? Each photo below has its own Category/Sub-category boxes — fill those in to override the default just for that photo.</p>
         <label for="bulkStatus">Stock status (applies to this whole batch)</label>
         <select id="bulkStatus">
           <option value="available">In Stock</option>
@@ -361,8 +387,10 @@
       <div class="section-header-row">
         <h2 style="margin-top:0;font-size:1.1rem;">Existing stickers</h2>
         <button class="secondary" id="restockModeBtn" type="button">📦 Restock: Preorder → In Stock</button>
+        <button class="secondary" id="exportCsvBtn" type="button">⬇️ Export CSV</button>
       </div>
-      <p class="hint">Browse by category, just like customers do — click a category to see and manage its stickers.</p>
+      <p class="hint">Browse by category, just like customers do — click a category to see and manage its stickers. Or search across every category at once:</p>
+      <input type="text" id="stickerSearchInput" placeholder="🔍 Search all stickers by name, code, keyword or category…" style="margin-bottom:10px;">
       <p class="msg" id="listMsg">Loading…</p>
       <div id="stickerList"></div>
     </div>
@@ -378,6 +406,26 @@
       <p class="hint">Shown at the bottom of your catalogue. Edit the name/price and press Save on that row.</p>
       <div id="addonsList">Loading…</div>
       <button class="add-new-btn" id="addAddonBtn">+ Add new add-on</button>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.1rem;">🔍 Searches with no results</h2>
+      <p class="hint">What customers typed into the search box but found nothing for — a hint at what to stock or upload next.</p>
+      <div id="searchMissesList">Loading…</div>
+      <button class="secondary" id="clearSearchMissesBtn" style="margin-top:10px;">Clear list</button>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.1rem;">📊 Site visits</h2>
+      <p class="hint">A simple count of how many times your catalogue page has loaded.</p>
+      <div id="visitStats">Loading…</div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.1rem;">📦 Orders</h2>
+      <p class="hint">Log orders you receive on WhatsApp here, so you have one place to see what's pending, paid, or made.</p>
+      <div id="ordersList">Loading…</div>
+      <button class="add-new-btn" id="addOrderBtn">+ Add order</button>
     </div>
   </div>
 
@@ -398,6 +446,7 @@
   const uploadMsg = document.getElementById('uploadMsg');
   const listMsg = document.getElementById('listMsg');
   const stickerList = document.getElementById('stickerList');
+  const stickerSearchInput = document.getElementById('stickerSearchInput');
   const restockModeBtn = document.getElementById('restockModeBtn');
   let restockMode = false;
 
@@ -500,6 +549,9 @@
     refreshList();
     renderCatalogueSlots();
     renderAddons();
+    renderSearchMisses();
+    renderVisitStats();
+    renderOrders();
   }
   function showLogin(){
     loginSection.style.display = 'block';
@@ -609,6 +661,23 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
   }
 
+  // ---- undo toast: used for "delete" actions that get a brief grace period ----
+  let undoToastTimer = null;
+  function showUndoToast(message, onUndo, duration = 6000){
+    const el = document.getElementById('undoToast');
+    const msgEl = document.getElementById('undoToastMsg');
+    const btn = document.getElementById('undoToastBtn');
+    msgEl.textContent = message;
+    requestAnimationFrame(() => el.classList.add('show'));
+    clearTimeout(undoToastTimer);
+    undoToastTimer = setTimeout(() => el.classList.remove('show'), duration);
+    btn.onclick = () => {
+      el.classList.remove('show');
+      clearTimeout(undoToastTimer);
+      onUndo();
+    };
+  }
+
   async function renderPreview(){
     if (!currentFile) { previewRow.style.display = 'none'; return; }
     previewHint.textContent = (watermarkToggle.checked ? 'Preview (with watermark)' : 'Preview') + ' — paste/choose again to replace';
@@ -665,11 +734,18 @@
     const keyword = document.getElementById('stickerKeyword').value.trim();
     const category = document.getElementById('stickerCategory').value.trim();
     const subcategory = document.getElementById('stickerSubcategory').value.trim();
-    const status = document.getElementById('stickerStatus').value;
+    const chosenStatus = document.getElementById('stickerStatus').value;
+    const stockQty = parseStockQtyInput(document.getElementById('stickerStockQty').value);
+    const status = deriveStatusFromStock(chosenStatus, stockQty, null); // brand-new sticker, no previous status
 
     if (!currentFile || !code || !category) {
       uploadMsg.textContent = 'Please choose/paste a photo, and fill in code + category.';
       uploadMsg.className = 'msg error';
+      return;
+    }
+
+    const dupe = findStickerByCode(code);
+    if (dupe && !confirm(`Code "${code}" is already used by a sticker in ${dupe.category}${dupe.subcategory ? ' · ' + dupe.subcategory : ''}. Add this one anyway?`)) {
       return;
     }
 
@@ -701,7 +777,7 @@
 
     const { error: insertError } = await client.from('stickers').insert({
       name, code: code || null, keyword: keyword || null, category, subcategory: subcategory || null, status, image_path: path,
-      sort_order: siblingMax + 1,
+      sort_order: siblingMax + 1, stock_qty: stockQty,
     });
     if (insertError) {
       uploadMsg.textContent = insertError.message;
@@ -718,6 +794,7 @@
     document.getElementById('stickerKeyword').value = '';
     document.getElementById('stickerCategory').value = '';
     document.getElementById('stickerSubcategory').value = '';
+    document.getElementById('stickerStockQty').value = '';
     document.getElementById('stickerStatus').value = 'available';
     uploadBtn.disabled = false;
     refreshList();
@@ -753,7 +830,7 @@
   const bulkPasteZone = document.getElementById('bulkPasteZone');
 
   function addToBulkBatch(file){
-    bulkBatch.push({ file, id: 'b' + (bulkBatchSeq++), code: '', keyword: '' });
+    bulkBatch.push({ file, id: 'b' + (bulkBatchSeq++), code: '', keyword: '', stockQty: '', category: '', subcategory: '' });
     renderBulkBatch();
   }
 
@@ -774,6 +851,9 @@
         <div class="fields">
           <input class="code-field" placeholder="Code" value="${item.code}">
           <input class="keyword-field" placeholder="Keyword (optional)" value="${item.keyword}">
+          <input class="stock-field" type="number" min="0" placeholder="Stock (optional)" value="${item.stockQty}">
+          <input class="category-field" list="categoryList" placeholder="Category (optional, overrides default)" value="${item.category}">
+          <input class="subcategory-field" list="subcategoryList" placeholder="Sub-category (optional)" value="${item.subcategory}">
         </div>
         <button type="button" class="remove-btn" title="Remove">✕</button>
       </div>
@@ -785,6 +865,9 @@
       if (!item) return;
       el.querySelector('.code-field').addEventListener('input', (e) => { item.code = e.target.value; });
       el.querySelector('.keyword-field').addEventListener('input', (e) => { item.keyword = e.target.value; });
+      el.querySelector('.stock-field').addEventListener('input', (e) => { item.stockQty = e.target.value; });
+      el.querySelector('.category-field').addEventListener('input', (e) => { item.category = e.target.value; });
+      el.querySelector('.subcategory-field').addEventListener('input', (e) => { item.subcategory = e.target.value; });
       const removeBtn = el.querySelector('.remove-btn');
       if (removeBtn) removeBtn.addEventListener('click', () => {
         bulkBatch = bulkBatch.filter(b => b.id !== id);
@@ -821,13 +904,21 @@
   });
 
   bulkUploadBtn.addEventListener('click', async () => {
-    const category = document.getElementById('bulkCategory').value.trim();
-    const subcategory = document.getElementById('bulkSubcategory').value.trim();
+    const defaultCategory = document.getElementById('bulkCategory').value.trim();
+    const defaultSubcategory = document.getElementById('bulkSubcategory').value.trim();
     const status = document.getElementById('bulkStatus').value;
     const watermark = document.getElementById('bulkWatermarkToggle').checked;
 
-    if (!category) {
-      bulkUploadMsg.textContent = 'Fill in a category for this batch first.';
+    // Each photo can override the category/sub-category just for itself —
+    // otherwise it falls back to the batch default set above.
+    const resolved = bulkBatch.map(item => ({
+      item,
+      category: item.category.trim() || defaultCategory,
+      subcategory: item.subcategory.trim() || defaultSubcategory,
+    }));
+
+    if (resolved.some(r => !r.category)) {
+      bulkUploadMsg.textContent = 'Every photo needs a category — fill in the default above, or set one per-photo.';
       bulkUploadMsg.className = 'msg error';
       return;
     }
@@ -837,18 +928,47 @@
       return;
     }
 
+    const dupesAgainstExisting = bulkBatch.filter(item => findStickerByCode(item.code));
+    const seenInBatch = new Set();
+    const dupesWithinBatch = new Set();
+    bulkBatch.forEach(item => {
+      const c = item.code.trim().toLowerCase();
+      if (seenInBatch.has(c)) dupesWithinBatch.add(c); else seenInBatch.add(c);
+    });
+    if (dupesAgainstExisting.length || dupesWithinBatch.size) {
+      const codeList = [...new Set([
+        ...dupesAgainstExisting.map(item => item.code.trim()),
+        ...dupesWithinBatch,
+      ])].join(', ');
+      if (!confirm(`These codes are already used or repeated in this batch: ${codeList}. Upload anyway?`)) {
+        return;
+      }
+    }
+
     bulkUploadBtn.disabled = true;
     bulkFailedIds.clear();
-    const items = [...bulkBatch]; // snapshot — button is disabled so this can't shift mid-upload
+    const items = [...resolved]; // snapshot — button is disabled so this can't shift mid-upload
     const total = items.length;
     let done = 0;
     let failCount = 0;
-    let siblingMax = allStickersAdmin
-      .filter(s => s.category === category && (s.subcategory || null) === (subcategory || null))
-      .reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
+    // sort_order continues per category+sub-category group, not globally — a batch
+    // mixing several categories shouldn't scramble any of their existing ordering.
+    const siblingMaxByGroup = new Map();
+    function nextSortOrder(cat, subcat){
+      const key = cat + '||' + (subcat || '');
+      if (!siblingMaxByGroup.has(key)) {
+        const seed = allStickersAdmin
+          .filter(s => s.category === cat && (s.subcategory || null) === (subcat || null))
+          .reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
+        siblingMaxByGroup.set(key, seed);
+      }
+      const next = siblingMaxByGroup.get(key) + 1;
+      siblingMaxByGroup.set(key, next);
+      return next;
+    }
 
     for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+      const { item, category, subcategory } = items[i];
       bulkUploadMsg.textContent = `Uploading ${done + 1} of ${total}…`;
       bulkUploadMsg.className = 'msg';
 
@@ -868,12 +988,13 @@
         continue;
       }
 
-      siblingMax += 1;
       const code = item.code.trim();
+      const itemStockQty = parseStockQtyInput(item.stockQty);
+      const itemStatus = deriveStatusFromStock(status, itemStockQty, null); // brand-new sticker, no previous status
       const { error: insertError } = await client.from('stickers').insert({
         name: code, code: code || null, keyword: item.keyword.trim() || null,
-        category, subcategory: subcategory || null, status, image_path: path,
-        sort_order: siblingMax,
+        category, subcategory: subcategory || null, status: itemStatus, image_path: path,
+        sort_order: nextSortOrder(category, subcategory), stock_qty: itemStockQty,
       });
       if (insertError) {
         failCount++;
@@ -897,6 +1018,80 @@
   });
 
   let allStickersAdmin = [];
+  // Case-insensitive lookup used to warn (not block) on duplicate sticker codes.
+  function findStickerByCode(code, excludeId){
+    const c = (code || '').trim().toLowerCase();
+    if (!c) return null;
+    return allStickersAdmin.find(s => s.id !== excludeId && (s.code || '').trim().toLowerCase() === c) || null;
+  }
+
+  // ---- Optional numeric stock count: leave blank = not tracked, behaves exactly
+  // like before. Once a number is set, 0 forces Sold Out and going back above 0
+  // (from Sold Out) flips it back to In Stock automatically. ----
+  function parseStockQtyInput(raw){
+    const trimmed = (raw || '').trim();
+    if (trimmed === '') return null;
+    const n = parseInt(trimmed, 10);
+    return Number.isNaN(n) ? null : Math.max(0, n);
+  }
+  // Given a chosen status and a (possibly untracked) stock number, returns the
+  // status that should actually be saved.
+  function deriveStatusFromStock(chosenStatus, stockQty, previousStatus){
+    if (stockQty === null || stockQty === undefined) return chosenStatus;
+    if (stockQty <= 0) return 'sold_out';
+    if (previousStatus === 'sold_out') return 'available'; // restocked
+    return chosenStatus;
+  }
+
+  // Adjusts a sticker's stock count by `delta` (only if that sticker actually
+  // tracks a number) and re-derives its status from the result — used when an
+  // order flips into/out of "Paid". Silently does nothing for stickers that
+  // don't track a stock count, since there's nothing to adjust.
+  // Returns a warning string if something needs the admin's attention (unknown
+  // code, or the DB update itself failed), or null if the adjustment either
+  // succeeded or simply had nothing to do (sticker doesn't track stock).
+  async function adjustStickerStock(code, delta){
+    const sticker = findStickerByCode(code);
+    if (!sticker) {
+      return code ? `⚠️ Saved, but no sticker found with code "${code}" — stock not adjusted.` : null;
+    }
+    if (sticker.stock_qty === null || sticker.stock_qty === undefined) return null; // not tracked
+    const newQty = Math.max(0, sticker.stock_qty + delta);
+    const newStatus = deriveStatusFromStock(sticker.status, newQty, sticker.status);
+    const { error } = await client.from('stickers').update({ stock_qty: newQty, status: newStatus }).eq('id', sticker.id);
+    if (error) return `⚠️ Saved, but stock update failed: ${error.message}`;
+    sticker.stock_qty = newQty;
+    sticker.status = newStatus;
+    return null;
+  }
+
+  // Delete-with-undo: the sticker disappears from the UI right away, but the
+  // actual Supabase/storage delete only happens after a few seconds, so a
+  // misclick can be undone. pendingStickerDeletions holds one in-flight
+  // deletion at a time (undoing always undoes the most recent one).
+  const pendingStickerDeletions = new Map(); // id -> { sticker, timer }
+  function scheduleStickerDeletion(sticker, rerender){
+    const timer = setTimeout(async () => {
+      pendingStickerDeletions.delete(sticker.id);
+      await client.storage.from('stickers').remove([sticker.image_path]);
+      const { error } = await client.from('stickers').delete().eq('id', sticker.id);
+      if (error) {
+        allStickersAdmin.push(sticker);
+        showToast(error.message, true);
+        rerender();
+      }
+    }, 6000);
+    pendingStickerDeletions.set(sticker.id, { sticker, timer });
+    showUndoToast(`Deleted "${sticker.name}"`, () => {
+      const pending = pendingStickerDeletions.get(sticker.id);
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      pendingStickerDeletions.delete(sticker.id);
+      allStickersAdmin.push(sticker);
+      showToast('↩️ Restored');
+      rerender();
+    });
+  }
 
   async function refreshList(){
     listMsg.textContent = 'Loading…';
@@ -932,6 +1127,57 @@
     img.dataset.baseSrc = base;
     setTimeout(() => { img.src = base + '?retry=' + Date.now(); }, 700 * tries);
   }
+
+  // Flat search across every sticker, regardless of category/sub-category —
+  // handy once you have a lot of categories and just remember the code/name.
+  function renderStickerSearchResults(query){
+    const q = query.trim().toLowerCase();
+    const matches = allStickersAdmin.filter(s =>
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.code || '').toLowerCase().includes(q) ||
+      (s.keyword || '').toLowerCase().includes(q) ||
+      (s.category || '').toLowerCase().includes(q) ||
+      (s.subcategory || '').toLowerCase().includes(q)
+    );
+    stickerList.className = '';
+    stickerList.innerHTML = `
+      <p class="hint">${matches.length} sticker${matches.length === 1 ? '' : 's'} match "${query.trim()}".</p>
+      <div class="sticker-list">
+        ${matches.length ? matches.map(stickerRowHtml).join('') : '<p class="hint">No matches — try a different search term.</p>'}
+      </div>
+    `;
+    wireStickerRows(matches, () => renderStickerSearchResults(stickerSearchInput.value));
+  }
+  stickerSearchInput.addEventListener('input', () => {
+    const q = stickerSearchInput.value;
+    if (!q.trim()) { renderStickerCategoryGrid(); return; }
+    renderStickerSearchResults(q);
+  });
+
+  // Exports every sticker currently loaded as a CSV file (name/code/keyword/
+  // category/sub-category/status/dates), downloaded straight from the browser
+  // — handy for a backup or to open in Excel/Sheets.
+  function csvEscape(value){
+    const s = value === null || value === undefined ? '' : String(value);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  document.getElementById('exportCsvBtn').addEventListener('click', () => {
+    if (!allStickersAdmin.length) { showToast('No stickers to export yet.', true); return; }
+    const columns = ['code', 'name', 'keyword', 'category', 'subcategory', 'status', 'stock_qty', 'sort_order', 'created_at', 'restocked_at'];
+    const header = columns.join(',');
+    const rows = allStickersAdmin.map(s => columns.map(col => csvEscape(s[col])).join(','));
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stickers-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`✅ Exported ${allStickersAdmin.length} stickers`);
+  });
 
   function renderStickerCategoryGrid(){
     const byCategory = {};
@@ -975,6 +1221,7 @@
         </div>
         <input type="text" class="code-input" value="${s.code || ''}" placeholder="Code">
         <input type="text" class="keyword-input" value="${s.keyword || ''}" placeholder="Keyword (optional)">
+        <input type="number" class="stock-input" min="0" value="${s.stock_qty ?? ''}" placeholder="Stock" title="Leave blank to not track a number — set a number and it'll auto Sold Out at 0">
         <select class="status-select">
           <option value="available" ${s.status === 'available' ? 'selected' : ''}>In Stock</option>
           <option value="preorder" ${s.status === 'preorder' ? 'selected' : ''}>Preorder</option>
@@ -982,10 +1229,44 @@
         </select>
         <div class="row-actions">
           <button class="secondary save-btn">Save</button>
+          <button class="secondary move-btn">Move</button>
           <button class="danger delete-btn">Delete</button>
+        </div>
+        <div class="move-panel" style="display:none;width:100%;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;padding-top:6px;border-top:1px dashed var(--muted);">
+          <select class="move-category-select"></select>
+          <select class="move-subcategory-select"></select>
+          <button class="secondary move-confirm-btn">Confirm move</button>
         </div>
       </div>
     `;
+  }
+
+  // Fills the move-panel's category select with every known category (plus
+  // any "extra" categories that only exist because a sticker points at them),
+  // and the sub-category select with "(no sub-category)" + every sub-category
+  // under whichever category is currently chosen.
+  function populateMovePanel(panel, sticker){
+    const catSelect = panel.querySelector('.move-category-select');
+    const subSelect = panel.querySelector('.move-subcategory-select');
+    const knownCatNames = new Set(categoriesData.map(c => c.name));
+    allStickersAdmin.forEach(s => knownCatNames.add(s.category));
+    const catNames = Array.from(knownCatNames).sort();
+    catSelect.innerHTML = catNames.map(name =>
+      `<option value="${name}" ${name === sticker.category ? 'selected' : ''}>${name}</option>`
+    ).join('');
+
+    function refreshSubcats(){
+      const chosenCat = catSelect.value;
+      const knownSubNames = new Set(subcategoriesData.filter(sc => sc.category === chosenCat).map(sc => sc.name));
+      allStickersAdmin.forEach(s => { if (s.category === chosenCat && s.subcategory) knownSubNames.add(s.subcategory); });
+      const subNames = Array.from(knownSubNames).sort();
+      const keepCurrent = chosenCat === sticker.category ? (sticker.subcategory || '') : '';
+      subSelect.innerHTML = `<option value="">(no sub-category)</option>` + subNames.map(name =>
+        `<option value="${name}" ${name === keepCurrent ? 'selected' : ''}>${name}</option>`
+      ).join('');
+    }
+    catSelect.onchange = refreshSubcats;
+    refreshSubcats();
   }
 
   // Same as the category page: sub-category cover cards first (if any), then any stickers
@@ -1060,30 +1341,57 @@
       if (!sticker) return;
 
       row.querySelector('.save-btn').addEventListener('click', async () => {
-        const newStatus = row.querySelector('.status-select').value;
+        const chosenStatus = row.querySelector('.status-select').value;
         const newCode = row.querySelector('.code-input').value.trim();
         const newKeyword = row.querySelector('.keyword-input').value.trim();
+        const newStockQty = parseStockQtyInput(row.querySelector('.stock-input').value);
+        const newStatus = deriveStatusFromStock(chosenStatus, newStockQty, sticker.status);
+        const dupe = findStickerByCode(newCode, id);
+        if (dupe && !confirm(`Code "${newCode}" is already used by a sticker in ${dupe.category}${dupe.subcategory ? ' · ' + dupe.subcategory : ''}. Save anyway?`)) {
+          return;
+        }
         const { error } = await client.from('stickers')
-          .update({ status: newStatus, code: newCode || null, keyword: newKeyword || null }).eq('id', id);
+          .update({ status: newStatus, code: newCode || null, keyword: newKeyword || null, stock_qty: newStockQty }).eq('id', id);
         if (error) { showToast(error.message, true); return; }
         sticker.status = newStatus;
         sticker.code = newCode || null;
         sticker.keyword = newKeyword || null;
+        sticker.stock_qty = newStockQty;
+        row.querySelector('.status-select').value = newStatus;
         showToast('✅ Saved!');
       });
 
-      row.querySelector('.delete-btn').addEventListener('click', async () => {
-        if (!confirm(`Delete "${sticker.name}"? This can't be undone.`)) return;
-        await client.storage.from('stickers').remove([sticker.image_path]);
-        const { error } = await client.from('stickers').delete().eq('id', id);
-        if (error) { showToast(error.message, true); return; }
+      row.querySelector('.delete-btn').addEventListener('click', () => {
         allStickersAdmin = allStickersAdmin.filter(s => s.id !== id);
-        showToast('✅ Deleted');
         onDeleteRerender();
+        scheduleStickerDeletion(sticker, onDeleteRerender);
       });
 
       row.querySelector('.move-up').addEventListener('click', () => moveStickerInList(stickers, id, 'up', onDeleteRerender));
       row.querySelector('.move-down').addEventListener('click', () => moveStickerInList(stickers, id, 'down', onDeleteRerender));
+
+      const movePanel = row.querySelector('.move-panel');
+      row.querySelector('.move-btn').addEventListener('click', () => {
+        const showing = movePanel.style.display !== 'none';
+        if (showing) { movePanel.style.display = 'none'; return; }
+        populateMovePanel(movePanel, sticker);
+        movePanel.style.display = 'flex';
+      });
+      row.querySelector('.move-confirm-btn').addEventListener('click', async () => {
+        const newCategory = movePanel.querySelector('.move-category-select').value;
+        const newSubcategory = movePanel.querySelector('.move-subcategory-select').value || null;
+        if (newCategory === sticker.category && newSubcategory === (sticker.subcategory || null)) {
+          showToast('Already there — nothing to move.', true);
+          return;
+        }
+        const { error } = await client.from('stickers')
+          .update({ category: newCategory, subcategory: newSubcategory }).eq('id', id);
+        if (error) { showToast(error.message, true); return; }
+        sticker.category = newCategory;
+        sticker.subcategory = newSubcategory;
+        showToast(`✅ Moved to ${newCategory}${newSubcategory ? ' · ' + newSubcategory : ''}`);
+        onDeleteRerender();
+      });
     });
   }
 
@@ -1692,6 +2000,134 @@
     if (error) { showToast(error.message, true); return; }
     showToast('✅ Add-on added!');
     renderAddons();
+  });
+
+  // ==================================================================
+  // Searches with no results
+  // ==================================================================
+  async function renderSearchMisses(){
+    const el = document.getElementById('searchMissesList');
+    const { data, error } = await client.from('search_misses').select('*').order('created_at', { ascending: false }).limit(200);
+    if (error) { el.textContent = error.message; return; }
+    if (!data || data.length === 0) { el.innerHTML = '<p class="hint">Nothing logged yet.</p>'; return; }
+    const counts = {};
+    data.forEach(r => { counts[r.query] = (counts[r.query] || 0) + 1; });
+    const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 30);
+    el.innerHTML = `
+      <div class="sticker-list">
+        ${rows.map(([q, n]) => `
+          <div class="sticker-row">
+            <div class="info"><div class="n">"${q}"</div></div>
+            <span style="background:var(--bg);border-radius:999px;padding:3px 10px;font-size:0.78rem;font-weight:700;color:var(--muted);">${n}×</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  document.getElementById('clearSearchMissesBtn').addEventListener('click', async () => {
+    if (!confirm('Clear the whole search-misses list?')) return;
+    const { error } = await client.from('search_misses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) { showToast(error.message, true); return; }
+    showToast('✅ Cleared');
+    renderSearchMisses();
+  });
+
+  // ==================================================================
+  // Site visits
+  // ==================================================================
+  async function renderVisitStats(){
+    const el = document.getElementById('visitStats');
+    const { count: total, error: e1 } = await client.from('page_views').select('*', { count: 'exact', head: true });
+    if (e1) { el.textContent = e1.message; return; }
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { count: lastWeek, error: e2 } = await client.from('page_views').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo);
+    if (e2) { el.textContent = e2.message; return; }
+    el.innerHTML = `
+      <div class="pick-row" style="display:flex;justify-content:space-between;padding:6px 0;">
+        <span class="hint" style="margin:0;">Total page loads</span><b>${total ?? 0}</b>
+      </div>
+      <div class="pick-row" style="display:flex;justify-content:space-between;padding:6px 0;">
+        <span class="hint" style="margin:0;">Last 7 days</span><b>${lastWeek ?? 0}</b>
+      </div>
+    `;
+  }
+
+  // ==================================================================
+  // Orders — a simple manual log, filled in from WhatsApp
+  // ==================================================================
+  const ORDER_STATUSES = ['pending', 'paid', 'made', 'delivered'];
+  async function renderOrders(){
+    const el = document.getElementById('ordersList');
+    const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
+    if (error) { el.textContent = error.message; return; }
+    if (!data || data.length === 0) { el.innerHTML = '<p class="hint">No orders logged yet.</p>'; return; }
+    el.innerHTML = data.map(o => `
+      <div class="addon-row" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
+        <input type="text" class="o-name" value="${o.customer_name || ''}" placeholder="Name" style="flex:1;min-width:90px;">
+        <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" style="flex:1;min-width:90px;">
+        <input type="text" class="o-tumbler" value="${o.tumbler || ''}" placeholder="Tumbler" style="flex:1;min-width:90px;">
+        <input type="text" class="o-sticker" value="${o.sticker_code || ''}" placeholder="Sticker" style="width:70px;">
+        <input type="text" class="o-pattern" value="${o.pattern || ''}" placeholder="Pattern" style="flex:1;min-width:90px;">
+        <input type="text" class="o-addons" value="${o.addons || ''}" placeholder="Add-ons" style="flex:1;min-width:90px;">
+        <select class="o-status">
+          ${ORDER_STATUSES.map(s => `<option value="${s}" ${o.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+        <div class="row-actions">
+          <button class="secondary o-save-btn">Save</button>
+          <button class="danger o-delete-btn">✕</button>
+        </div>
+      </div>
+    `).join('');
+
+    el.querySelectorAll('[data-id]').forEach(row => {
+      const id = row.dataset.id;
+      const order = data.find(o => o.id === id);
+      row.querySelector('.o-save-btn').addEventListener('click', async () => {
+        const previousStatus = order.status;
+        const previousStickerCode = order.sticker_code;
+        const newStatus = row.querySelector('.o-status').value;
+        const newStickerCode = row.querySelector('.o-sticker').value.trim() || null;
+        const { error } = await client.from('orders').update({
+          customer_name: row.querySelector('.o-name').value.trim() || null,
+          tiktok_handle: row.querySelector('.o-tiktok').value.trim() || null,
+          tumbler: row.querySelector('.o-tumbler').value.trim() || null,
+          sticker_code: newStickerCode,
+          pattern: row.querySelector('.o-pattern').value.trim() || null,
+          addons: row.querySelector('.o-addons').value.trim() || null,
+          status: newStatus,
+        }).eq('id', id);
+        if (error) { showToast(error.message, true); return; }
+
+        // Stock only moves when an order actually crosses into/out of "paid" —
+        // never just because the order was re-saved while still paid, and
+        // never because of a WhatsApp click. Marking paid deducts one from the
+        // sticker on the order; un-marking it (mistake/cancel) adds it back.
+        let stockWarning = null;
+        if (previousStatus !== 'paid' && newStatus === 'paid' && newStickerCode) {
+          stockWarning = await adjustStickerStock(newStickerCode, -1);
+        } else if (previousStatus === 'paid' && newStatus !== 'paid' && previousStickerCode) {
+          stockWarning = await adjustStickerStock(previousStickerCode, +1);
+        }
+        order.status = newStatus;
+        order.sticker_code = newStickerCode;
+        showToast(stockWarning || '✅ Saved!', !!stockWarning);
+      });
+      row.querySelector('.o-delete-btn').addEventListener('click', async () => {
+        if (!confirm('Delete this order?')) return;
+        const { error } = await client.from('orders').delete().eq('id', id);
+        if (error) { showToast(error.message, true); return; }
+        showToast('✅ Deleted');
+        renderOrders();
+      });
+    });
+  }
+
+  document.getElementById('addOrderBtn').addEventListener('click', async () => {
+    const { error } = await client.from('orders').insert({ status: 'pending' });
+    if (error) { showToast(error.message, true); return; }
+    showToast('✅ Order added!');
+    renderOrders();
   });
 </script>
 
