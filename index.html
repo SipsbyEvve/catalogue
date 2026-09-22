@@ -235,13 +235,17 @@
   }
 
   /* ---- picking a tumbler / sticker / pattern for the order summary ---- */
-  .sticker-thumb{ cursor:pointer; border:2px solid transparent; transition:border-color 0.15s; }
-  .sticker-thumb.picked{ border-color:var(--brown-dark); }
-  .sticker-thumb.picked .info{ background:#f5efe3; }
+  .sticker-thumb{ cursor:pointer; border:3px solid transparent; transition:border-color 0.15s, box-shadow 0.15s; }
+  .sticker-thumb.picked{
+    border-color:var(--wa-dark);
+    box-shadow:0 0 0 3px rgba(37,211,102,0.30), var(--shadow);
+  }
+  .sticker-thumb.picked .info{ background:#e8f9ee; }
   .sticker-thumb .pick-check{
-    position:absolute; top:10px; right:10px; width:22px; height:22px; border-radius:50%;
-    background:var(--brown-dark); color:#fff; display:none; align-items:center; justify-content:center;
-    font-size:0.75rem; font-weight:700; z-index:1;
+    position:absolute; top:8px; right:8px; width:32px; height:32px; border-radius:50%;
+    background:var(--wa-dark); color:#fff; display:none; align-items:center; justify-content:center;
+    font-size:1.05rem; font-weight:800; z-index:2;
+    box-shadow:0 0 0 3px #fff, 0 3px 8px rgba(0,0,0,0.35);
   }
   .sticker-thumb.picked .pick-check{ display:flex; }
   .sticker-thumb .zoom-btn{
@@ -258,22 +262,33 @@
   .option-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:14px; }
   .option-card{
     border:2px solid var(--line); border-radius:14px; padding:12px; text-align:center; background:var(--card);
-    cursor:pointer; position:relative; box-shadow:var(--shadow);
+    cursor:pointer; position:relative; box-shadow:var(--shadow); transition:border-color 0.15s, box-shadow 0.15s;
   }
   .option-card .oname{ font-size:0.85rem; font-weight:700; display:block; color:var(--ink); }
   .option-card .oprice{ font-size:0.78rem; color:var(--muted); margin-top:2px; display:block; }
-  .option-card.picked{ border-color:var(--brown-dark); background:#f5efe3; }
+  .option-card.picked{
+    border-color:var(--wa-dark); background:#e8f9ee;
+    box-shadow:0 0 0 3px rgba(37,211,102,0.30), var(--shadow);
+  }
   .option-card.picked::after{
-    content:"✓"; position:absolute; top:8px; right:10px; color:var(--brown-dark); font-weight:800;
+    content:"✓"; position:absolute; top:-10px; right:-10px; width:26px; height:26px; border-radius:50%;
+    background:var(--wa-dark); color:#fff; font-weight:800; font-size:0.85rem;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 0 3px #fff, 0 3px 8px rgba(0,0,0,0.3);
   }
 
-  .addon-card{ cursor:pointer; position:relative; }
-  .addon-card.picked{ border-color:var(--brown-dark); background:#f5efe3; }
-  .addon-card .pick-box{
-    width:18px; height:18px; border:2px solid var(--line); border-radius:5px; flex:none; margin-right:4px;
-    display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem; color:#fff;
+  .addon-card{ cursor:pointer; position:relative; border-width:2px; transition:border-color 0.15s, box-shadow 0.15s; }
+  .addon-card.picked{
+    border-color:var(--wa-dark); background:#e8f9ee;
+    box-shadow:0 0 0 3px rgba(37,211,102,0.30);
   }
-  .addon-card.picked .pick-box{ background:var(--brown-dark); border-color:var(--brown-dark); }
+  .addon-card .pick-box{
+    width:20px; height:20px; border:2px solid var(--line); border-radius:5px; flex:none; margin-right:4px;
+    display:inline-flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:800; color:#fff;
+    transition:background-color 0.15s, border-color 0.15s;
+  }
+  .addon-card.picked .pick-box{ background:var(--wa-dark); border-color:var(--wa-dark); }
+  .addon-card.picked .pick-box::after{ content:"✓"; }
 
   .order-summary{
     background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px;
