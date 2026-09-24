@@ -550,7 +550,7 @@
     document.getElementById('whoami').textContent = `Logged in as ${session.user.email}`;
     await renderCategories(); // load categories first so the sticker gallery below can show cover photos + counts
     await renderSubcategories(); // needs categoriesData for the category picker
-    refreshList();
+    await refreshList(); // needs to finish (populates allStickersAdmin) before renderOrders builds its sticker dropdown
     renderCatalogueSlots();
     renderAddons();
     renderSearchMisses();
@@ -2060,6 +2060,38 @@
   // ==================================================================
   // Orders — a simple manual log, filled in from WhatsApp
   // ==================================================================
+
+  // Mirrors index.html's TUMBLER_OPTIONS so the manual-add/edit dropdown offers
+  // the same choices the customer sees. NOTE: kept in sync by hand — if the
+  // tumbler lineup or prices change in index.html, update this list too.
+  const TUMBLER_OPTIONS_ADMIN = [
+    { label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55 },
+    { label: '02 · 700ml Acrylic', detail: '', price: 70 },
+    { label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75 },
+    { label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85 },
+  ].map(o => `${o.label} (RM${o.price})`);
+
+  function tumblerOptionsHtml(selected){
+    const value = selected || '';
+    const known = TUMBLER_OPTIONS_ADMIN.includes(value);
+    let opts = `<option value="">— select tumbler —</option>`;
+    opts += TUMBLER_OPTIONS_ADMIN.map(v => `<option value="${v}" ${v === value ? 'selected' : ''}>${v}</option>`).join('');
+    if (value && !known) opts += `<option value="${value}" selected>${value} (not in list)</option>`;
+    return opts;
+  }
+
+  function stickerOptionsHtml(selected){
+    const code = selected || '';
+    const known = allStickersAdmin.some(s => s.code === code);
+    let opts = `<option value="">— select sticker —</option>`;
+    opts += allStickersAdmin.map(s => {
+      const label = `${s.code}${s.keyword ? ' — ' + s.keyword : ''} (${s.category}${s.subcategory ? '/' + s.subcategory : ''})`;
+      return `<option value="${s.code}" ${s.code === code ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+    if (code && !known) opts += `<option value="${code}" selected>${code} (not found)</option>`;
+    return opts;
+  }
+
   async function renderOrders(){
     const el = document.getElementById('ordersList');
     const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
@@ -2071,8 +2103,8 @@
       <div class="addon-row order-row" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
         <input type="text" class="o-name" value="${o.customer_name || ''}" placeholder="Name" disabled style="flex:1;min-width:90px;">
         <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" disabled style="flex:1;min-width:90px;">
-        <input type="text" class="o-tumbler" value="${o.tumbler || ''}" placeholder="Tumbler" disabled style="flex:1;min-width:90px;">
-        <input type="text" class="o-sticker" value="${o.sticker_code || ''}" placeholder="Sticker" disabled style="width:70px;">
+        <select class="o-tumbler" disabled style="flex:1;min-width:130px;">${tumblerOptionsHtml(o.tumbler)}</select>
+        <select class="o-sticker" disabled style="min-width:130px;">${stickerOptionsHtml(o.sticker_code)}</select>
         <input type="text" class="o-pattern" value="${o.pattern || ''}" placeholder="Pattern" disabled style="flex:1;min-width:90px;">
         <input type="text" class="o-addons" value="${o.addons || ''}" placeholder="Add-ons" disabled style="flex:1;min-width:90px;">
         <div class="row-actions">
