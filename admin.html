@@ -1061,18 +1061,26 @@
   // code, or the DB update itself failed), or null if the adjustment either
   // succeeded or simply had nothing to do (sticker doesn't track stock).
   async function adjustStickerStock(code, delta){
-    const sticker = findStickerByCode(code);
-    if (!sticker) {
-      return code ? `⚠️ Saved, but no sticker found with code "${code}" — stock not adjusted.` : null;
+    try {
+      const sticker = findStickerByCode(code);
+      if (!sticker) {
+        return code ? `⚠️ Saved, but no sticker found with code "${code}" — stock not adjusted.` : null;
+      }
+      if (sticker.stock_qty === null || sticker.stock_qty === undefined) return null; // not tracked
+      const newQty = Math.max(0, sticker.stock_qty + delta);
+      const newStatus = deriveStatusFromStock(sticker.status, newQty, sticker.status);
+      const { error } = await client.from('stickers').update({ stock_qty: newQty, status: newStatus }).eq('id', sticker.id);
+      if (error) return `⚠️ Saved, but stock update failed: ${error.message}`;
+      sticker.stock_qty = newQty;
+      sticker.status = newStatus;
+      return null;
+    } catch (err) {
+      // Never let a stock adjustment throw and abort the caller silently —
+      // surface it as a warning instead (the order's paid/unpaid status still
+      // goes through either way).
+      console.error('adjustStickerStock failed:', err);
+      return '⚠️ Saved, but stock adjustment hit an unexpected error — please check stock manually.';
     }
-    if (sticker.stock_qty === null || sticker.stock_qty === undefined) return null; // not tracked
-    const newQty = Math.max(0, sticker.stock_qty + delta);
-    const newStatus = deriveStatusFromStock(sticker.status, newQty, sticker.status);
-    const { error } = await client.from('stickers').update({ stock_qty: newQty, status: newStatus }).eq('id', sticker.id);
-    if (error) return `⚠️ Saved, but stock update failed: ${error.message}`;
-    sticker.stock_qty = newQty;
-    sticker.status = newStatus;
-    return null;
   }
 
   // Delete-with-undo: the sticker disappears from the UI right away, but the
@@ -2211,26 +2219,46 @@
       // paid un-marks it (mistake/cancel) and puts the stock back — so a
       // misclick is never a dead end, per Evvyne's call.
       row.querySelector('.o-paid-btn').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
         const previousStatus = order.status;
         const newStatus = previousStatus === 'paid' ? 'pending' : 'paid';
         const stickerCode = order.sticker_code;
-        const { error } = await client.from('orders').update({ status: newStatus }).eq('id', id);
-        if (error) { showToast(error.message, true); return; }
 
-        // Stock only moves on an actual crossing into/out of "paid" — marking
-        // paid deducts one from the sticker on the order; un-marking it adds
-        // it back. Never triggered by a WhatsApp click or by editing other fields.
-        let stockWarning = null;
-        if (newStatus === 'paid' && stickerCode) {
-          stockWarning = await adjustStickerStock(stickerCode, -1);
-        } else if (previousStatus === 'paid' && stickerCode) {
-          stockWarning = await adjustStickerStock(stickerCode, +1);
+        // Immediate feedback so a click never looks like nothing happened —
+        // especially on a slower connection where the two DB round-trips
+        // below (order + sticker stock) can take a moment.
+        const originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '…';
+
+        try {
+          const { error } = await client.from('orders').update({ status: newStatus }).eq('id', id);
+          if (error) { showToast(error.message, true); btn.textContent = originalLabel; return; }
+
+          // Stock only moves on an actual crossing into/out of "paid" — marking
+          // paid deducts one from the sticker on the order; un-marking it adds
+          // it back. Never triggered by a WhatsApp click or by editing other fields.
+          let stockWarning = null;
+          if (newStatus === 'paid' && stickerCode) {
+            stockWarning = await adjustStickerStock(stickerCode, -1);
+          } else if (previousStatus === 'paid' && stickerCode) {
+            stockWarning = await adjustStickerStock(stickerCode, +1);
+          }
+          order.status = newStatus;
+          btn.classList.toggle('is-paid', newStatus === 'paid');
+          btn.textContent = newStatus === 'paid' ? '✓ Paid' : 'Mark Paid';
+          showToast(stockWarning || (newStatus === 'paid' ? '✅ Marked paid!' : '↩️ Un-marked'), !!stockWarning);
+        } catch (err) {
+          // Belt-and-braces: if anything above throws unexpectedly, don't leave
+          // the button stuck on "…" with no explanation — surface it and let
+          // the admin retry, instead of silently needing a page refresh to see
+          // whether it actually went through.
+          console.error('Mark Paid failed:', err);
+          btn.textContent = originalLabel;
+          showToast('⚠️ Something went wrong — please try again (or refresh to check).', true);
+        } finally {
+          btn.disabled = false;
         }
-        order.status = newStatus;
-        const btn = e.currentTarget;
-        btn.classList.toggle('is-paid', newStatus === 'paid');
-        btn.textContent = newStatus === 'paid' ? '✓ Paid' : 'Mark Paid';
-        showToast(stockWarning || (newStatus === 'paid' ? '✅ Marked paid!' : '↩️ Un-marked'), !!stockWarning);
       });
 
       row.querySelector('.o-delete-btn').addEventListener('click', async () => {
