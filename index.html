@@ -767,6 +767,33 @@
   document.getElementById('orderTiktok').addEventListener('input', updateOrderSummary);
   document.getElementById('orderName').addEventListener('input', updateOrderSummary);
 
+  // When the customer taps "Send to WhatsApp", also log the order into the
+  // orders table so it shows up in admin right away as "pending" — Evvyne just
+  // reviews it and marks it Paid (which is what actually deducts stock), instead
+  // of retyping the whole order by hand. This never blocks or delays opening
+  // WhatsApp, and a failure here is silent to the customer (logged to console only).
+  const whatsappOrderBtn = document.getElementById('whatsappOrderBtn');
+  if (whatsappOrderBtn) {
+    whatsappOrderBtn.addEventListener('click', () => {
+      if (!client) return;
+      try {
+        client.from('orders').insert({
+          customer_name: (document.getElementById('orderName') || {}).value.trim() || null,
+          tiktok_handle: (document.getElementById('orderTiktok') || {}).value.trim() || null,
+          tumbler: myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : null,
+          sticker_code: myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : null,
+          pattern: myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : null,
+          addons: myOrder.addons.length ? myOrder.addons.map(a => `${a.name} (${a.price_label})`).join(', ') : null,
+          status: 'pending',
+        }).then(({ error }) => {
+          if (error) console.error('order log error:', error.message || JSON.stringify(error));
+        }).catch(err => console.error('order log error:', err && err.message));
+      } catch (err) {
+        console.error('order log error:', err && err.message);
+      }
+    });
+  }
+
   // ---- "New" badge: any sticker added within the last NEW_DAYS days ----
   const NEW_DAYS = 5;
   function isNew(s){

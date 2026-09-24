@@ -205,6 +205,10 @@
   .addon-row .aprice{ width:100px; }
   .addon-row .row-actions{ display:flex; gap:6px; }
   .addon-row .row-actions button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
+  .order-row input:disabled{ background:var(--bg); color:var(--muted); border-color:var(--line); cursor:default; }
+  .o-paid-btn{ white-space:nowrap; }
+  .o-paid-btn.is-paid{ background:#25D366; border-color:#1ea952; color:#fff; }
+  .o-paid-btn.is-paid:hover{ background:#1ea952; }
   .add-new-btn{
     background:transparent; border:1px dashed var(--line); color:var(--brown-dark);
     width:100%; font-weight:600; font-size:0.85rem;
@@ -2056,63 +2060,93 @@
   // ==================================================================
   // Orders — a simple manual log, filled in from WhatsApp
   // ==================================================================
-  const ORDER_STATUSES = ['pending', 'paid', 'made', 'delivered'];
   async function renderOrders(){
     const el = document.getElementById('ordersList');
     const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
     if (error) { el.textContent = error.message; return; }
     if (!data || data.length === 0) { el.innerHTML = '<p class="hint">No orders logged yet.</p>'; return; }
-    el.innerHTML = data.map(o => `
-      <div class="addon-row" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
-        <input type="text" class="o-name" value="${o.customer_name || ''}" placeholder="Name" style="flex:1;min-width:90px;">
-        <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" style="flex:1;min-width:90px;">
-        <input type="text" class="o-tumbler" value="${o.tumbler || ''}" placeholder="Tumbler" style="flex:1;min-width:90px;">
-        <input type="text" class="o-sticker" value="${o.sticker_code || ''}" placeholder="Sticker" style="width:70px;">
-        <input type="text" class="o-pattern" value="${o.pattern || ''}" placeholder="Pattern" style="flex:1;min-width:90px;">
-        <input type="text" class="o-addons" value="${o.addons || ''}" placeholder="Add-ons" style="flex:1;min-width:90px;">
-        <select class="o-status">
-          ${ORDER_STATUSES.map(s => `<option value="${s}" ${o.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-        </select>
+    el.innerHTML = data.map(o => {
+      const isPaid = o.status === 'paid';
+      return `
+      <div class="addon-row order-row" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
+        <input type="text" class="o-name" value="${o.customer_name || ''}" placeholder="Name" disabled style="flex:1;min-width:90px;">
+        <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" disabled style="flex:1;min-width:90px;">
+        <input type="text" class="o-tumbler" value="${o.tumbler || ''}" placeholder="Tumbler" disabled style="flex:1;min-width:90px;">
+        <input type="text" class="o-sticker" value="${o.sticker_code || ''}" placeholder="Sticker" disabled style="width:70px;">
+        <input type="text" class="o-pattern" value="${o.pattern || ''}" placeholder="Pattern" disabled style="flex:1;min-width:90px;">
+        <input type="text" class="o-addons" value="${o.addons || ''}" placeholder="Add-ons" disabled style="flex:1;min-width:90px;">
         <div class="row-actions">
-          <button class="secondary o-save-btn">Save</button>
+          <button class="secondary o-edit-btn">Edit</button>
+          <button class="secondary o-save-btn" style="display:none;">Save</button>
+          <button type="button" class="secondary o-paid-btn ${isPaid ? 'is-paid' : ''}">${isPaid ? '✓ Paid' : 'Mark Paid'}</button>
           <button class="danger o-delete-btn">✕</button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     el.querySelectorAll('[data-id]').forEach(row => {
       const id = row.dataset.id;
       const order = data.find(o => o.id === id);
-      row.querySelector('.o-save-btn').addEventListener('click', async () => {
-        const previousStatus = order.status;
-        const previousStickerCode = order.sticker_code;
-        const newStatus = row.querySelector('.o-status').value;
-        const newStickerCode = row.querySelector('.o-sticker').value.trim() || null;
+      const fieldInputs = row.querySelectorAll('.o-name, .o-tiktok, .o-tumbler, .o-sticker, .o-pattern, .o-addons');
+      const editBtn = row.querySelector('.o-edit-btn');
+      const saveBtn = row.querySelector('.o-save-btn');
+
+      editBtn.addEventListener('click', () => {
+        fieldInputs.forEach(inp => { inp.disabled = false; });
+        editBtn.style.display = 'none';
+        saveBtn.style.display = '';
+        row.querySelector('.o-name').focus();
+      });
+
+      saveBtn.addEventListener('click', async () => {
         const { error } = await client.from('orders').update({
           customer_name: row.querySelector('.o-name').value.trim() || null,
           tiktok_handle: row.querySelector('.o-tiktok').value.trim() || null,
           tumbler: row.querySelector('.o-tumbler').value.trim() || null,
-          sticker_code: newStickerCode,
+          sticker_code: row.querySelector('.o-sticker').value.trim() || null,
           pattern: row.querySelector('.o-pattern').value.trim() || null,
           addons: row.querySelector('.o-addons').value.trim() || null,
-          status: newStatus,
         }).eq('id', id);
         if (error) { showToast(error.message, true); return; }
+        order.customer_name = row.querySelector('.o-name').value.trim() || null;
+        order.tiktok_handle = row.querySelector('.o-tiktok').value.trim() || null;
+        order.tumbler = row.querySelector('.o-tumbler').value.trim() || null;
+        order.sticker_code = row.querySelector('.o-sticker').value.trim() || null;
+        order.pattern = row.querySelector('.o-pattern').value.trim() || null;
+        order.addons = row.querySelector('.o-addons').value.trim() || null;
+        fieldInputs.forEach(inp => { inp.disabled = true; });
+        saveBtn.style.display = 'none';
+        editBtn.style.display = '';
+        showToast('✅ Saved!');
+      });
 
-        // Stock only moves when an order actually crosses into/out of "paid" —
-        // never just because the order was re-saved while still paid, and
-        // never because of a WhatsApp click. Marking paid deducts one from the
-        // sticker on the order; un-marking it (mistake/cancel) adds it back.
+      // "Mark Paid" is a toggle, not a one-way switch: clicking it again while
+      // paid un-marks it (mistake/cancel) and puts the stock back — so a
+      // misclick is never a dead end, per Evvyne's call.
+      row.querySelector('.o-paid-btn').addEventListener('click', async (e) => {
+        const previousStatus = order.status;
+        const newStatus = previousStatus === 'paid' ? 'pending' : 'paid';
+        const stickerCode = order.sticker_code;
+        const { error } = await client.from('orders').update({ status: newStatus }).eq('id', id);
+        if (error) { showToast(error.message, true); return; }
+
+        // Stock only moves on an actual crossing into/out of "paid" — marking
+        // paid deducts one from the sticker on the order; un-marking it adds
+        // it back. Never triggered by a WhatsApp click or by editing other fields.
         let stockWarning = null;
-        if (previousStatus !== 'paid' && newStatus === 'paid' && newStickerCode) {
-          stockWarning = await adjustStickerStock(newStickerCode, -1);
-        } else if (previousStatus === 'paid' && newStatus !== 'paid' && previousStickerCode) {
-          stockWarning = await adjustStickerStock(previousStickerCode, +1);
+        if (newStatus === 'paid' && stickerCode) {
+          stockWarning = await adjustStickerStock(stickerCode, -1);
+        } else if (previousStatus === 'paid' && stickerCode) {
+          stockWarning = await adjustStickerStock(stickerCode, +1);
         }
         order.status = newStatus;
-        order.sticker_code = newStickerCode;
-        showToast(stockWarning || '✅ Saved!', !!stockWarning);
+        const btn = e.currentTarget;
+        btn.classList.toggle('is-paid', newStatus === 'paid');
+        btn.textContent = newStatus === 'paid' ? '✓ Paid' : 'Mark Paid';
+        showToast(stockWarning || (newStatus === 'paid' ? '✅ Marked paid!' : '↩️ Un-marked'), !!stockWarning);
       });
+
       row.querySelector('.o-delete-btn').addEventListener('click', async () => {
         if (!confirm('Delete this order?')) return;
         const { error } = await client.from('orders').delete().eq('id', id);
