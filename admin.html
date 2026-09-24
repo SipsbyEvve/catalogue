@@ -205,7 +205,10 @@
   .addon-row .aprice{ width:100px; }
   .addon-row .row-actions{ display:flex; gap:6px; }
   .addon-row .row-actions button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
-  .order-row input:disabled{ background:var(--bg); color:var(--muted); border-color:var(--line); cursor:default; }
+  .order-row input:disabled, .order-row select:disabled{ background:var(--bg); color:var(--muted); border-color:var(--line); cursor:default; }
+  .o-addons-group{ padding:6px 0; }
+  .addon-check-label{ display:inline-flex; align-items:center; gap:4px; font-size:0.82rem; color:var(--ink); }
+  .addon-legacy-note{ font-size:0.78rem; color:var(--muted); font-style:italic; }
   .o-paid-btn{ white-space:nowrap; }
   .o-paid-btn.is-paid{ background:#25D366; border-color:#1ea952; color:#fff; }
   .o-paid-btn.is-paid:hover{ background:#1ea952; }
@@ -552,7 +555,7 @@
     await renderSubcategories(); // needs categoriesData for the category picker
     await refreshList(); // needs to finish (populates allStickersAdmin) before renderOrders builds its sticker dropdown
     renderCatalogueSlots();
-    renderAddons();
+    await renderAddons(); // needs to finish (populates allAddonsAdmin) before renderOrders builds its add-ons checkboxes
     renderSearchMisses();
     renderVisitStats();
     renderOrders();
@@ -1022,6 +1025,9 @@
   });
 
   let allStickersAdmin = [];
+  // Mirrors the addons table so the order-edit add-ons checkboxes (and the
+  // sticker/tumbler dropdowns' sibling, allStickersAdmin) have data to render from.
+  let allAddonsAdmin = [];
   // Case-insensitive lookup used to warn (not block) on duplicate sticker codes.
   function findStickerByCode(code, excludeId){
     const c = (code || '').trim().toLowerCase();
@@ -1965,6 +1971,7 @@
     const container = document.getElementById('addonsList');
     const { data, error } = await client.from('addons').select('*').order('sort_order', { ascending: true });
     if (error) { container.textContent = error.message; return; }
+    allAddonsAdmin = data || [];
     if (!data || data.length === 0) { container.innerHTML = '<p class="hint">No add-ons yet.</p>'; return; }
 
     container.innerHTML = data.map(a => `
@@ -2092,6 +2099,53 @@
     return opts;
   }
 
+  // Mirrors index.html's PATTERN_OPTIONS — same manual-sync caveat as the tumbler list above.
+  const PATTERN_OPTIONS_ADMIN = [
+    { label: 'Normal Cateye', extra: 0 },
+    { label: 'Swirl Flow Cateye', extra: 0 },
+    { label: 'Lava', extra: 0 },
+    { label: 'Full Glitter', extra: 5 },
+  ].map(o => `${o.label}${o.extra ? ' (+RM' + o.extra + ')' : ''}`);
+
+  function patternOptionsHtml(selected){
+    const value = selected || '';
+    const known = PATTERN_OPTIONS_ADMIN.includes(value);
+    let opts = `<option value="">— select pattern —</option>`;
+    opts += PATTERN_OPTIONS_ADMIN.map(v => `<option value="${v}" ${v === value ? 'selected' : ''}>${v}</option>`).join('');
+    if (value && !known) opts += `<option value="${value}" selected>${value} (not in list)</option>`;
+    return opts;
+  }
+
+  // Add-ons allow MULTIPLE picks (unlike tumbler/sticker/pattern), stored as a
+  // comma-joined string ("Glass Straw (+RM7), Keychain (+RM5)") — same format
+  // the customer-side auto-log writes. Checkboxes render that back out, and any
+  // segment that no longer matches a current add-on (deleted add-on, old typed-in
+  // text) is kept as a read-only note rather than silently dropped on Save.
+  function addonsCheckboxesHtml(selectedText){
+    const parts = (selectedText || '').split(',').map(s => s.trim()).filter(Boolean);
+    const knownLabels = allAddonsAdmin.map(a => `${a.name} (${a.price_label})`);
+    const leftover = parts.filter(p => !knownLabels.includes(p));
+    const checkboxes = allAddonsAdmin.map(a => {
+      const label = `${a.name} (${a.price_label})`;
+      const checked = parts.includes(label) ? 'checked' : '';
+      return `<label class="addon-check-label"><input type="checkbox" class="o-addon-check" data-label="${label}" ${checked}> ${label}</label>`;
+    }).join('');
+    const leftoverNote = leftover.length
+      ? `<span class="addon-legacy-note" data-leftover="${leftover.join('|||')}">+ ${leftover.join(', ')} (not in current add-on list)</span>`
+      : `<span class="addon-legacy-note" data-leftover=""></span>`;
+    return (checkboxes || '<span class="hint" style="margin:0;">No add-ons set up yet.</span>') + leftoverNote;
+  }
+
+  // Reassembles an order row's add-ons text from its checked boxes plus any
+  // preserved leftover (unmatched) text, back into the same comma-joined format.
+  function readAddonsValue(row){
+    const checked = Array.from(row.querySelectorAll('.o-addon-check:checked')).map(cb => cb.dataset.label);
+    const leftoverAttr = row.querySelector('.addon-legacy-note');
+    const leftover = (leftoverAttr && leftoverAttr.dataset.leftover) ? leftoverAttr.dataset.leftover.split('|||') : [];
+    const combined = [...checked, ...leftover];
+    return combined.length ? combined.join(', ') : null;
+  }
+
   async function renderOrders(){
     const el = document.getElementById('ordersList');
     const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
@@ -2105,8 +2159,8 @@
         <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" disabled style="flex:1;min-width:90px;">
         <select class="o-tumbler" disabled style="flex:1;min-width:130px;">${tumblerOptionsHtml(o.tumbler)}</select>
         <select class="o-sticker" disabled style="min-width:130px;">${stickerOptionsHtml(o.sticker_code)}</select>
-        <input type="text" class="o-pattern" value="${o.pattern || ''}" placeholder="Pattern" disabled style="flex:1;min-width:90px;">
-        <input type="text" class="o-addons" value="${o.addons || ''}" placeholder="Add-ons" disabled style="flex:1;min-width:90px;">
+        <select class="o-pattern" disabled style="flex:1;min-width:130px;">${patternOptionsHtml(o.pattern)}</select>
+        <div class="o-addons-group" style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">${addonsCheckboxesHtml(o.addons)}</div>
         <div class="row-actions">
           <button class="secondary o-edit-btn">Edit</button>
           <button class="secondary o-save-btn" style="display:none;">Save</button>
@@ -2120,7 +2174,7 @@
     el.querySelectorAll('[data-id]').forEach(row => {
       const id = row.dataset.id;
       const order = data.find(o => o.id === id);
-      const fieldInputs = row.querySelectorAll('.o-name, .o-tiktok, .o-tumbler, .o-sticker, .o-pattern, .o-addons');
+      const fieldInputs = row.querySelectorAll('.o-name, .o-tiktok, .o-tumbler, .o-sticker, .o-pattern, .o-addon-check');
       const editBtn = row.querySelector('.o-edit-btn');
       const saveBtn = row.querySelector('.o-save-btn');
 
@@ -2138,7 +2192,7 @@
           tumbler: row.querySelector('.o-tumbler').value.trim() || null,
           sticker_code: row.querySelector('.o-sticker').value.trim() || null,
           pattern: row.querySelector('.o-pattern').value.trim() || null,
-          addons: row.querySelector('.o-addons').value.trim() || null,
+          addons: readAddonsValue(row),
         }).eq('id', id);
         if (error) { showToast(error.message, true); return; }
         order.customer_name = row.querySelector('.o-name').value.trim() || null;
@@ -2146,7 +2200,7 @@
         order.tumbler = row.querySelector('.o-tumbler').value.trim() || null;
         order.sticker_code = row.querySelector('.o-sticker').value.trim() || null;
         order.pattern = row.querySelector('.o-pattern').value.trim() || null;
-        order.addons = row.querySelector('.o-addons').value.trim() || null;
+        order.addons = readAddonsValue(row);
         fieldInputs.forEach(inp => { inp.disabled = true; });
         saveBtn.style.display = 'none';
         editBtn.style.display = '';
