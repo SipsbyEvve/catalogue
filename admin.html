@@ -207,6 +207,11 @@
   .addon-row .row-actions button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
   .order-row input:disabled, .order-row select:disabled{ background:var(--bg); color:var(--muted); border-color:var(--line); cursor:default; }
   .o-addons-group{ padding:6px 0; }
+  .custom-name-label{ display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--ink); }
+  .custom-name-label input{ width:140px; padding:5px 8px; font-size:0.82rem; }
+  /* hide the empty name box in view mode; it shows up when you press Edit */
+  .custom-name-label:has(input:disabled:placeholder-shown){ display:none; }
+  .o-total{ flex:1 1 100%; font-weight:800; color:var(--brown-dark); font-size:0.9rem; }
   .addon-check-label{ display:inline-flex; align-items:center; gap:4px; font-size:0.82rem; color:var(--ink); }
   .addon-legacy-note{ font-size:0.78rem; color:var(--muted); font-style:italic; }
   .o-paid-btn{ white-space:nowrap; }
@@ -1445,8 +1450,8 @@
   const SLOTS = [
     { key: 'step1_tumbler', label: '① Tumbler options photo', fallback: 'assets/tumbler-options.png' },
     { key: 'step3_patterns', label: '③ Patterns photo', fallback: 'assets/patterns.jpg' },
-    { key: 'step4_rules', label: '④ Read-before-you-buy photo', fallback: 'assets/read-before-buy.jpg' },
-    { key: 'step5_order', label: '⑤ Order process photo', fallback: 'assets/order-process.jpg' },
+    { key: 'step4_rules', label: '⑤ Read-before-you-buy photo', fallback: 'assets/read-before-buy.jpg' },
+    { key: 'step5_order', label: '⑥ Order process photo', fallback: 'assets/order-process.jpg' },
     { key: 'site_logo', label: '🖼️ Shop logo (shown at the top of your page)', fallback: '' },
   ];
   const pendingSlotFile = {};
@@ -2129,8 +2134,19 @@
   // the customer-side auto-log writes. Checkboxes render that back out, and any
   // segment that no longer matches a current add-on (deleted add-on, old typed-in
   // text) is kept as a read-only note rather than silently dropped on Save.
+  // Customer orders can carry "Name on tumbler: X" (typed in for the Custom Name
+  // add-on) as its own segment in the add-ons text — shown here as an editable box.
+  const CUSTOM_NAME_PREFIX = 'Name on tumbler:';
+  function splitCustomName(parts){
+    const nameSeg = parts.find(p => p.toLowerCase().startsWith(CUSTOM_NAME_PREFIX.toLowerCase()));
+    return {
+      customName: nameSeg ? nameSeg.slice(CUSTOM_NAME_PREFIX.length).trim() : '',
+      rest: parts.filter(p => p !== nameSeg),
+    };
+  }
+
   function addonsCheckboxesHtml(selectedText){
-    const parts = (selectedText || '').split(',').map(s => s.trim()).filter(Boolean);
+    const { customName, rest: parts } = splitCustomName((selectedText || '').split(',').map(s => s.trim()).filter(Boolean));
     const knownLabels = allAddonsAdmin.map(a => `${a.name} (${a.price_label})`);
     const leftover = parts.filter(p => !knownLabels.includes(p));
     const checkboxes = allAddonsAdmin.map(a => {
@@ -2141,17 +2157,58 @@
     const leftoverNote = leftover.length
       ? `<span class="addon-legacy-note" data-leftover="${leftover.join('|||')}">+ ${leftover.join(', ')} (not in current add-on list)</span>`
       : `<span class="addon-legacy-note" data-leftover=""></span>`;
-    return (checkboxes || '<span class="hint" style="margin:0;">No add-ons set up yet.</span>') + leftoverNote;
+    const nameBox = `<label class="custom-name-label">✏️ Name on tumbler <input type="text" class="o-custom-name" value="${customName.replace(/"/g, '&quot;')}" placeholder="—" disabled></label>`;
+    return (checkboxes || '<span class="hint" style="margin:0;">No add-ons set up yet.</span>') + nameBox + leftoverNote;
   }
 
-  // Reassembles an order row's add-ons text from its checked boxes plus any
-  // preserved leftover (unmatched) text, back into the same comma-joined format.
+  // Reassembles an order row's add-ons text from its checked boxes, the name-on-tumbler
+  // box, and any preserved leftover (unmatched) text, back into the comma-joined format.
   function readAddonsValue(row){
     const checked = Array.from(row.querySelectorAll('.o-addon-check:checked')).map(cb => cb.dataset.label);
+    const nameInput = row.querySelector('.o-custom-name');
+    const customName = nameInput ? nameInput.value.replace(/[,，]/g, ' ').replace(/\s+/g, ' ').trim() : '';
     const leftoverAttr = row.querySelector('.addon-legacy-note');
     const leftover = (leftoverAttr && leftoverAttr.dataset.leftover) ? leftoverAttr.dataset.leftover.split('|||') : [];
-    const combined = [...checked, ...leftover];
+    const combined = [...checked, ...(customName ? [`${CUSTOM_NAME_PREFIX} ${customName}`] : []), ...leftover];
     return combined.length ? combined.join(', ') : null;
+  }
+
+  // Delivery — mirrors index.html's DELIVERY_OPTIONS (West Malaysia free, East Malaysia RM13).
+  const DELIVERY_OPTIONS_ADMIN = ['West Malaysia (Free)', 'East Malaysia (+RM13)'];
+  function deliveryOptionsHtml(selected){
+    const value = selected || '';
+    const known = DELIVERY_OPTIONS_ADMIN.includes(value);
+    let opts = `<option value="">— delivery —</option>`;
+    opts += DELIVERY_OPTIONS_ADMIN.map(v => `<option value="${v}" ${v === value ? 'selected' : ''}>${v}</option>`).join('');
+    if (value && !known) opts += `<option value="${value}" selected>${value} (not in list)</option>`;
+    return opts;
+  }
+
+  // Order total, worked out from the row's current values: every field that carries a
+  // price label ("(RM70)", "(+RM5)", "(+RM13)") is added up. Free delivery adds 0.
+  function amountIn(text){
+    const m = String(text || '').match(/RM\s?(\d+(?:\.\d+)?)/i);
+    return m ? parseFloat(m[1]) : 0;
+  }
+  function orderRowTotal(row){
+    const tumbler = (row.querySelector('.o-tumbler') || {}).value || '';
+    if (!tumbler) return null;
+    let total = amountIn(tumbler);
+    total += amountIn((row.querySelector('.o-pattern') || {}).value);
+    row.querySelectorAll('.o-addon-check:checked').forEach(cb => { total += amountIn(cb.dataset.label); });
+    const leftoverAttr = row.querySelector('.addon-legacy-note');
+    if (leftoverAttr && leftoverAttr.dataset.leftover) leftoverAttr.dataset.leftover.split('|||').forEach(seg => { total += amountIn(seg); });
+    const delivery = row.querySelector('.o-delivery');
+    if (delivery) total += amountIn(delivery.value);
+    return total;
+  }
+  function refreshOrderRowTotal(row){
+    const el = row.querySelector('.o-total');
+    if (!el) return;
+    const total = orderRowTotal(row);
+    const delivery = row.querySelector('.o-delivery');
+    const noDelivery = delivery && !delivery.value;
+    el.textContent = total === null ? 'Total: —' : `Total: RM${Number.isInteger(total) ? total : total.toFixed(2)}${noDelivery ? ' + shipping' : ''}`;
   }
 
   async function renderOrders(){
@@ -2168,7 +2225,9 @@
         <select class="o-tumbler" disabled style="flex:1;min-width:130px;">${tumblerOptionsHtml(o.tumbler)}</select>
         <select class="o-sticker" disabled style="min-width:130px;">${stickerOptionsHtml(o.sticker_code)}</select>
         <select class="o-pattern" disabled style="flex:1;min-width:130px;">${patternOptionsHtml(o.pattern)}</select>
+        ${'delivery' in o ? `<select class="o-delivery" disabled style="flex:1;min-width:150px;">${deliveryOptionsHtml(o.delivery)}</select>` : ''}
         <div class="o-addons-group" style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">${addonsCheckboxesHtml(o.addons)}</div>
+        <span class="o-total"></span>
         <div class="row-actions">
           <button class="secondary o-edit-btn">Edit</button>
           <button class="secondary o-save-btn" style="display:none;">Save</button>
@@ -2182,7 +2241,9 @@
     el.querySelectorAll('[data-id]').forEach(row => {
       const id = row.dataset.id;
       const order = data.find(o => o.id === id);
-      const fieldInputs = row.querySelectorAll('.o-name, .o-tiktok, .o-tumbler, .o-sticker, .o-pattern, .o-addon-check');
+      const fieldInputs = row.querySelectorAll('.o-name, .o-tiktok, .o-tumbler, .o-sticker, .o-pattern, .o-delivery, .o-addon-check, .o-custom-name');
+      refreshOrderRowTotal(row);
+      row.addEventListener('change', () => refreshOrderRowTotal(row));
       const editBtn = row.querySelector('.o-edit-btn');
       const saveBtn = row.querySelector('.o-save-btn');
 
@@ -2201,6 +2262,8 @@
           sticker_code: row.querySelector('.o-sticker').value.trim() || null,
           pattern: row.querySelector('.o-pattern').value.trim() || null,
           addons: readAddonsValue(row),
+          // only sent when the orders table actually has the delivery column
+          ...('delivery' in order ? { delivery: (row.querySelector('.o-delivery') || {}).value || null } : {}),
         }).eq('id', id);
         if (error) { showToast(error.message, true); return; }
         order.customer_name = row.querySelector('.o-name').value.trim() || null;
@@ -2209,6 +2272,7 @@
         order.sticker_code = row.querySelector('.o-sticker').value.trim() || null;
         order.pattern = row.querySelector('.o-pattern').value.trim() || null;
         order.addons = readAddonsValue(row);
+        if ('delivery' in order) order.delivery = (row.querySelector('.o-delivery') || {}).value || null;
         fieldInputs.forEach(inp => { inp.disabled = true; });
         saveBtn.style.display = 'none';
         editBtn.style.display = '';

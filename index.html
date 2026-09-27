@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sips by Evve — Custom Snowglobe Tumblers Catalogue</title>
 <meta property="og:title" content="Sips by Evve — Custom Snowglobe Tumblers Catalogue">
-<meta property="og:description" content="Browse sticker designs, then screenshot your pick to order on WhatsApp 🎀">
+<meta property="og:description" content="Pick your tumbler, sticker &amp; pattern, then send your order on WhatsApp 🎀 Free shipping West Malaysia.">
 <meta property="og:image" content="https://heeatmscxouwevoonpti.supabase.co/storage/v1/object/public/stickers/site/Codex%20Image%2017%20Sept%202026,%2007_26_14.png">
 <meta property="og:image:width" content="2089">
 <meta property="og:image:height" content="753">
@@ -104,8 +104,8 @@
   .sticker-intro p{ margin:4px 0; }
   .cat-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
-    gap:16px;
+    grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+    gap:12px;
   }
   .cat-card{
     background:var(--card);
@@ -480,6 +480,75 @@
   .btn-whatsapp{ background:var(--wa); }
   .btn-whatsapp:hover{ background:var(--wa-dark); }
 
+  /* ---- catalogue revamp: shipping pill, add-on name field, delivery, total, warnings, FAQ, sticky bar ---- */
+  .hero .ship-pill{
+    display:inline-block; margin:14px 0 0; padding:7px 14px; border-radius:999px;
+    background:#fff; border:1px solid var(--line); color:var(--brown-dark);
+    font-size:0.82rem; font-weight:700; box-shadow:var(--shadow);
+  }
+  section.step h2 .h2-sub{ display:block; font-size:0.95rem; color:var(--muted); font-weight:600; margin-top:2px; }
+  img.zoomable{ cursor:zoom-in; }
+  .zoom-caption{ text-align:center; color:var(--muted); font-size:0.78rem; margin:8px 0 0; }
+  .custom-name-field{
+    margin-top:14px; background:#e8f9ee; border:2px solid var(--wa-dark); border-radius:14px; padding:12px 14px;
+  }
+  .custom-name-field label{ display:block; font-size:0.85rem; font-weight:700; color:var(--ink); margin-bottom:6px; }
+  .custom-name-field input{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:0.95rem; font-family:inherit; background:#fff;
+  }
+  .order-summary .val.soft{ color:var(--muted); font-weight:600; }
+  .delivery-choice{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 4px; }
+  .delivery-opt{
+    border:2px solid var(--line); background:#fff; border-radius:12px; padding:10px 8px; cursor:pointer;
+    font-family:inherit; font-size:0.85rem; font-weight:700; color:var(--ink); line-height:1.3;
+    transition:border-color 0.15s, background-color 0.15s;
+  }
+  .delivery-opt small{ display:block; font-weight:600; color:var(--muted); font-size:0.75rem; }
+  .delivery-opt.picked{ border-color:var(--wa-dark); background:#e8f9ee; box-shadow:0 0 0 3px rgba(37,211,102,0.30); }
+  .delivery-opt.picked small{ color:#1e7a45; }
+  .total-row{
+    display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; padding-top:10px;
+    border-top:2px solid var(--line); font-weight:800; font-size:1.05rem;
+  }
+  .total-row #orderTotal{ color:var(--brown-dark); }
+  .total-row #orderTotal.soft{ color:var(--muted); font-size:0.85rem; font-weight:600; }
+  .send-warning{
+    margin-top:14px; background:#fff7e6; border:1px solid #f1d999; color:#7a5a10;
+    padding:12px 14px; border-radius:12px; font-size:0.88rem;
+  }
+  .send-warning ul{ margin:6px 0; padding-left:20px; }
+  .cta-row .btn-whatsapp{
+    width:100%; justify-content:center; padding:16px 20px; font-size:1.08rem; font-weight:700;
+    box-shadow:0 8px 20px rgba(37,211,102,0.30);
+  }
+  .faq details{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:0 16px;
+    margin-top:10px; box-shadow:var(--shadow);
+  }
+  .faq summary{ cursor:pointer; font-weight:700; padding:14px 0; list-style:none; position:relative; padding-right:24px; }
+  .faq summary::-webkit-details-marker{ display:none; }
+  .faq summary::after{ content:"+"; position:absolute; right:0; top:12px; font-size:1.2rem; color:var(--muted); }
+  .faq details[open] summary::after{ content:"–"; }
+  .faq details p{ margin:0 0 14px; color:var(--ink); font-size:0.92rem; }
+  .order-bar{
+    position:fixed; left:12px; right:12px; bottom:12px; z-index:40; max-width:640px; margin:0 auto;
+    background:var(--brown-dark); color:#fff; border-radius:16px; padding:10px 10px 10px 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    box-shadow:0 10px 28px rgba(0,0,0,0.25);
+    transform:translateY(140%); transition:transform 0.25s ease;
+  }
+  .order-bar.show{ transform:translateY(0); }
+  .order-bar-text{ font-size:0.88rem; font-weight:700; }
+  .order-bar-btn{
+    border:none; background:var(--wa); color:#fff; font-weight:800; font-family:inherit; font-size:0.85rem;
+    padding:10px 14px; border-radius:12px; cursor:pointer; white-space:nowrap;
+  }
+  body.has-bar footer{ padding-bottom:100px; }
+  /* plain image mode for the lightbox (step photos: no code/status row, taller image) */
+  .lightbox-box.plain{ max-width:720px; }
+  .lightbox-box.plain img{ aspect-ratio:auto; max-height:80vh; }
+  .lightbox-box.plain .lightbox-info{ display:none; }
+
   footer{
     text-align:center;
     padding:30px 20px 50px;
@@ -507,21 +576,21 @@
   <p class="brand-name" id="brandName">Sips by Evve</p>
   <h1>Custom Snowglobe Tumblers ✨</h1>
   <p class="catalog-tag">— Catalog · Katalog · 目录 —</p>
+  <p class="ship-pill">🚚 Free shipping West Malaysia · East Malaysia RM13</p>
 </div>
 
 <main>
 
   <section class="step">
     <h2>① Choose your tumbler ❄️</h2>
-    <p class="note">(Screenshot it!)</p>
-    <img id="img-step1_tumbler" src="assets/tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
-    <p class="note" style="margin-top:14px;">Or tap your pick below so it's included in your order message:</p>
+    <img id="img-step1_tumbler" class="zoomable" src="assets/tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
+    <p class="note" style="margin-top:14px;">Tap to pick your tumbler:</p>
     <div class="option-grid" id="tumblerOptions"></div>
   </section>
 
   <section class="step">
     <h2>② Choose your sticker 🎀 <em>Free!</em></h2>
-    <p class="note">(Screenshot it!) — tumbler price already includes 1 sticker —</p>
+    <p class="note">Tap a design to pick it — tumbler price already includes 1 sticker</p>
     <div class="finder-row">
       <div class="search-box">
         <span class="icon">🔍</span>
@@ -546,28 +615,58 @@
 
   <section class="step">
     <h2>③ Take a look at our patterns</h2>
-    <p class="note">(you can decide during your live date)</p>
-    <img id="img-step3_patterns" src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
-    <p class="note" style="margin-top:14px;">Or tap your pick below so it's included in your order message:</p>
+    <p class="note">(you can also decide during your live date)</p>
+    <img id="img-step3_patterns" class="zoomable" src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
+    <p class="note" style="margin-top:14px;">Tap to pick a pattern (optional):</p>
     <div class="option-grid" id="patternOptions"></div>
   </section>
 
   <section class="step">
-    <h2>④ Read this before you buy ⚠️</h2>
-    <img id="img-step4_rules" src="assets/read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu" loading="lazy">
+    <h2>④ Add-ons 🧊 <span class="h2-sub">Aksesori Tambahan · 配件</span></h2>
+    <p class="note">Optional — tap to add</p>
+    <div class="addons" id="addonsGrid">
+      <div class="addon-card">
+        <span class="name">Glass Straw 玻璃吸管</span>
+        <span class="price">+RM7</span>
+      </div>
+      <div class="addon-card">
+        <span class="name">Custom Name 定制名字</span>
+        <span class="price">+RM5</span>
+      </div>
+    </div>
+    <div class="custom-name-field" id="customNameField" style="display:none;">
+      <label for="customNameInput">✏️ Name to put on your tumbler · 要写的名字</label>
+      <input type="text" id="customNameInput" placeholder="e.g. Evve" maxlength="30" autocomplete="off">
+    </div>
   </section>
 
   <section class="step">
-    <h2>⑤ Send me your screenshot!</h2>
-    <p class="note">(and wait for your date! 💛)</p>
-    <img id="img-step5_order" src="assets/order-process.jpg" alt="Order process — screenshot and send, stock check, payment request, pay within 2 days, queue slot given, made live" loading="lazy">
+    <h2>⑤ Read this before you buy ⚠️</h2>
+    <img id="img-step4_rules" class="zoomable" src="assets/read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu" loading="lazy">
+    <p class="zoom-caption">🔍 Tap image to enlarge</p>
+  </section>
 
-    <div class="order-summary">
+  <section class="step" id="orderSection">
+    <h2>⑥ Send me your order!</h2>
+    <p class="note">(and wait for your date! 💛)</p>
+    <img id="img-step5_order" class="zoomable" src="assets/order-process.jpg" alt="Order process — send your order, stock check, payment request, pay within 2 days, queue slot given, made live" loading="lazy">
+    <p class="zoom-caption">🔍 Tap image to enlarge</p>
+
+    <div class="order-summary" id="orderSummary">
       <h3>📝 My order</h3>
       <div class="pick-row"><span class="lbl">Tumbler</span><span class="val" id="pickTumbler">Not picked yet</span></div>
       <div class="pick-row"><span class="lbl">Sticker</span><span class="val" id="pickSticker">Not picked yet</span></div>
-      <div class="pick-row"><span class="lbl">Pattern</span><span class="val" id="pickPattern">Not picked yet</span></div>
+      <div class="pick-row"><span class="lbl">Pattern</span><span class="val" id="pickPattern">Decide on live date</span></div>
       <div class="pick-row"><span class="lbl">Add-ons</span><span class="val" id="pickAddons">None</span></div>
+      <div class="pick-row"><span class="lbl">Delivery</span><span class="val" id="pickDelivery">Not picked yet</span></div>
+
+      <div class="delivery-choice" id="deliveryChoice">
+        <button type="button" class="delivery-opt" data-region="west">West Malaysia<small>Free shipping</small></button>
+        <button type="button" class="delivery-opt" data-region="east">East Malaysia<small>+RM13</small></button>
+      </div>
+
+      <div class="total-row"><span>Total</span><span id="orderTotal">—</span></div>
+
       <div class="order-fields">
         <div>
           <label for="orderTiktok">TikTok handle</label>
@@ -580,30 +679,51 @@
       </div>
     </div>
 
+    <div class="send-warning" id="sendWarning" style="display:none;"></div>
+
     <div class="cta-row">
       <a class="btn btn-whatsapp" id="whatsappOrderBtn" href="https://wa.me/evvyne" target="_blank" rel="noopener">
         <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.001 3C9.383 3 4 8.383 4 15.001c0 2.386.7 4.611 1.902 6.483L4 29l7.723-1.867A11.94 11.94 0 0 0 16.001 27C22.619 27 28 21.617 28 15.001 28 8.383 22.619 3 16.001 3zm0 21.818c-1.94 0-3.751-.55-5.286-1.503l-.379-.226-4.583 1.108 1.128-4.463-.247-.396A9.77 9.77 0 0 1 5.182 15c0-5.965 4.854-10.818 10.819-10.818S26.818 9.035 26.818 15 21.965 24.818 16.001 24.818z"/></svg>
         Send to WhatsApp
       </a>
     </div>
-    <p class="note">(Also attach your screenshot in the chat — this button just fills in the message for you!)</p>
+    <p class="note" style="margin-top:10px;">This opens WhatsApp with your order already filled in — just press send! 💛</p>
   </section>
 
-  <section class="step">
-    <h2>🧊 Add-Ons · Aksesori Tambahan · 配件</h2>
-    <div class="addons" id="addonsGrid">
-      <div class="addon-card">
-        <span class="name">Glass Straw 玻璃吸管</span>
-        <span class="price">+RM7</span>
-      </div>
-      <div class="addon-card">
-        <span class="name">Custom Name 定制名字</span>
-        <span class="price">+RM5</span>
-      </div>
-    </div>
+  <section class="step faq">
+    <h2>❓ FAQ</h2>
+    <details>
+      <summary>How much is shipping? · 运费多少？</summary>
+      <p>West Malaysia: <b>free shipping</b>. East Malaysia (Sabah, Sarawak, Labuan): <b>RM13</b>.<br>西马包邮，东马 RM13。</p>
+    </details>
+    <details>
+      <summary>What happens after I send my order?</summary>
+      <p>I'll check stock for your tumbler and sticker, then send you a payment request. Ready-stock orders get a payment request within 48 hours; for preorder stickers you only pay when the stock arrives.</p>
+    </details>
+    <details>
+      <summary>How long do I have to pay?</summary>
+      <p>Please send your payment receipt within 2 days. Unpaid orders after 2 days will be released.</p>
+    </details>
+    <details>
+      <summary>When will my tumbler be made?</summary>
+      <p>After payment you'll get an estimated week first. The exact live date is confirmed 3–5 days before — if you can't make it, just let me know and we'll reschedule. Your tumbler is made live, and you can choose colours/pattern on the spot.</p>
+    </details>
+    <details>
+      <summary>Do I have to choose a pattern now?</summary>
+      <p>No — you can decide during your live date.</p>
+    </details>
+    <details>
+      <summary>Can I return or cancel?</summary>
+      <p>Every tumbler is 100% handmade, so slight differences in colour and glitter placement are normal. Once an order is confirmed, returns, refunds and cancellations aren't possible — please read step ⑤ carefully before ordering.</p>
+    </details>
   </section>
 
 </main>
+
+<div class="order-bar" id="orderBar" aria-hidden="true">
+  <span class="order-bar-text" id="orderBarText"></span>
+  <button type="button" class="order-bar-btn" id="orderBarBtn">View order ↓</button>
+</div>
 
 <footer>
   Made with love in Malaysia 🇲🇾 · Sips by Evve
@@ -651,6 +771,7 @@
 
   function openLightbox(sticker, imgUrl){
     if (!client) return;
+    document.querySelector('#lightbox .lightbox-box').classList.remove('plain');
     document.getElementById('lightboxImg').src = imgUrl;
     document.getElementById('lightboxCode').textContent = sticker.code ? `Code: ${sticker.code}` : sticker.name;
     const statusBadgeClass = sticker.status === 'available' ? 'status-available' : (sticker.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
@@ -661,6 +782,22 @@
     document.getElementById('lightboxZoom').onclick = openFullSize;
     document.getElementById('lightbox').classList.add('open');
   }
+  // Step photos (tumbler lineup, patterns, rules, order process) — their text is
+  // small on a phone, so tapping opens them bigger, with a link to the full-size file.
+  function openImageLightbox(imgUrl, alt){
+    const img = document.getElementById('lightboxImg');
+    document.querySelector('#lightbox .lightbox-box').classList.add('plain');
+    img.src = imgUrl;
+    img.alt = alt || '';
+    const openFullSize = () => window.open(imgUrl, '_blank');
+    img.onclick = openFullSize;
+    document.getElementById('lightboxZoom').onclick = openFullSize;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  document.querySelectorAll('img.zoomable').forEach(img => {
+    img.addEventListener('click', () => openImageLightbox(img.currentSrc || img.src, img.alt));
+  });
+
   document.getElementById('lightboxClose').addEventListener('click', () => {
     document.getElementById('lightbox').classList.remove('open');
   });
@@ -691,7 +828,45 @@
     { id: 'p4', label: 'Full Glitter', extra: 5 },
   ];
 
-  const myOrder = { tumbler: null, sticker: null, pattern: null, addons: [] };
+  // Shipping: West Malaysia free, East Malaysia RM13 (per Evvyne).
+  const DELIVERY_OPTIONS = {
+    west: { label: 'West Malaysia (Free)', short: 'West Malaysia', fee: 0 },
+    east: { label: 'East Malaysia (+RM13)', short: 'East Malaysia', fee: 13 },
+  };
+
+  const myOrder = { tumbler: null, sticker: null, pattern: null, addons: [], delivery: null, customName: '' };
+
+  // "+RM7" / "RM 5" / "+RM7.50" -> number; anything without a number counts as 0.
+  function priceFromLabel(label){
+    const m = String(label || '').match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) : 0;
+  }
+  // The add-on that needs a name typed in (e.g. "Custom Name 定制名字").
+  function isCustomNameAddon(a){
+    return /name|名字/i.test((a && a.name) || '');
+  }
+  function hasCustomNameAddon(){
+    return myOrder.addons.some(isCustomNameAddon);
+  }
+  // Commas separate add-ons in the saved order, so keep them out of the typed name.
+  function cleanCustomName(){
+    return (myOrder.customName || '').replace(/[,，]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function orderTotal(){
+    if (!myOrder.tumbler) return null;
+    let total = myOrder.tumbler.price;
+    if (myOrder.pattern) total += myOrder.pattern.extra || 0;
+    myOrder.addons.forEach(a => { total += priceFromLabel(a.price_label); });
+    if (myOrder.delivery) total += DELIVERY_OPTIONS[myOrder.delivery].fee;
+    return total;
+  }
+  function fmtRM(n){ return 'RM' + (Number.isInteger(n) ? n : n.toFixed(2)); }
+  function addonsTextForOrder(){
+    if (!myOrder.addons.length) return null;
+    const parts = myOrder.addons.map(a => `${a.name} (${a.price_label})`);
+    if (hasCustomNameAddon() && cleanCustomName()) parts.push(`Name on tumbler: ${cleanCustomName()}`);
+    return parts.join(', ');
+  }
   let currentStickerView = null; // whichever sticker view is on screen — re-run after a pick to refresh the checkmark
 
   function renderTumblerOptions(){
@@ -739,7 +914,11 @@
     lines.push(`Pattern: ${myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : '(can decide on your live date)'}`);
     if (myOrder.addons.length) {
       lines.push(`Add-ons: ${myOrder.addons.map(a => `${a.name} (${a.price_label})`).join(', ')}`);
+      if (hasCustomNameAddon()) lines.push(`Name on tumbler: ${cleanCustomName() || '(please tell me)'}`);
     }
+    lines.push(`Delivery: ${myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : '(please tell me West or East Malaysia)'}`);
+    const total = orderTotal();
+    if (total !== null) lines.push(`Total: ${fmtRM(total)}${myOrder.delivery ? '' : ' + shipping'}`);
     lines.push('');
     const tiktok = (document.getElementById('orderTiktok') || {}).value || '';
     const name = (document.getElementById('orderName') || {}).value || '';
@@ -749,48 +928,145 @@
   }
 
   function updateOrderSummary(){
-    const set = (id, text, missing) => {
+    const set = (id, text, cls) => {
       const el = document.getElementById(id);
       if (!el) return;
       el.textContent = text;
-      el.className = 'val' + (missing ? ' missing' : '');
+      el.className = 'val' + (cls ? ' ' + cls : '');
     };
-    set('pickTumbler', myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : 'Not picked yet', !myOrder.tumbler);
-    set('pickSticker', myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : 'Not picked yet', !myOrder.sticker);
-    set('pickPattern', myOrder.pattern ? myOrder.pattern.label : 'Not picked yet', !myOrder.pattern);
-    set('pickAddons', myOrder.addons.length ? myOrder.addons.map(a => a.name).join(', ') : 'None', false);
+    set('pickTumbler', myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : 'Not picked yet', myOrder.tumbler ? '' : 'missing');
+    set('pickSticker', myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : 'Not picked yet', myOrder.sticker ? '' : 'missing');
+    // Pattern is optional (can be decided on the live date), so an empty pick isn't shown as an error.
+    set('pickPattern', myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : 'Decide on live date', myOrder.pattern ? '' : 'soft');
+    const addonNames = myOrder.addons.map(a => isCustomNameAddon(a) && cleanCustomName() ? `${a.name} "${cleanCustomName()}"` : a.name);
+    set('pickAddons', addonNames.length ? addonNames.join(', ') : 'None', addonNames.length ? '' : 'soft');
+    set('pickDelivery', myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : 'Not picked yet', myOrder.delivery ? '' : 'missing');
+
+    document.querySelectorAll('.delivery-opt').forEach(b => b.classList.toggle('picked', b.dataset.region === myOrder.delivery));
+
+    const nameField = document.getElementById('customNameField');
+    if (nameField) nameField.style.display = hasCustomNameAddon() ? '' : 'none';
+
+    const totalEl = document.getElementById('orderTotal');
+    const total = orderTotal();
+    if (totalEl) {
+      if (total === null) { totalEl.textContent = 'Pick a tumbler to see the total'; totalEl.className = 'soft'; }
+      else { totalEl.textContent = myOrder.delivery ? fmtRM(total) : `${fmtRM(total)} + shipping`; totalEl.className = ''; }
+    }
 
     const btn = document.getElementById('whatsappOrderBtn');
     if (btn) btn.href = `https://wa.me/evvyne?text=${encodeURIComponent(buildWhatsAppMessage())}`;
+
+    // Any change to the order clears a previous "you haven't picked…" warning.
+    sendWarned = false;
+    const warn = document.getElementById('sendWarning');
+    if (warn) warn.style.display = 'none';
+
+    updateOrderBar();
   }
 
   document.getElementById('orderTiktok').addEventListener('input', updateOrderSummary);
   document.getElementById('orderName').addEventListener('input', updateOrderSummary);
+  document.getElementById('customNameInput').addEventListener('input', (e) => {
+    myOrder.customName = e.target.value;
+    updateOrderSummary();
+  });
+  document.querySelectorAll('.delivery-opt').forEach(b => {
+    b.addEventListener('click', () => {
+      myOrder.delivery = myOrder.delivery === b.dataset.region ? null : b.dataset.region;
+      updateOrderSummary();
+    });
+  });
 
-  // When the customer taps "Send to WhatsApp", also log the order into the
-  // orders table so it shows up in admin right away as "pending" — Evvyne just
-  // reviews it and marks it Paid (which is what actually deducts stock), instead
-  // of retyping the whole order by hand. This never blocks or delays opening
-  // WhatsApp, and a failure here is silent to the customer (logged to console only).
+  // ---- Floating "my order" bar: once something is picked, a small bar at the bottom
+  // shows how many things are picked + the running total, and jumps to the order
+  // section — so nobody has to scroll all the way down to find the Send button.
+  // It hides itself while the order section is on screen.
+  let orderSectionVisible = false;
+  function updateOrderBar(){
+    const bar = document.getElementById('orderBar');
+    if (!bar) return;
+    const count = [myOrder.tumbler, myOrder.sticker, myOrder.pattern].filter(Boolean).length + myOrder.addons.length;
+    const total = orderTotal();
+    document.getElementById('orderBarText').textContent =
+      `🛒 ${count} picked` + (total !== null ? ` · ${fmtRM(total)}${myOrder.delivery ? '' : '+'}` : '');
+    const show = count > 0 && !orderSectionVisible;
+    bar.classList.toggle('show', show);
+    bar.setAttribute('aria-hidden', show ? 'false' : 'true');
+    document.body.classList.toggle('has-bar', show);
+  }
+  document.getElementById('orderBarBtn').addEventListener('click', () => {
+    document.getElementById('orderSummary').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(entries => {
+      orderSectionVisible = entries.some(en => en.isIntersecting);
+      updateOrderBar();
+    }, { threshold: 0.15 }).observe(document.getElementById('orderSummary'));
+  }
+
+  // ---- Send to WhatsApp ----
+  // 1) If the tumbler / sticker / delivery (or the name for a Custom Name add-on) is
+  //    missing, the first tap shows a friendly reminder instead of sending — a second
+  //    tap sends anyway. (No confirm() popups: TikTok/IG in-app browsers often block them.)
+  // 2) When it does send, the order is also logged into the orders table so it shows up
+  //    in admin as "pending" — Evvyne reviews it and marks it Paid (which is what deducts
+  //    stock). Logging never blocks or delays opening WhatsApp; a failure is console-only.
+  let sendWarned = false;
+  function missingOrderBits(){
+    const missing = [];
+    if (!myOrder.tumbler) missing.push('a tumbler (step ①)');
+    if (!myOrder.sticker) missing.push('a sticker (step ②)');
+    if (hasCustomNameAddon() && !cleanCustomName()) missing.push('the name for your Custom Name add-on (step ④)');
+    if (!myOrder.delivery) missing.push('West or East Malaysia delivery');
+    return missing;
+  }
+  function logOrder(){
+    if (!client) return;
+    const row = {
+      customer_name: (document.getElementById('orderName') || {}).value.trim() || null,
+      tiktok_handle: (document.getElementById('orderTiktok') || {}).value.trim() || null,
+      tumbler: myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : null,
+      sticker_code: myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : null,
+      pattern: myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : null,
+      addons: addonsTextForOrder(),
+      delivery: myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : null,
+      status: 'pending',
+    };
+    const insert = (payload) => client.from('orders').insert(payload);
+    try {
+      insert(row).then(({ error }) => {
+        if (!error) return;
+        // If the "delivery" column hasn't been added in Supabase yet, don't lose the
+        // order — save it without that one field instead.
+        if (/delivery/i.test(error.message || '')) {
+          const { delivery, ...withoutDelivery } = row;
+          return insert(withoutDelivery).then(({ error: e2 }) => {
+            if (e2) console.error('order log error:', e2.message || JSON.stringify(e2));
+          });
+        }
+        console.error('order log error:', error.message || JSON.stringify(error));
+      }).catch(err => console.error('order log error:', err && err.message));
+    } catch (err) {
+      console.error('order log error:', err && err.message);
+    }
+  }
   const whatsappOrderBtn = document.getElementById('whatsappOrderBtn');
   if (whatsappOrderBtn) {
-    whatsappOrderBtn.addEventListener('click', () => {
-      if (!client) return;
-      try {
-        client.from('orders').insert({
-          customer_name: (document.getElementById('orderName') || {}).value.trim() || null,
-          tiktok_handle: (document.getElementById('orderTiktok') || {}).value.trim() || null,
-          tumbler: myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : null,
-          sticker_code: myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : null,
-          pattern: myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : null,
-          addons: myOrder.addons.length ? myOrder.addons.map(a => `${a.name} (${a.price_label})`).join(', ') : null,
-          status: 'pending',
-        }).then(({ error }) => {
-          if (error) console.error('order log error:', error.message || JSON.stringify(error));
-        }).catch(err => console.error('order log error:', err && err.message));
-      } catch (err) {
-        console.error('order log error:', err && err.message);
+    whatsappOrderBtn.addEventListener('click', (e) => {
+      const missing = missingOrderBits();
+      const warn = document.getElementById('sendWarning');
+      if (missing.length && !sendWarned) {
+        e.preventDefault();
+        sendWarned = true;
+        warn.innerHTML = `<b>Just checking 😊</b> You haven't picked:<ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>Tap <b>Send to WhatsApp</b> again to send anyway.`;
+        warn.style.display = '';
+        warn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
       }
+      if (warn) warn.style.display = 'none';
+      sendWarned = false;
+      logOrder();
     });
   }
 
