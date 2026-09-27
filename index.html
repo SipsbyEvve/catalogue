@@ -517,6 +517,8 @@
     padding:12px 14px; border-radius:12px; font-size:0.88rem;
   }
   .send-warning ul{ margin:6px 0; padding-left:20px; }
+  .cta-row .btn-whatsapp.incomplete{ background:#a9bfb1; box-shadow:none; }
+  .order-fields input.field-missing{ border-color:#d9534f; background:#fff5f5; }
   .cta-row .btn-whatsapp{
     width:100%; justify-content:center; padding:16px 20px; font-size:1.08rem; font-weight:700;
     box-shadow:0 8px 20px rgba(37,211,102,0.30);
@@ -544,6 +546,43 @@
     padding:10px 14px; border-radius:12px; cursor:pointer; white-space:nowrap;
   }
   body.has-bar footer{ padding-bottom:100px; }
+  /* ---- extra sticker (add-on with its own sticker picker) ---- */
+  .xs-wrap{ margin-bottom:16px; }
+  .xs-toggle.picked{ border-color:var(--wa-dark); background:#e8f9ee; box-shadow:0 0 0 3px rgba(37,211,102,0.30); }
+  .xs-toggle.picked .pick-box{ background:var(--wa-dark); border-color:var(--wa-dark); }
+  .xs-toggle.picked .pick-box::after{ content:"✓"; }
+  .xs-panel{ margin-top:10px; background:#e8f9ee; border:2px solid var(--wa-dark); border-radius:var(--radius); padding:14px; }
+  .xs-q{ font-size:0.86rem; font-weight:700; margin-bottom:8px; }
+  .xs-search{ position:relative; }
+  .xs-search input{ width:100%; padding:10px 12px 10px 34px; border:1px solid var(--line); border-radius:10px; font-size:0.92rem; font-family:inherit; background:#fff; }
+  .xs-search span{ position:absolute; left:11px; top:50%; transform:translateY(-50%); opacity:0.6; font-size:0.85rem; }
+  .xs-results{ display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:8px; margin-top:10px; }
+  .xs-results .xs-empty{ grid-column:1/-1; color:var(--muted); font-size:0.82rem; font-style:italic; }
+  .xs-t{ position:relative; border-radius:10px; overflow:hidden; border:3px solid transparent; background:#fff; box-shadow:var(--shadow); cursor:pointer; padding:0; font-family:inherit; }
+  .xs-t img{ width:100%; display:block; aspect-ratio:1; object-fit:cover; background:var(--bg); }
+  .xs-t b{ display:block; text-align:center; font-size:0.7rem; padding:3px 0; color:var(--ink); }
+  .xs-t.on{ border-color:var(--wa-dark); }
+  .xs-t.on::after{ content:"✓"; position:absolute; top:4px; right:4px; width:20px; height:20px; border-radius:50%; background:var(--wa-dark); color:#fff; font-size:0.7rem; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff; }
+  .xs-t.main, .xs-t.full{ opacity:0.45; cursor:default; }
+  .xs-t .xs-tag{ position:absolute; top:4px; left:4px; background:var(--brown-dark); color:#fff; font-size:0.58rem; font-weight:800; padding:2px 6px; border-radius:999px; }
+  .xs-chosen{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; align-items:center; font-size:0.82rem; }
+  .xs-chosen:empty{ display:none; }
+  .xs-chip{ display:inline-flex; align-items:center; gap:6px; background:#fff; border:1.5px solid var(--wa-dark); border-radius:999px; padding:3px 4px 3px 3px; font-weight:800; font-family:inherit; font-size:0.8rem; cursor:pointer; }
+  .xs-chip img{ width:22px; height:22px; border-radius:50%; object-fit:cover; }
+  .xs-chip u{ text-decoration:none; color:var(--muted); padding:0 4px; }
+  .xs-note{ width:100%; font-size:0.75rem; color:#1e7a45; }
+  .xs-browse{ display:block; margin-top:10px; background:none; border:none; padding:0; font-family:inherit; font-size:0.82rem; color:var(--brown-dark); font-weight:700; text-decoration:underline; cursor:pointer; }
+  .xs-mode-banner{ background:var(--brown-dark); color:#fff; border-radius:14px; padding:10px 14px; font-size:0.88rem; font-weight:700; margin-bottom:14px; }
+  .xs-mode-banner small{ display:block; font-weight:600; opacity:0.85; font-size:0.76rem; }
+  .xs-back-pill{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:45; border:none; cursor:pointer;
+    background:var(--wa-dark); color:#fff; font-weight:800; font-family:inherit; font-size:0.9rem;
+    padding:13px 20px; border-radius:999px; box-shadow:0 10px 24px rgba(0,0,0,0.25); white-space:nowrap;
+  }
+  .sticker-thumb .for-tag{ position:absolute; top:10px; left:10px; color:#fff; font-size:0.66rem; font-weight:800; padding:3px 8px; border-radius:999px; z-index:3; background:var(--brown-dark); }
+  .sticker-thumb .for-tag.extra{ background:#e0524f; }
+  body.picking-extra .order-bar{ display:none; }
+
   /* plain image mode for the lightbox (step photos: no code/status row, taller image) */
   .lightbox-box.plain{ max-width:720px; }
   .lightbox-box.plain img{ aspect-ratio:auto; max-height:80vh; }
@@ -591,6 +630,7 @@
   <section class="step">
     <h2>② Choose your sticker 🎀 <em>Free!</em></h2>
     <p class="note">Tap a design to pick it — tumbler price already includes 1 sticker</p>
+    <div class="xs-mode-banner" id="extraModeBanner" style="display:none;"></div>
     <div class="finder-row">
       <div class="search-box">
         <span class="icon">🔍</span>
@@ -624,6 +664,19 @@
   <section class="step">
     <h2>④ Add-ons 🧊 <span class="h2-sub">Aksesori Tambahan · 配件</span></h2>
     <p class="note">Optional — tap to add</p>
+    <div class="xs-wrap" id="extraStickerWrap">
+      <div class="addon-card xs-toggle" id="extraStickerToggle">
+        <span><span class="pick-box"></span><span class="name">Extra Sticker 多一张贴纸</span></span>
+        <span class="price" id="extraStickerPriceLabel">+RM7</span>
+      </div>
+      <div class="xs-panel" id="extraStickerPanel" style="display:none;">
+        <div class="xs-q">Which sticker? Type a code or keyword (e.g. <i>stitch</i>), or tap one below 👇</div>
+        <div class="xs-search"><span>🔍</span><input type="text" id="extraStickerSearch" placeholder="Code or keyword…" autocomplete="off"></div>
+        <div class="xs-results" id="extraStickerResults"></div>
+        <div class="xs-chosen" id="extraStickerChosen"></div>
+        <button type="button" class="xs-browse" id="extraStickerBrowse">Can't find it? Browse all stickers ↑</button>
+      </div>
+    </div>
     <div class="addons" id="addonsGrid">
       <div class="addon-card">
         <span class="name">Glass Straw 玻璃吸管</span>
@@ -719,6 +772,8 @@
   </section>
 
 </main>
+
+<button type="button" class="xs-back-pill" id="extraBackPill" style="display:none;">✓ Done — back to add-ons ↓</button>
 
 <div class="order-bar" id="orderBar" aria-hidden="true">
   <span class="order-bar-text" id="orderBarText"></span>
@@ -834,7 +889,12 @@
     east: { label: 'East Malaysia (+RM13)', short: 'East Malaysia', fee: 13 },
   };
 
-  const myOrder = { tumbler: null, sticker: null, pattern: null, addons: [], delivery: null, customName: '' };
+  // Extra sticker add-on: RM7 each, at most 1 extra per tumbler (per Evvyne).
+  const EXTRA_STICKER_PRICE = 7;
+  const MAX_EXTRA_STICKERS = 1;
+
+  const myOrder = { tumbler: null, sticker: null, pattern: null, addons: [], delivery: null, customName: '', extraOn: false, extraStickers: [] };
+  let pickingExtra = false; // true while the customer is browsing the main gallery to pick their EXTRA sticker
 
   // "+RM7" / "RM 5" / "+RM7.50" -> number; anything without a number counts as 0.
   function priceFromLabel(label){
@@ -857,15 +917,27 @@
     let total = myOrder.tumbler.price;
     if (myOrder.pattern) total += myOrder.pattern.extra || 0;
     myOrder.addons.forEach(a => { total += priceFromLabel(a.price_label); });
+    total += myOrder.extraStickers.length * EXTRA_STICKER_PRICE;
     if (myOrder.delivery) total += DELIVERY_OPTIONS[myOrder.delivery].fee;
     return total;
   }
   function fmtRM(n){ return 'RM' + (Number.isInteger(n) ? n : n.toFixed(2)); }
+  function stickerLabel(s){ return s ? (s.code || s.name) : ''; }
+  // Short link to a sticker's big photo, for the WhatsApp message — Evvyne taps it on her
+  // phone and the catalogue opens with that sticker enlarged (see openStickerFromLink).
+  const CATALOGUE_URL = (() => {
+    const og = document.querySelector('meta[property="og:url"]');
+    return (og && og.content) || (location.origin + location.pathname);
+  })();
+  function stickerPhotoLink(s){
+    return `${CATALOGUE_URL}?s=${encodeURIComponent(stickerLabel(s))}`;
+  }
   function addonsTextForOrder(){
-    if (!myOrder.addons.length) return null;
     const parts = myOrder.addons.map(a => `${a.name} (${a.price_label})`);
     if (hasCustomNameAddon() && cleanCustomName()) parts.push(`Name on tumbler: ${cleanCustomName()}`);
-    return parts.join(', ');
+    // Saved as its own segment so admin can show it as a sticker and deduct its stock on Mark Paid.
+    myOrder.extraStickers.forEach(x => parts.push(`Extra sticker: ${stickerLabel(x)} (+RM${EXTRA_STICKER_PRICE})`));
+    return parts.length ? parts.join(', ') : null;
   }
   let currentStickerView = null; // whichever sticker view is on screen — re-run after a pick to refresh the checkmark
 
@@ -911,6 +983,12 @@
     const lines = ["Hi! I'd like to order 🐳", ''];
     lines.push(`Tumbler: ${myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : '(please tell me which one — see photo above)'}`);
     lines.push(`Sticker: ${myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : '(please tell me the code)'}`);
+    if (myOrder.sticker) lines.push(`📷 ${stickerPhotoLink(myOrder.sticker)}`);
+    myOrder.extraStickers.forEach(x => {
+      lines.push(`Extra sticker: ${stickerLabel(x)} (+RM${EXTRA_STICKER_PRICE})`);
+      lines.push(`📷 ${stickerPhotoLink(x)}`);
+    });
+    if (myOrder.extraOn && !myOrder.extraStickers.length) lines.push('Extra sticker: (please tell me which one)');
     lines.push(`Pattern: ${myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : '(can decide on your live date)'}`);
     if (myOrder.addons.length) {
       lines.push(`Add-ons: ${myOrder.addons.map(a => `${a.name} (${a.price_label})`).join(', ')}`);
@@ -935,7 +1013,10 @@
       el.className = 'val' + (cls ? ' ' + cls : '');
     };
     set('pickTumbler', myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : 'Not picked yet', myOrder.tumbler ? '' : 'missing');
-    set('pickSticker', myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : 'Not picked yet', myOrder.sticker ? '' : 'missing');
+    const extraTxt = myOrder.extraStickers.map(x => `${stickerLabel(x)} (+RM${EXTRA_STICKER_PRICE})`).join(', ');
+    if (myOrder.sticker) set('pickSticker', extraTxt ? `${stickerLabel(myOrder.sticker)} (free), ${extraTxt}` : stickerLabel(myOrder.sticker), '');
+    else set('pickSticker', extraTxt ? `Not picked yet · extra: ${extraTxt}` : 'Not picked yet', 'missing');
+    renderExtraStickerPanel();
     // Pattern is optional (can be decided on the live date), so an empty pick isn't shown as an error.
     set('pickPattern', myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : 'Decide on live date', myOrder.pattern ? '' : 'soft');
     const addonNames = myOrder.addons.map(a => isCustomNameAddon(a) && cleanCustomName() ? `${a.name} "${cleanCustomName()}"` : a.name);
@@ -957,10 +1038,7 @@
     const btn = document.getElementById('whatsappOrderBtn');
     if (btn) btn.href = `https://wa.me/evvyne?text=${encodeURIComponent(buildWhatsAppMessage())}`;
 
-    // Any change to the order clears a previous "you haven't picked…" warning.
-    sendWarned = false;
-    const warn = document.getElementById('sendWarning');
-    if (warn) warn.style.display = 'none';
+    refreshSendState();
 
     updateOrderBar();
   }
@@ -978,6 +1056,115 @@
     });
   });
 
+  // ---- Extra sticker add-on ----
+  // Ticking "Extra Sticker" opens a small picker right inside step ④ (search by code or
+  // keyword, e.g. "stitch", or tap a suggestion) so the customer doesn't have to scroll
+  // back up. "Browse all stickers" jumps to the gallery in an "extra sticker" mode, with a
+  // button to come straight back.
+  function extraStickerCandidates(query){
+    const q = query.trim().toLowerCase();
+    const pickable = allStickers.filter(s => s.status !== 'sold_out');
+    if (q) {
+      return pickable.filter(s => [s.code, s.name, s.keyword, s.category, s.subcategory]
+        .some(v => (v || '').toLowerCase().includes(q))).slice(0, 24);
+    }
+    // Nothing typed yet: suggest designs from the same sub-category / category as the free sticker.
+    const main = myOrder.sticker;
+    if (!main) return pickable.slice(0, 8);
+    const sameSub = pickable.filter(s => main.subcategory && s.category === main.category && s.subcategory === main.subcategory);
+    const sameCat = pickable.filter(s => s.category === main.category && !sameSub.includes(s));
+    const list = [...sameSub, ...sameCat];
+    return (list.length ? list : pickable).slice(0, 8);
+  }
+
+  function toggleExtraSticker(s){
+    const idx = myOrder.extraStickers.findIndex(x => x.id === s.id);
+    if (idx >= 0) myOrder.extraStickers.splice(idx, 1);
+    else if (myOrder.extraStickers.length < MAX_EXTRA_STICKERS) myOrder.extraStickers.push(s);
+    else return; // already at the maximum — the other thumbnails are greyed out
+    if (currentStickerView) currentStickerView();
+    updateOrderSummary();
+  }
+
+  function renderExtraStickerPanel(){
+    const toggle = document.getElementById('extraStickerToggle');
+    const panel = document.getElementById('extraStickerPanel');
+    if (!toggle || !panel) return;
+    toggle.classList.toggle('picked', myOrder.extraOn);
+    document.getElementById('extraStickerPriceLabel').textContent = `+RM${EXTRA_STICKER_PRICE}`;
+    panel.style.display = myOrder.extraOn ? '' : 'none';
+    if (!myOrder.extraOn) return;
+
+    const query = document.getElementById('extraStickerSearch').value;
+    const list = extraStickerCandidates(query);
+    const full = myOrder.extraStickers.length >= MAX_EXTRA_STICKERS;
+    const resultsEl = document.getElementById('extraStickerResults');
+    if (!allStickers.length) {
+      resultsEl.innerHTML = '<p class="xs-empty">Loading stickers…</p>';
+    } else if (!list.length) {
+      resultsEl.innerHTML = `<p class="xs-empty">No stickers match "${query.replace(/</g, '&lt;')}" — try another word, or browse all stickers below.</p>`;
+    } else {
+      resultsEl.innerHTML = list.map(s => {
+        const isMain = myOrder.sticker && myOrder.sticker.id === s.id;
+        const isOn = myOrder.extraStickers.some(x => x.id === s.id);
+        const cls = isMain ? 'main' : (isOn ? 'on' : (full ? 'full' : ''));
+        return `<button type="button" class="xs-t ${cls}" data-id="${s.id}">${isMain ? '<span class="xs-tag">Free</span>' : ''}<img src="${publicImageUrl(s.image_path)}" alt="${stickerLabel(s)}" loading="lazy"><b>${stickerLabel(s)}</b></button>`;
+      }).join('');
+      resultsEl.querySelectorAll('.xs-t').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const s = allStickers.find(x => x.id === btn.dataset.id);
+          if (!s || (myOrder.sticker && myOrder.sticker.id === s.id)) return;
+          toggleExtraSticker(s);
+        });
+      });
+    }
+
+    const chosenEl = document.getElementById('extraStickerChosen');
+    chosenEl.innerHTML = myOrder.extraStickers.length
+      ? `Extra: ${myOrder.extraStickers.map(x => `<button type="button" class="xs-chip" data-id="${x.id}"><img src="${publicImageUrl(x.image_path)}" alt="">${stickerLabel(x)} <u>✕</u></button>`).join('')}
+         <span class="xs-note">${full ? `Max ${MAX_EXTRA_STICKERS} extra sticker per tumbler — tap ✕ to change it.` : `+RM${EXTRA_STICKER_PRICE} each · tap again to remove`}</span>`
+      : '';
+    chosenEl.querySelectorAll('.xs-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const s = myOrder.extraStickers.find(x => x.id === chip.dataset.id);
+        if (s) toggleExtraSticker(s);
+      });
+    });
+
+    const banner = document.getElementById('extraModeBanner');
+    if (banner && pickingExtra) {
+      banner.innerHTML = `➕ Picking your EXTRA sticker<small>Tap a design to add it${myOrder.sticker ? ` · your free sticker stays ${stickerLabel(myOrder.sticker)}` : ''}</small>`;
+    }
+  }
+
+  function setPickingExtra(on){
+    pickingExtra = on;
+    document.getElementById('extraModeBanner').style.display = on ? '' : 'none';
+    document.getElementById('extraBackPill').style.display = on ? '' : 'none';
+    document.body.classList.toggle('picking-extra', on);
+    renderExtraStickerPanel();
+    if (currentStickerView) currentStickerView();
+  }
+
+  document.getElementById('extraStickerToggle').addEventListener('click', () => {
+    myOrder.extraOn = !myOrder.extraOn;
+    if (!myOrder.extraOn) {
+      myOrder.extraStickers = [];
+      if (pickingExtra) setPickingExtra(false);
+      if (currentStickerView) currentStickerView();
+    }
+    updateOrderSummary();
+  });
+  document.getElementById('extraStickerSearch').addEventListener('input', () => renderExtraStickerPanel());
+  document.getElementById('extraStickerBrowse').addEventListener('click', () => {
+    setPickingExtra(true);
+    document.getElementById('stickerStatus').closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('extraBackPill').addEventListener('click', () => {
+    setPickingExtra(false);
+    document.getElementById('extraStickerWrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
   // ---- Floating "my order" bar: once something is picked, a small bar at the bottom
   // shows how many things are picked + the running total, and jumps to the order
   // section — so nobody has to scroll all the way down to find the Send button.
@@ -986,7 +1173,7 @@
   function updateOrderBar(){
     const bar = document.getElementById('orderBar');
     if (!bar) return;
-    const count = [myOrder.tumbler, myOrder.sticker, myOrder.pattern].filter(Boolean).length + myOrder.addons.length;
+    const count = [myOrder.tumbler, myOrder.sticker, myOrder.pattern].filter(Boolean).length + myOrder.addons.length + myOrder.extraStickers.length;
     const total = orderTotal();
     document.getElementById('orderBarText').textContent =
       `🛒 ${count} picked` + (total !== null ? ` · ${fmtRM(total)}${myOrder.delivery ? '' : '+'}` : '');
@@ -1006,21 +1193,47 @@
   }
 
   // ---- Send to WhatsApp ----
-  // 1) If the tumbler / sticker / delivery (or the name for a Custom Name add-on) is
-  //    missing, the first tap shows a friendly reminder instead of sending — a second
-  //    tap sends anyway. (No confirm() popups: TikTok/IG in-app browsers often block them.)
+  // 1) Required before sending: tumbler, sticker, delivery, name and TikTok handle (plus the
+  //    name for a Custom Name add-on / the extra sticker, if ticked). Pattern is optional.
+  //    Until then the button is greyed out; tapping it lists what's still missing, and the
+  //    list updates live as the customer fills things in. (No confirm() popups: TikTok/IG
+  //    in-app browsers often block them.)
   // 2) When it does send, the order is also logged into the orders table so it shows up
   //    in admin as "pending" — Evvyne reviews it and marks it Paid (which is what deducts
   //    stock). Logging never blocks or delays opening WhatsApp; a failure is console-only.
-  let sendWarned = false;
+  let sendAttempted = false; // becomes true after the first tap on Send, so the missing list stays visible
+  function refreshSendState(){
+    const missing = missingOrderBits();
+    const btn = document.getElementById('whatsappOrderBtn');
+    if (btn) {
+      btn.classList.toggle('incomplete', missing.length > 0); // greyed look only — still tappable, to show what's missing
+    }
+    const warn = document.getElementById('sendWarning');
+    if (warn) {
+      if (sendAttempted && missing.length) {
+        warn.innerHTML = `<b>Almost there 😊</b> Please fill in before sending:<ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>`;
+        warn.style.display = '';
+      } else {
+        warn.style.display = 'none';
+      }
+    }
+    ['orderName', 'orderTiktok'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('field-missing', sendAttempted && !el.value.trim());
+    });
+  }
   function missingOrderBits(){
     const missing = [];
     if (!myOrder.tumbler) missing.push('a tumbler (step ①)');
     if (!myOrder.sticker) missing.push('a sticker (step ②)');
     if (hasCustomNameAddon() && !cleanCustomName()) missing.push('the name for your Custom Name add-on (step ④)');
+    if (myOrder.extraOn && !myOrder.extraStickers.length) missing.push('which extra sticker you want (step ④)');
     if (!myOrder.delivery) missing.push('West or East Malaysia delivery');
+    if (!((document.getElementById('orderName') || {}).value || '').trim()) missing.push('your name');
+    if (!((document.getElementById('orderTiktok') || {}).value || '').trim()) missing.push('your TikTok handle');
     return missing;
   }
+  let lastLoggedOrder = null; // in-memory fallback when localStorage isn't available
   function logOrder(){
     if (!client) return;
     const row = {
@@ -1033,6 +1246,25 @@
       delivery: myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : null,
       status: 'pending',
     };
+
+    // 1) A completely empty order (no tumbler, sticker, name or TikTok) tells Evvyne
+    //    nothing — don't log it. WhatsApp still opens as normal.
+    if (!row.tumbler && !row.sticker_code && !row.customer_name && !row.tiktok_handle) return;
+
+    // 2) Same browser sending the exact same order again (double-tap, or coming back
+    //    from WhatsApp and tapping Send again) isn't a new order — skip it. Anything
+    //    different (another tumbler, a changed sticker…) is logged as a new order, so a
+    //    customer ordering several different tumblers still shows up once per order.
+    //    Remembered for 24 hours, so a repeat customer next week is logged normally.
+    const { status, ...contentOnly } = row;
+    const signature = JSON.stringify(contentOnly);
+    const DUP_WINDOW_MS = 24 * 60 * 60 * 1000;
+    let last = lastLoggedOrder;
+    try { last = JSON.parse(localStorage.getItem('sbe_last_order') || 'null') || last; } catch (e) {}
+    if (last && last.sig === signature && Date.now() - last.t < DUP_WINDOW_MS) return;
+    lastLoggedOrder = { sig: signature, t: Date.now() };
+    try { localStorage.setItem('sbe_last_order', JSON.stringify(lastLoggedOrder)); } catch (e) {}
+
     const insert = (payload) => client.from('orders').insert(payload);
     try {
       insert(row).then(({ error }) => {
@@ -1055,17 +1287,13 @@
   if (whatsappOrderBtn) {
     whatsappOrderBtn.addEventListener('click', (e) => {
       const missing = missingOrderBits();
-      const warn = document.getElementById('sendWarning');
-      if (missing.length && !sendWarned) {
-        e.preventDefault();
-        sendWarned = true;
-        warn.innerHTML = `<b>Just checking 😊</b> You haven't picked:<ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>Tap <b>Send to WhatsApp</b> again to send anyway.`;
-        warn.style.display = '';
-        warn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (missing.length) {
+        e.preventDefault(); // don't open WhatsApp until the order is complete
+        sendAttempted = true;
+        refreshSendState();
+        document.getElementById('sendWarning').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
-      if (warn) warn.style.display = 'none';
-      sendWarned = false;
       logOrder();
     });
   }
@@ -1089,11 +1317,15 @@
     return stickers.map(s => {
       const url = publicImageUrl(s.image_path);
       const soldOut = s.status === 'sold_out';
-      const picked = myOrder.sticker && myOrder.sticker.id === s.id;
+      const isMain = myOrder.sticker && myOrder.sticker.id === s.id;
+      const isExtra = myOrder.extraStickers.some(x => x.id === s.id);
+      const picked = isMain || isExtra;
+      const showTags = pickingExtra || myOrder.extraStickers.length > 0;
+      const forTag = showTags && isExtra ? '<span class="for-tag extra">➕ Extra</span>' : (showTags && isMain ? '<span class="for-tag">Free</span>' : '');
       const badgeClass = s.status === 'available' ? 'status-available' : (s.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
       return `
         <div class="sticker-thumb ${soldOut ? 'sold-out' : ''} ${picked ? 'picked' : ''}" data-id="${s.id}">
-          ${isNew(s) ? '<span class="new-ribbon">🆕 New</span>' : ''}
+          ${forTag || (isNew(s) ? '<span class="new-ribbon">🆕 New</span>' : '')}
           <span class="pick-check">✓</span>
           <button type="button" class="zoom-btn" title="View full size">🔍</button>
           <img src="${url}" alt="${s.code || s.name}" loading="lazy">
@@ -1128,7 +1360,15 @@
       }
 
       el.addEventListener('click', () => {
+        if (pickingExtra) {
+          // Browsing for the EXTRA sticker: taps add/remove the extra, the free one stays as it is.
+          if (myOrder.sticker && myOrder.sticker.id === s.id) return;
+          toggleExtraSticker(s);
+          return;
+        }
         myOrder.sticker = (myOrder.sticker && myOrder.sticker.id === s.id) ? null : s;
+        // The same design can't be both the free sticker and the extra one.
+        if (myOrder.sticker) myOrder.extraStickers = myOrder.extraStickers.filter(x => x.id !== myOrder.sticker.id);
         // Re-render whichever sticker view is currently showing, so the picked border/checkmark updates.
         if (currentStickerView) currentStickerView();
         updateOrderSummary();
@@ -1419,6 +1659,8 @@
       console.warn('Sub-categories load error (showing sub-categories from stickers instead):', subcategoriesRes.error.message || JSON.stringify(subcategoriesRes.error));
     }
     allStickers = stickersRes.data || [];
+    renderExtraStickerPanel(); // in case the extra-sticker picker was opened before stickers finished loading
+    openStickerFromLink();
     allCategories = categoriesRes.data || [];
     allSubcategories = subcategoriesRes.data || [];
     renderCategoryGrid();
@@ -1495,11 +1737,23 @@
   loadCatalogueContent();
   loadAddons();
 
+  // "?s=D001" in the address (the 📷 link in an order message) opens that sticker's big photo.
+  function stickerCodeFromLink(){
+    try { return (new URLSearchParams(location.search).get('s') || '').trim(); } catch (e) { return ''; }
+  }
+  function openStickerFromLink(){
+    const code = stickerCodeFromLink().toLowerCase();
+    if (!code) return;
+    const s = allStickers.find(x => (x.code || x.name || '').toLowerCase() === code);
+    if (s) openLightbox(s, publicImageUrl(s.image_path));
+  }
+
   // Quietly log a page view so Evvyne can see roughly how much traffic the catalogue gets.
+  // Opening a 📷 sticker link from an order message isn't a customer visit, so it's not counted.
   // Purely a nice-to-have: wrapped in try/catch so any failure here (network,
   // misconfigured client, anything) can never take the rest of the page down with it.
   try {
-    if (client) {
+    if (client && !stickerCodeFromLink()) {
       client.from('page_views').insert({}).then(({ error }) => {
         if (error) console.error('page_views log error:', error.message || JSON.stringify(error));
       }).catch(err => console.error('page_views log error:', err && err.message));
