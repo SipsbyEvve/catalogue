@@ -211,6 +211,19 @@
   .custom-name-label input{ width:140px; padding:5px 8px; font-size:0.82rem; }
   /* hide the empty name box in view mode; it shows up when you press Edit */
   .custom-name-label:has(input:disabled:placeholder-shown){ display:none; }
+  .noqty-heading{ font-size:0.92rem; margin:14px 0 8px; color:#b0452f; }
+  .noqty-heading.muted{ color:var(--muted); }
+  .promo-switch{ display:flex; align-items:center; gap:10px; font-weight:700; margin:6px 0 12px; cursor:pointer; }
+  .promo-switch input{ width:22px; height:22px; accent-color:#1ea952; }
+  .promo-switch.on span{ color:#1e7a45; }
+  .promo-fields{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-bottom:10px; }
+  .promo-fields label{ font-size:0.8rem; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+  .promo-note{ font-size:0.82rem; background:#fff5f0; border:1px dashed #f0a58a; border-radius:8px; padding:4px 8px; color:#b0452f; }
+  .promo-sticker-label{ display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--ink); }
+  .promo-sticker-label select{ width:auto; max-width:240px; padding:5px 8px; font-size:0.82rem; }
+  .extra-sticker-label{ display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--ink); }
+  .extra-sticker-label select{ width:auto; max-width:240px; padding:5px 8px; font-size:0.82rem; }
+  .extra-sticker-label[data-empty="1"]:has(select:disabled){ display:none; }
   .o-total{ flex:1 1 100%; font-weight:800; color:var(--brown-dark); font-size:0.9rem; }
   .addon-check-label{ display:inline-flex; align-items:center; gap:4px; font-size:0.82rem; color:var(--ink); }
   .addon-legacy-note{ font-size:0.78rem; color:var(--muted); font-style:italic; }
@@ -222,6 +235,11 @@
     width:100%; font-weight:600; font-size:0.85rem;
   }
   .add-new-btn:hover{ background:#fff7ee; }
+  .clear-empty-btn{
+    width:100%; margin:0 0 12px; background:#fff7e6; border:1px solid #f1d999; color:#7a5a10;
+    font-weight:700; font-size:0.85rem;
+  }
+  .clear-empty-btn:hover{ background:#fdeec9; }
 
   .slot-preview.no-cover-box{
     display:flex; align-items:center; justify-content:center;
@@ -399,6 +417,7 @@
       <div class="section-header-row">
         <h2 style="margin-top:0;font-size:1.1rem;">Existing stickers</h2>
         <button class="secondary" id="restockModeBtn" type="button">📦 Restock: Preorder → In Stock</button>
+        <button class="secondary" id="noQtyBtn" type="button">📋 No quantity set</button>
         <button class="secondary" id="exportCsvBtn" type="button">⬇️ Export CSV</button>
       </div>
       <p class="hint">Browse by category, just like customers do — click a category to see and manage its stickers. Or search across every category at once:</p>
@@ -433,9 +452,23 @@
       <div id="visitStats">Loading…</div>
     </div>
 
+    <div class="card" id="promoCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">🎁 Promotion</h2>
+      <p class="hint">Buy the <b>03 Fat Bottle</b>, add a smaller bottle for a special price. Customers only see it while it's switched ON.</p>
+      <label class="promo-switch"><input type="checkbox" id="promoEnabled"> <span id="promoEnabledLabel">OFF — customers can't see the promo</span></label>
+      <div class="promo-fields">
+        <label>Promo bottle name<input type="text" id="promoBottleName" placeholder="300ml Kids Bottle"></label>
+        <label>Promo price (RM)<input type="number" id="promoPrice" min="0" step="1" placeholder="29"></label>
+        <label>Usual price shown crossed out (RM) <small>(leave blank to hide)</small><input type="number" id="promoUsualPrice" min="0" step="1" placeholder="55"></label>
+      </div>
+      <button id="promoSaveBtn">Save promotion</button>
+      <p class="hint" id="promoStatusMsg" style="margin-top:8px;"></p>
+    </div>
+
     <div class="card">
       <h2 style="margin-top:0;font-size:1.1rem;">📦 Orders</h2>
-      <p class="hint">Log orders you receive on WhatsApp here, so you have one place to see what's pending, paid, or made.</p>
+      <p class="hint">Orders sent from the catalogue show up here automatically. Check them against your WhatsApp chats, then press Mark Paid.</p>
+      <button class="clear-empty-btn" id="clearEmptyOrdersBtn" style="display:none;"></button>
       <div id="ordersList">Loading…</div>
       <button class="add-new-btn" id="addOrderBtn">+ Add order</button>
     </div>
@@ -550,7 +583,55 @@
     });
   }
 
-  restockModeBtn.addEventListener('click', toggleRestockMode);
+  restockModeBtn.addEventListener('click', () => { if (noQtyMode) setNoQtyMode(false); toggleRestockMode(); });
+
+  // ---- "No quantity set" filter: every sticker whose stock count is still blank ----
+  // (so Mark Paid can't deduct it and it won't turn Sold Out by itself). In Stock /
+  // Preorder ones come first since customers can still order those.
+  const noQtyBtn = document.getElementById('noQtyBtn');
+  let noQtyMode = false;
+  const hasNoQty = s => s.stock_qty === null || s.stock_qty === undefined;
+  function updateNoQtyCount(){
+    if (noQtyMode) return;
+    const n = allStickersAdmin.filter(hasNoQty).length;
+    noQtyBtn.textContent = n ? `📋 No quantity set (${n})` : '📋 No quantity set ✓';
+  }
+  function setNoQtyMode(on){
+    noQtyMode = on;
+    if (on) {
+      if (restockMode) { restockMode = false; restockModeBtn.textContent = '📦 Restock: Preorder → In Stock'; }
+      stickerSearchInput.value = '';
+      noQtyBtn.textContent = '← Back to categories';
+      renderNoQtyList();
+    } else {
+      updateNoQtyCount();
+      renderStickerCategoryGrid();
+    }
+  }
+  function renderNoQtyList(){
+    const missing = allStickersAdmin.filter(hasNoQty);
+    const orderable = missing.filter(s => s.status !== 'sold_out');
+    const soldOut = missing.filter(s => s.status === 'sold_out');
+    stickerList.className = '';
+    if (!missing.length) {
+      stickerList.innerHTML = '<p class="hint">Every sticker has a quantity. 🎉</p>';
+      return;
+    }
+    stickerList.innerHTML = `
+      <p class="hint">${missing.length} sticker${missing.length === 1 ? '' : 's'} with no quantity yet. Type a number in the qty box and press Save — it disappears from this list.</p>
+      ${orderable.length ? `
+        <h3 class="noqty-heading">⚠️ Customers can still order these (${orderable.length}) — fill these first</h3>
+        <div class="sticker-list">${orderable.map(stickerRowHtml).join('')}</div>` : ''}
+      ${soldOut.length ? `
+        <h3 class="noqty-heading muted">Sold Out (${soldOut.length}) — fill in when you restock</h3>
+        <div class="sticker-list">${soldOut.map(stickerRowHtml).join('')}</div>` : ''}
+    `;
+    // After a save, redraw so stickers that now have a quantity drop off the list.
+    wireStickerRows(missing, renderNoQtyList, () => { if (noQtyMode) renderNoQtyList(); });
+  }
+  noQtyBtn.addEventListener('click', () => setNoQtyMode(!noQtyMode));
+  // Typing in the search box leaves the filter.
+  stickerSearchInput.addEventListener('input', () => { if (noQtyMode) { noQtyMode = false; updateNoQtyCount(); } });
 
   async function showApp(session){
     loginSection.style.display = 'none';
@@ -564,6 +645,7 @@
     renderSearchMisses();
     renderVisitStats();
     renderOrders();
+    loadPromoAdmin();
   }
   function showLogin(){
     loginSection.style.display = 'block';
@@ -1130,6 +1212,7 @@
       return;
     }
     allStickersAdmin = data || [];
+    updateNoQtyCount();
     if (allStickersAdmin.length === 0) {
       listMsg.textContent = 'No stickers uploaded yet.';
       return;
@@ -1357,7 +1440,7 @@
     wireStickerRows(stickers, () => renderStickerSubcategoryDetail(categoryName, subcategoryName));
   }
 
-  function wireStickerRows(stickers, onDeleteRerender){
+  function wireStickerRows(stickers, onDeleteRerender, onSaved){
     stickerList.querySelectorAll('.sticker-row').forEach(row => {
       const id = row.dataset.id;
       const sticker = stickers.find(s => s.id === id);
@@ -1382,6 +1465,8 @@
         sticker.stock_qty = newStockQty;
         row.querySelector('.status-select').value = newStatus;
         showToast('✅ Saved!');
+        updateNoQtyCount();
+        if (onSaved) onSaved();
       });
 
       row.querySelector('.delete-btn').addEventListener('click', () => {
@@ -2137,16 +2222,45 @@
   // Customer orders can carry "Name on tumbler: X" (typed in for the Custom Name
   // add-on) as its own segment in the add-ons text — shown here as an editable box.
   const CUSTOM_NAME_PREFIX = 'Name on tumbler:';
+  // Extra sticker add-on from the catalogue: saved as "Extra sticker: D002 (+RM7)".
+  const EXTRA_STICKER_PREFIX = 'Extra sticker:';
+  const EXTRA_STICKER_PRICE_ADMIN = 7; // used when you add an extra sticker by hand here
+  function parseExtraSticker(seg){
+    const body = seg.slice(EXTRA_STICKER_PREFIX.length).trim();
+    const m = body.match(/^(.*?)\s*\(\+?RM\s?(\d+(?:\.\d+)?)\)\s*$/i);
+    return m ? { code: m[1].trim(), price: parseFloat(m[2]) } : { code: body, price: EXTRA_STICKER_PRICE_ADMIN };
+  }
+  // Extra-sticker codes on an order (for stock deduction on Mark Paid).
+  function extraStickerCodes(addonsText){
+    return String(addonsText || '').split(',').map(s => s.trim())
+      .filter(p => p.toLowerCase().startsWith(EXTRA_STICKER_PREFIX.toLowerCase()))
+      .map(p => parseExtraSticker(p).code).filter(Boolean);
+  }
+  // Promo bottle from the catalogue: "Promo bottle: 300ml Kids Bottle (+RM29)",
+  // "Promo sticker: G001", "Promo pattern: Lava".
+  const PROMO_STICKER_PREFIX = 'Promo sticker:';
+  const isPromoInfoSeg = p => /^promo (bottle|pattern):/i.test(p);
+  function promoStickerCode(addonsText){
+    const seg = String(addonsText || '').split(',').map(s => s.trim())
+      .find(p => p.toLowerCase().startsWith(PROMO_STICKER_PREFIX.toLowerCase()));
+    return seg ? seg.slice(PROMO_STICKER_PREFIX.length).trim() : '';
+  }
   function splitCustomName(parts){
     const nameSeg = parts.find(p => p.toLowerCase().startsWith(CUSTOM_NAME_PREFIX.toLowerCase()));
+    const extraSegs = parts.filter(p => p.toLowerCase().startsWith(EXTRA_STICKER_PREFIX.toLowerCase()));
+    const promoInfo = parts.filter(isPromoInfoSeg);
+    const promoStickerSeg = parts.find(p => p.toLowerCase().startsWith(PROMO_STICKER_PREFIX.toLowerCase()));
     return {
       customName: nameSeg ? nameSeg.slice(CUSTOM_NAME_PREFIX.length).trim() : '',
-      rest: parts.filter(p => p !== nameSeg),
+      extraStickers: extraSegs.map(parseExtraSticker),
+      promoInfo,
+      promoSticker: promoStickerSeg ? promoStickerSeg.slice(PROMO_STICKER_PREFIX.length).trim() : '',
+      rest: parts.filter(p => p !== nameSeg && !extraSegs.includes(p) && !promoInfo.includes(p) && p !== promoStickerSeg),
     };
   }
 
   function addonsCheckboxesHtml(selectedText){
-    const { customName, rest: parts } = splitCustomName((selectedText || '').split(',').map(s => s.trim()).filter(Boolean));
+    const { customName, extraStickers, promoInfo, promoSticker, rest: parts } = splitCustomName((selectedText || '').split(',').map(s => s.trim()).filter(Boolean));
     const knownLabels = allAddonsAdmin.map(a => `${a.name} (${a.price_label})`);
     const leftover = parts.filter(p => !knownLabels.includes(p));
     const checkboxes = allAddonsAdmin.map(a => {
@@ -2158,7 +2272,16 @@
       ? `<span class="addon-legacy-note" data-leftover="${leftover.join('|||')}">+ ${leftover.join(', ')} (not in current add-on list)</span>`
       : `<span class="addon-legacy-note" data-leftover=""></span>`;
     const nameBox = `<label class="custom-name-label">✏️ Name on tumbler <input type="text" class="o-custom-name" value="${customName.replace(/"/g, '&quot;')}" placeholder="—" disabled></label>`;
-    return (checkboxes || '<span class="hint" style="margin:0;">No add-ons set up yet.</span>') + nameBox + leftoverNote;
+    // One sticker dropdown per extra sticker on the order (plus an empty one, shown in
+    // Edit mode, so you can add an extra sticker by hand).
+    const extras = extraStickers.length ? extraStickers : [{ code: '', price: EXTRA_STICKER_PRICE_ADMIN }];
+    const extraBoxes = extras.map(x => `<label class="extra-sticker-label" data-empty="${x.code ? 0 : 1}">➕ Extra sticker (+RM${x.price}) <select class="o-extra-sticker" data-price="${x.price}" disabled>${stickerOptionsHtml(x.code)}</select></label>`).join('');
+    // Promo bottle (only on orders that have one): its details + a dropdown for its sticker.
+    const promoBox = promoInfo.length
+      ? `<span class="promo-note" data-promo="${promoInfo.join('|||').replace(/"/g, '&quot;')}">🎁 ${promoInfo.map(p => p.replace(/^promo (bottle|pattern):\s*/i, '')).join(' · ')}</span>`
+        + `<label class="promo-sticker-label">🎁 Promo sticker <select class="o-promo-sticker" disabled>${stickerOptionsHtml(promoSticker)}</select></label>`
+      : '';
+    return (checkboxes || '<span class="hint" style="margin:0;">No add-ons set up yet.</span>') + nameBox + extraBoxes + promoBox + leftoverNote;
   }
 
   // Reassembles an order row's add-ons text from its checked boxes, the name-on-tumbler
@@ -2169,7 +2292,15 @@
     const customName = nameInput ? nameInput.value.replace(/[,，]/g, ' ').replace(/\s+/g, ' ').trim() : '';
     const leftoverAttr = row.querySelector('.addon-legacy-note');
     const leftover = (leftoverAttr && leftoverAttr.dataset.leftover) ? leftoverAttr.dataset.leftover.split('|||') : [];
-    const combined = [...checked, ...(customName ? [`${CUSTOM_NAME_PREFIX} ${customName}`] : []), ...leftover];
+    const extras = Array.from(row.querySelectorAll('.o-extra-sticker')).filter(sel => sel.value)
+      .map(sel => `${EXTRA_STICKER_PREFIX} ${sel.value} (+RM${sel.dataset.price || EXTRA_STICKER_PRICE_ADMIN})`);
+    const promoNote = row.querySelector('.promo-note');
+    const promoInfo = promoNote && promoNote.dataset.promo ? promoNote.dataset.promo.split('|||') : [];
+    const promoSel = row.querySelector('.o-promo-sticker');
+    const promoBottle = promoInfo.filter(p => /^promo bottle:/i.test(p));
+    const promoPattern = promoInfo.filter(p => /^promo pattern:/i.test(p));
+    const promoParts = [...promoBottle, ...(promoSel && promoSel.value ? [`${PROMO_STICKER_PREFIX} ${promoSel.value}`] : []), ...promoPattern];
+    const combined = [...checked, ...(customName ? [`${CUSTOM_NAME_PREFIX} ${customName}`] : []), ...extras, ...promoParts, ...leftover];
     return combined.length ? combined.join(', ') : null;
   }
 
@@ -2200,6 +2331,9 @@
     if (leftoverAttr && leftoverAttr.dataset.leftover) leftoverAttr.dataset.leftover.split('|||').forEach(seg => { total += amountIn(seg); });
     const delivery = row.querySelector('.o-delivery');
     if (delivery) total += amountIn(delivery.value);
+    row.querySelectorAll('.o-extra-sticker').forEach(sel => { if (sel.value) total += parseFloat(sel.dataset.price) || EXTRA_STICKER_PRICE_ADMIN; });
+    const promoNote = row.querySelector('.promo-note');
+    if (promoNote && promoNote.dataset.promo) promoNote.dataset.promo.split('|||').forEach(seg => { total += amountIn(seg); });
     return total;
   }
   function refreshOrderRowTotal(row){
@@ -2211,10 +2345,37 @@
     el.textContent = total === null ? 'Total: —' : `Total: RM${Number.isInteger(total) ? total : total.toFixed(2)}${noDelivery ? ' + shipping' : ''}`;
   }
 
+  // An order with nothing useful in it (no customer, no tumbler/sticker/pattern/add-ons)
+  // — usually a stray tap on "Send to WhatsApp" from an older version of the page.
+  // Paid orders are never counted, just in case.
+  function isEmptyOrder(o){
+    const blank = v => !v || !String(v).trim();
+    return o.status !== 'paid' && blank(o.customer_name) && blank(o.tiktok_handle) && blank(o.tumbler)
+      && blank(o.sticker_code) && blank(o.pattern) && blank(o.addons);
+  }
+  let emptyOrderIds = [];
+  function updateClearEmptyButton(){
+    const btn = document.getElementById('clearEmptyOrdersBtn');
+    if (!btn) return;
+    btn.style.display = emptyOrderIds.length ? '' : 'none';
+    btn.textContent = `🧹 Clear ${emptyOrderIds.length} empty order${emptyOrderIds.length === 1 ? '' : 's'}`;
+  }
+  document.getElementById('clearEmptyOrdersBtn').addEventListener('click', async () => {
+    const n = emptyOrderIds.length;
+    if (!n) return;
+    if (!confirm(`Delete ${n} empty order${n === 1 ? '' : 's'} (no customer, tumbler, sticker, pattern or add-ons)?`)) return;
+    const { error } = await client.from('orders').delete().in('id', emptyOrderIds);
+    if (error) { showToast(error.message, true); return; }
+    showToast(`✅ Cleared ${n} empty order${n === 1 ? '' : 's'}`);
+    renderOrders();
+  });
+
   async function renderOrders(){
     const el = document.getElementById('ordersList');
     const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
     if (error) { el.textContent = error.message; return; }
+    emptyOrderIds = (data || []).filter(isEmptyOrder).map(o => o.id);
+    updateClearEmptyButton();
     if (!data || data.length === 0) { el.innerHTML = '<p class="hint">No orders logged yet.</p>'; return; }
     el.innerHTML = data.map(o => {
       const isPaid = o.status === 'paid';
@@ -2241,9 +2402,12 @@
     el.querySelectorAll('[data-id]').forEach(row => {
       const id = row.dataset.id;
       const order = data.find(o => o.id === id);
-      const fieldInputs = row.querySelectorAll('.o-name, .o-tiktok, .o-tumbler, .o-sticker, .o-pattern, .o-delivery, .o-addon-check, .o-custom-name');
+      const fieldInputs = row.querySelectorAll('.o-name, .o-tiktok, .o-tumbler, .o-sticker, .o-pattern, .o-delivery, .o-addon-check, .o-custom-name, .o-extra-sticker, .o-promo-sticker');
       refreshOrderRowTotal(row);
-      row.addEventListener('change', () => refreshOrderRowTotal(row));
+      row.addEventListener('change', () => {
+        row.querySelectorAll('.extra-sticker-label').forEach(l => { l.dataset.empty = l.querySelector('select').value ? '0' : '1'; });
+        refreshOrderRowTotal(row);
+      });
       const editBtn = row.querySelector('.o-edit-btn');
       const saveBtn = row.querySelector('.o-save-btn');
 
@@ -2286,7 +2450,8 @@
         const btn = e.currentTarget;
         const previousStatus = order.status;
         const newStatus = previousStatus === 'paid' ? 'pending' : 'paid';
-        const stickerCode = order.sticker_code;
+        // Every sticker on the order moves stock: the free one plus any extra sticker.
+        const stickerCodes = [order.sticker_code, ...extraStickerCodes(order.addons), promoStickerCode(order.addons)].filter(Boolean);
 
         // Immediate feedback so a click never looks like nothing happened —
         // especially on a slower connection where the two DB round-trips
@@ -2302,12 +2467,15 @@
           // Stock only moves on an actual crossing into/out of "paid" — marking
           // paid deducts one from the sticker on the order; un-marking it adds
           // it back. Never triggered by a WhatsApp click or by editing other fields.
-          let stockWarning = null;
-          if (newStatus === 'paid' && stickerCode) {
-            stockWarning = await adjustStickerStock(stickerCode, -1);
-          } else if (previousStatus === 'paid' && stickerCode) {
-            stockWarning = await adjustStickerStock(stickerCode, +1);
+          const delta = newStatus === 'paid' ? -1 : (previousStatus === 'paid' ? +1 : 0);
+          const warnings = [];
+          if (delta) {
+            for (const code of stickerCodes) {
+              const w = await adjustStickerStock(code, delta);
+              if (w) warnings.push(w);
+            }
           }
+          const stockWarning = warnings.length ? warnings.join(' ') : null;
           order.status = newStatus;
           btn.classList.toggle('is-paid', newStatus === 'paid');
           btn.textContent = newStatus === 'paid' ? '✓ Paid' : 'Mark Paid';
@@ -2334,6 +2502,52 @@
       });
     });
   }
+
+
+  // ==================================================================
+  // Promotion settings — saved in the "settings" table (key "promo"), read by the catalogue.
+  // ==================================================================
+  const PROMO_DEFAULTS = { enabled: false, price: 29, usual_price: 55, bottle_name: '300ml Kids Bottle' };
+  function showPromoEnabledLabel(){
+    const on = document.getElementById('promoEnabled').checked;
+    document.getElementById('promoEnabledLabel').textContent = on ? 'ON — customers can see the promo now' : 'OFF — customers can\'t see the promo';
+    document.querySelector('.promo-switch').classList.toggle('on', on);
+  }
+  function fillPromoForm(v){
+    document.getElementById('promoEnabled').checked = v.enabled === true;
+    document.getElementById('promoBottleName').value = v.bottle_name || '';
+    document.getElementById('promoPrice').value = (v.price ?? '') === '' ? '' : v.price;
+    document.getElementById('promoUsualPrice').value = v.usual_price ? v.usual_price : '';
+    showPromoEnabledLabel();
+  }
+  async function loadPromoAdmin(){
+    const msg = document.getElementById('promoStatusMsg');
+    const { data, error } = await client.from('settings').select('*');
+    if (error) {
+      fillPromoForm(PROMO_DEFAULTS);
+      msg.textContent = '⚠️ Run supabase-setup-settings.sql in Supabase first, then refresh this page.';
+      return;
+    }
+    const row = (data || []).find(r => r.key === 'promo');
+    fillPromoForm({ ...PROMO_DEFAULTS, ...((row && row.value) || {}) });
+    msg.textContent = row && row.updated_at ? `Last saved ${new Date(row.updated_at).toLocaleString()}` : '';
+  }
+  document.getElementById('promoEnabled').addEventListener('change', showPromoEnabledLabel);
+  document.getElementById('promoSaveBtn').addEventListener('click', async () => {
+    const name = document.getElementById('promoBottleName').value.trim() || PROMO_DEFAULTS.bottle_name;
+    const price = Number(document.getElementById('promoPrice').value);
+    const usualRaw = document.getElementById('promoUsualPrice').value.trim();
+    const usual = usualRaw === '' ? 0 : Number(usualRaw);
+    if (document.getElementById('promoPrice').value.trim() === '' || !Number.isFinite(price) || price < 0) {
+      showToast('Please enter a promo price (a number, e.g. 29)', true); return;
+    }
+    if (!Number.isFinite(usual) || usual < 0) { showToast('Usual price must be a number (or leave it blank)', true); return; }
+    const value = { enabled: document.getElementById('promoEnabled').checked, price, usual_price: usual, bottle_name: name };
+    const { error } = await client.from('settings').upsert({ key: 'promo', value, updated_at: new Date().toISOString() });
+    if (error) { showToast(error.message, true); return; }
+    showToast(value.enabled ? '✅ Promotion saved — it\'s ON for customers' : '✅ Promotion saved — it\'s OFF');
+    loadPromoAdmin();
+  });
 
   document.getElementById('addOrderBtn').addEventListener('click', async () => {
     const { error } = await client.from('orders').insert({ status: 'pending' });

@@ -546,6 +546,46 @@
     padding:10px 14px; border-radius:12px; cursor:pointer; white-space:nowrap;
   }
   body.has-bar footer{ padding-bottom:100px; }
+  /* ---- promotion (e.g. buy 03 Fat Bottle, add a 300ml Kids Bottle) ---- */
+  .promo-banner{
+    margin:12px auto 0; max-width:380px; background:linear-gradient(135deg,#e0524f,#f08a5d); color:#fff;
+    border-radius:16px; padding:12px 16px; text-align:left; box-shadow:0 8px 20px rgba(224,82,79,0.28);
+  }
+  .promo-banner b{ display:block; font-size:0.95rem; }
+  .promo-banner span{ font-size:0.8rem; opacity:0.95; }
+  .option-card.has-promo{ margin-bottom:8px; }
+  .option-card.locked{ opacity:0.45; cursor:not-allowed; }
+  .option-card.locked .oprice{ color:#b0452f; }
+  .option-card .promo-tag{
+    position:absolute; left:50%; transform:translateX(-50%); bottom:-11px; white-space:nowrap;
+    background:#e0524f; color:#fff; font-size:0.66rem; font-weight:800; padding:3px 9px; border-radius:999px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  }
+  .promo-wrap{ margin-bottom:16px; }
+  .promo-card{
+    display:block; width:100%; text-align:left; font-family:inherit; color:var(--ink); cursor:pointer;
+    background:#fff5f0; border:2px dashed #f0a58a; border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow);
+  }
+  .promo-card .pc-top{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .promo-card .pc-name{ display:inline-flex; align-items:center; gap:6px; font-weight:800; font-size:0.95rem; }
+  .promo-card .pick-box{ width:20px; height:20px; border:2px solid #f0a58a; border-radius:5px; flex:none; display:inline-flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:800; color:#fff; }
+  .promo-card .pc-price{ text-align:right; white-space:nowrap; }
+  .promo-card .pc-price s{ display:block; color:var(--muted); font-size:0.75rem; font-weight:600; }
+  .promo-card .pc-price b{ color:#e0524f; font-size:1rem; }
+  .promo-card .pc-sub{ display:block; margin-top:4px; font-size:0.78rem; color:#b0452f; font-weight:600; }
+  .promo-card.locked{ opacity:0.75; cursor:default; }
+  .promo-card.picked{ border-style:solid; border-color:var(--wa-dark); background:#e8f9ee; box-shadow:0 0 0 3px rgba(37,211,102,0.30); }
+  .promo-card.picked .pick-box{ background:var(--wa-dark); border-color:var(--wa-dark); }
+  .promo-card.picked .pick-box::after{ content:"✓"; }
+  .promo-card.picked .pc-sub{ color:#1e7a45; }
+  .promo-panel{ margin-top:10px; background:#e8f9ee; border:2px solid var(--wa-dark); border-radius:var(--radius); padding:14px; }
+  .promo-patterns{ display:flex; flex-wrap:wrap; gap:6px; }
+  .promo-chip{ border:1.5px solid var(--line); background:#fff; border-radius:999px; padding:6px 11px; font-family:inherit; font-size:0.78rem; font-weight:700; color:var(--ink); cursor:pointer; }
+  .promo-chip.on{ border-color:var(--wa-dark); background:var(--wa-dark); color:#fff; }
+  .order-summary .group-lbl{ margin:10px 0 2px; font-size:0.72rem; font-weight:800; letter-spacing:0.3px; color:var(--brown-dark); text-transform:uppercase; }
+  .order-summary .group-lbl.promo{ color:#e0524f; }
+  .sticker-thumb .for-tag.promo{ background:#8858c7; }
+
   /* ---- extra sticker (add-on with its own sticker picker) ---- */
   .xs-wrap{ margin-bottom:16px; }
   .xs-toggle.picked{ border-color:var(--wa-dark); background:#e8f9ee; box-shadow:0 0 0 3px rgba(37,211,102,0.30); }
@@ -616,6 +656,7 @@
   <h1>Custom Snowglobe Tumblers ✨</h1>
   <p class="catalog-tag">— Catalog · Katalog · 目录 —</p>
   <p class="ship-pill">🚚 Free shipping West Malaysia · East Malaysia RM13</p>
+  <div class="promo-banner" id="promoBanner" style="display:none;"></div>
 </div>
 
 <main>
@@ -664,6 +705,25 @@
   <section class="step">
     <h2>④ Add-ons 🧊 <span class="h2-sub">Aksesori Tambahan · 配件</span></h2>
     <p class="note">Optional — tap to add</p>
+    <div class="promo-wrap" id="promoWrap" style="display:none;">
+      <button type="button" class="promo-card" id="promoToggle">
+        <span class="pc-top">
+          <span class="pc-name"><span class="pick-box"></span><span id="promoCardName">🎁 Add a 300ml Kids Bottle</span></span>
+          <span class="pc-price"><s id="promoCardUsual">RM55</s><b id="promoCardPrice">+RM29</b></span>
+        </span>
+        <span class="pc-sub" id="promoCardSub"></span>
+      </button>
+      <div class="promo-panel" id="promoPanel" style="display:none;">
+        <div class="xs-q">Sticker for your <span class="promo-name-inline">300ml Kids Bottle</span> — type a code or keyword, or tap one below 👇</div>
+        <div class="xs-search"><span>🔍</span><input type="text" id="promoStickerSearch" placeholder="Code or keyword…" autocomplete="off"></div>
+        <div class="xs-results" id="promoStickerResults"></div>
+        <div class="xs-chosen" id="promoStickerChosen"></div>
+        <button type="button" class="xs-browse" id="promoStickerBrowse">Can't find it? Browse all stickers ↑</button>
+        <div class="xs-q" style="margin-top:14px;">Pattern for your <span class="promo-name-inline">300ml Kids Bottle</span> <span style="font-weight:600;color:var(--muted)">(optional — can decide on your live date)</span></div>
+        <div class="promo-patterns" id="promoPatternChips"></div>
+        <p class="xs-note" id="promoGlitterNote" style="margin:8px 0 0;color:var(--muted);">Full Glitter isn't available for either bottle with this promo.</p>
+      </div>
+    </div>
     <div class="xs-wrap" id="extraStickerWrap">
       <div class="addon-card xs-toggle" id="extraStickerToggle">
         <span><span class="pick-box"></span><span class="name">Extra Sticker 多一张贴纸</span></span>
@@ -707,9 +767,17 @@
 
     <div class="order-summary" id="orderSummary">
       <h3>📝 My order</h3>
+      <div class="group-lbl" id="bottle1Lbl" style="display:none;">Bottle 1</div>
       <div class="pick-row"><span class="lbl">Tumbler</span><span class="val" id="pickTumbler">Not picked yet</span></div>
       <div class="pick-row"><span class="lbl">Sticker</span><span class="val" id="pickSticker">Not picked yet</span></div>
       <div class="pick-row"><span class="lbl">Pattern</span><span class="val" id="pickPattern">Decide on live date</span></div>
+      <div id="promoSummary" style="display:none;">
+        <div class="group-lbl promo">🎁 Bottle 2 · Promo</div>
+        <div class="pick-row"><span class="lbl">Tumbler</span><span class="val" id="pickPromoBottle"></span></div>
+        <div class="pick-row"><span class="lbl">Sticker</span><span class="val" id="pickPromoSticker"></span></div>
+        <div class="pick-row"><span class="lbl">Pattern</span><span class="val" id="pickPromoPattern"></span></div>
+        <div class="group-lbl" style="color:var(--muted)">Extras</div>
+      </div>
       <div class="pick-row"><span class="lbl">Add-ons</span><span class="val" id="pickAddons">None</span></div>
       <div class="pick-row"><span class="lbl">Delivery</span><span class="val" id="pickDelivery">Not picked yet</span></div>
 
@@ -893,8 +961,23 @@
   const EXTRA_STICKER_PRICE = 7;
   const MAX_EXTRA_STICKERS = 1;
 
-  const myOrder = { tumbler: null, sticker: null, pattern: null, addons: [], delivery: null, customName: '', extraOn: false, extraStickers: [] };
-  let pickingExtra = false; // true while the customer is browsing the main gallery to pick their EXTRA sticker
+  const myOrder = { tumbler: null, sticker: null, pattern: null, addons: [], delivery: null, customName: '', extraOn: false, extraStickers: [],
+                    promo: { on: false, sticker: null, pattern: null } };
+
+  // ---- Promotion: buy the 03 Fat Bottle, add a smaller bottle for a special price. ----
+  // Evvyne turns it on/off and sets the price + bottle name in admin (stored in the
+  // Supabase "settings" table). Off by default, and stays off if that table isn't set up.
+  const PROMO_TUMBLER_ID = 't3'; // 03 · 600ml Fat Bottle
+  const PROMO_EXCLUDED_PATTERNS = ['p4']; // Full Glitter isn't available for the promo bottle (per Evvyne)
+  const promoPatternOptions = () => PATTERN_OPTIONS.filter(p => !PROMO_EXCLUDED_PATTERNS.includes(p.id));
+  const promoSettings = { enabled: false, price: 29, usual_price: 55, bottle_name: '300ml Kids Bottle' };
+  function promoAvailable(){
+    return promoSettings.enabled && !!myOrder.tumbler && myOrder.tumbler.id === PROMO_TUMBLER_ID;
+  }
+  function promoPatternText(p){ return p ? `${p.label}${p.extra ? ' (+RM' + p.extra + ')' : ''}` : ''; }
+  // While the customer is browsing the main gallery to pick a sticker for something other
+  // than their free sticker: 'extra' (extra-sticker add-on) or 'promo' (the promo bottle).
+  let pickMode = null;
 
   // "+RM7" / "RM 5" / "+RM7.50" -> number; anything without a number counts as 0.
   function priceFromLabel(label){
@@ -918,6 +1001,7 @@
     if (myOrder.pattern) total += myOrder.pattern.extra || 0;
     myOrder.addons.forEach(a => { total += priceFromLabel(a.price_label); });
     total += myOrder.extraStickers.length * EXTRA_STICKER_PRICE;
+    if (myOrder.promo.on) total += promoSettings.price + (myOrder.promo.pattern ? myOrder.promo.pattern.extra || 0 : 0);
     if (myOrder.delivery) total += DELIVERY_OPTIONS[myOrder.delivery].fee;
     return total;
   }
@@ -937,6 +1021,13 @@
     if (hasCustomNameAddon() && cleanCustomName()) parts.push(`Name on tumbler: ${cleanCustomName()}`);
     // Saved as its own segment so admin can show it as a sticker and deduct its stock on Mark Paid.
     myOrder.extraStickers.forEach(x => parts.push(`Extra sticker: ${stickerLabel(x)} (+RM${EXTRA_STICKER_PRICE})`));
+    // Promo bottle: saved as its own segments so admin can show it, add it to the total,
+    // and deduct the promo sticker's stock on Mark Paid.
+    if (myOrder.promo.on) {
+      parts.push(`Promo bottle: ${promoSettings.bottle_name.replace(/[,，]/g, ' ')} (+RM${promoSettings.price})`);
+      if (myOrder.promo.sticker) parts.push(`Promo sticker: ${stickerLabel(myOrder.promo.sticker)}`);
+      if (myOrder.promo.pattern) parts.push(`Promo pattern: ${promoPatternText(myOrder.promo.pattern)}`);
+    }
     return parts.length ? parts.join(', ') : null;
   }
   let currentStickerView = null; // whichever sticker view is on screen — re-run after a pick to refresh the checkmark
@@ -944,12 +1035,16 @@
   function renderTumblerOptions(){
     const el = document.getElementById('tumblerOptions');
     if (!el) return;
-    el.innerHTML = TUMBLER_OPTIONS.map(o => `
-      <div class="option-card ${myOrder.tumbler && myOrder.tumbler.id === o.id ? 'picked' : ''}" data-id="${o.id}">
+    el.innerHTML = TUMBLER_OPTIONS.map(o => {
+      const promo = promoSettings.enabled && o.id === PROMO_TUMBLER_ID;
+      return `
+      <div class="option-card ${myOrder.tumbler && myOrder.tumbler.id === o.id ? 'picked' : ''} ${promo ? 'has-promo' : ''}" data-id="${o.id}">
         <span class="oname">${o.label}</span>
         <span class="oprice">${o.detail ? o.detail + ' · ' : ''}RM${o.price}</span>
+        ${promo ? `<span class="promo-tag">🎁 Promo: +RM${promoSettings.price} bottle</span>` : ''}
       </div>
-    `).join('');
+    `;
+    }).join('');
     el.querySelectorAll('.option-card').forEach(card => {
       card.addEventListener('click', () => {
         const o = TUMBLER_OPTIONS.find(x => x.id === card.dataset.id);
@@ -963,14 +1058,18 @@
   function renderPatternOptions(){
     const el = document.getElementById('patternOptions');
     if (!el) return;
+    // With the promo bottle added, the patterns excluded from the promo (Full Glitter)
+    // are locked for the 03 as well.
+    const lockedByPromo = id => myOrder.promo.on && PROMO_EXCLUDED_PATTERNS.includes(id);
     el.innerHTML = PATTERN_OPTIONS.map(o => `
-      <div class="option-card ${myOrder.pattern && myOrder.pattern.id === o.id ? 'picked' : ''}" data-id="${o.id}">
+      <div class="option-card ${myOrder.pattern && myOrder.pattern.id === o.id ? 'picked' : ''} ${lockedByPromo(o.id) ? 'locked' : ''}" data-id="${o.id}">
         <span class="oname">${o.label}</span>
-        <span class="oprice">${o.extra ? '+RM' + o.extra : 'included'}</span>
+        <span class="oprice">${lockedByPromo(o.id) ? 'Not available with the promo' : (o.extra ? '+RM' + o.extra : 'included')}</span>
       </div>
     `).join('');
     el.querySelectorAll('.option-card').forEach(card => {
       card.addEventListener('click', () => {
+        if (lockedByPromo(card.dataset.id)) return;
         const o = PATTERN_OPTIONS.find(x => x.id === card.dataset.id);
         myOrder.pattern = (myOrder.pattern && myOrder.pattern.id === o.id) ? null : o;
         renderPatternOptions();
@@ -990,6 +1089,14 @@
     });
     if (myOrder.extraOn && !myOrder.extraStickers.length) lines.push('Extra sticker: (please tell me which one)');
     lines.push(`Pattern: ${myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : '(can decide on your live date)'}`);
+    if (myOrder.promo.on) {
+      lines.push('');
+      lines.push(`🎁 Promo bottle: ${promoSettings.bottle_name} (+RM${promoSettings.price})`);
+      lines.push(`Promo sticker: ${myOrder.promo.sticker ? stickerLabel(myOrder.promo.sticker) : '(please tell me which one)'}`);
+      if (myOrder.promo.sticker) lines.push(`📷 ${stickerPhotoLink(myOrder.promo.sticker)}`);
+      lines.push(`Promo pattern: ${myOrder.promo.pattern ? promoPatternText(myOrder.promo.pattern) : '(can decide on your live date)'}`);
+      lines.push('');
+    }
     if (myOrder.addons.length) {
       lines.push(`Add-ons: ${myOrder.addons.map(a => `${a.name} (${a.price_label})`).join(', ')}`);
       if (hasCustomNameAddon()) lines.push(`Name on tumbler: ${cleanCustomName() || '(please tell me)'}`);
@@ -1019,6 +1126,31 @@
     renderExtraStickerPanel();
     // Pattern is optional (can be decided on the live date), so an empty pick isn't shown as an error.
     set('pickPattern', myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : 'Decide on live date', myOrder.pattern ? '' : 'soft');
+    // Promo bottle drops off automatically if the promo is switched off or the 03 is un-picked.
+    if (myOrder.promo.on && !promoAvailable()) { myOrder.promo.on = false; if (pickMode === 'promo') setPickMode(null); }
+    let promoClearedPattern = false;
+    if (myOrder.promo.on && myOrder.pattern && PROMO_EXCLUDED_PATTERNS.includes(myOrder.pattern.id)) {
+      myOrder.pattern = null; // Full Glitter isn't allowed on either bottle with the promo
+      promoClearedPattern = true;
+    }
+    const lockKey = myOrder.promo.on ? 'promo' : 'none';
+    if (promoClearedPattern || renderPatternOptions.lastLock !== lockKey) {
+      renderPatternOptions.lastLock = lockKey;
+      renderPatternOptions();
+    }
+    if (promoClearedPattern) {
+      set('pickPattern', 'Decide on live date', 'soft');
+      const note = document.getElementById('promoGlitterNote');
+      if (note) { note.textContent = 'Full Glitter was removed from your 03 — it isn\'t available with this promo.'; note.style.color = '#b0452f'; }
+    }
+    document.getElementById('promoSummary').style.display = myOrder.promo.on ? '' : 'none';
+    document.getElementById('bottle1Lbl').style.display = myOrder.promo.on ? '' : 'none';
+    if (myOrder.promo.on) {
+      set('pickPromoBottle', `${promoSettings.bottle_name} (+RM${promoSettings.price})`, '');
+      set('pickPromoSticker', myOrder.promo.sticker ? stickerLabel(myOrder.promo.sticker) : 'Not picked yet', myOrder.promo.sticker ? '' : 'missing');
+      set('pickPromoPattern', myOrder.promo.pattern ? promoPatternText(myOrder.promo.pattern) : 'Decide on live date', myOrder.promo.pattern ? '' : 'soft');
+    }
+    renderPromo();
     const addonNames = myOrder.addons.map(a => isCustomNameAddon(a) && cleanCustomName() ? `${a.name} "${cleanCustomName()}"` : a.name);
     set('pickAddons', addonNames.length ? addonNames.join(', ') : 'None', addonNames.length ? '' : 'soft');
     set('pickDelivery', myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : 'Not picked yet', myOrder.delivery ? '' : 'missing');
@@ -1131,18 +1263,26 @@
       });
     });
 
-    const banner = document.getElementById('extraModeBanner');
-    if (banner && pickingExtra) {
-      banner.innerHTML = `➕ Picking your EXTRA sticker<small>Tap a design to add it${myOrder.sticker ? ` · your free sticker stays ${stickerLabel(myOrder.sticker)}` : ''}</small>`;
-    }
+    renderPickModeBanner();
   }
 
-  function setPickingExtra(on){
-    pickingExtra = on;
-    document.getElementById('extraModeBanner').style.display = on ? '' : 'none';
-    document.getElementById('extraBackPill').style.display = on ? '' : 'none';
-    document.body.classList.toggle('picking-extra', on);
-    renderExtraStickerPanel();
+  function renderPickModeBanner(){
+    const banner = document.getElementById('extraModeBanner');
+    if (!banner || !pickMode) return;
+    const keepFree = myOrder.sticker ? ` · your free sticker stays ${stickerLabel(myOrder.sticker)}` : '';
+    banner.innerHTML = pickMode === 'promo'
+      ? `🎁 Picking the sticker for your ${promoSettings.bottle_name}<small>Tap a design to choose it${keepFree}</small>`
+      : `➕ Picking your EXTRA sticker<small>Tap a design to add it${keepFree}</small>`;
+  }
+
+  function setPickMode(mode){
+    pickMode = mode;
+    document.getElementById('extraModeBanner').style.display = mode ? '' : 'none';
+    const pill = document.getElementById('extraBackPill');
+    pill.style.display = mode ? '' : 'none';
+    pill.textContent = mode === 'promo' ? '✓ Done — back to my promo bottle ↓' : '✓ Done — back to add-ons ↓';
+    document.body.classList.toggle('picking-extra', !!mode);
+    renderPickModeBanner();
     if (currentStickerView) currentStickerView();
   }
 
@@ -1150,20 +1290,149 @@
     myOrder.extraOn = !myOrder.extraOn;
     if (!myOrder.extraOn) {
       myOrder.extraStickers = [];
-      if (pickingExtra) setPickingExtra(false);
+      if (pickMode === 'extra') setPickMode(null);
       if (currentStickerView) currentStickerView();
     }
     updateOrderSummary();
   });
   document.getElementById('extraStickerSearch').addEventListener('input', () => renderExtraStickerPanel());
   document.getElementById('extraStickerBrowse').addEventListener('click', () => {
-    setPickingExtra(true);
+    setPickMode('extra');
     document.getElementById('stickerStatus').closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.getElementById('extraBackPill').addEventListener('click', () => {
-    setPickingExtra(false);
-    document.getElementById('extraStickerWrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const wasPromo = pickMode === 'promo';
+    setPickMode(null);
+    document.getElementById(wasPromo ? 'promoWrap' : 'extraStickerWrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
+
+  // ---- Promotion card (step ④) ----
+  function setPromoSticker(s){
+    myOrder.promo.sticker = (myOrder.promo.sticker && myOrder.promo.sticker.id === s.id) ? null : s;
+    if (currentStickerView) currentStickerView();
+    updateOrderSummary();
+  }
+
+  function renderPromoBanner(){
+    const b = document.getElementById('promoBanner');
+    if (!b) return;
+    if (!promoSettings.enabled) { b.style.display = 'none'; return; }
+    b.innerHTML = `<b>🎁 PROMO: Buy the 03 Fat Bottle, add RM${promoSettings.price} for a ${promoSettings.bottle_name}!</b>`
+      + `<span>${promoSettings.usual_price ? `Usual price RM${promoSettings.usual_price} · ` : ''}Pick a sticker &amp; pattern for both bottles (Full Glitter not included)</span>`;
+    b.style.display = '';
+  }
+
+  function renderPromo(){
+    const wrap = document.getElementById('promoWrap');
+    if (!wrap) return;
+    wrap.style.display = promoSettings.enabled ? '' : 'none';
+    if (!promoSettings.enabled) return;
+
+    const card = document.getElementById('promoToggle');
+    const available = promoAvailable();
+    card.classList.toggle('locked', !available);
+    card.classList.toggle('picked', myOrder.promo.on);
+    document.getElementById('promoCardName').textContent = `🎁 Add a ${promoSettings.bottle_name}`;
+    document.getElementById('promoCardUsual').textContent = promoSettings.usual_price ? `RM${promoSettings.usual_price}` : '';
+    document.getElementById('promoCardPrice').textContent = `+RM${promoSettings.price}`;
+    document.getElementById('promoCardSub').textContent = !available
+      ? 'Pick the 03 Fat Bottle in step ① to unlock this promo'
+      : (myOrder.promo.on ? 'Promo with 03 Fat Bottle ✓ added — tap to remove' : 'Promo with your 03 Fat Bottle — tap to add');
+    document.querySelectorAll('.promo-name-inline').forEach(el => { el.textContent = promoSettings.bottle_name; });
+
+    const panel = document.getElementById('promoPanel');
+    panel.style.display = myOrder.promo.on ? '' : 'none';
+    if (!myOrder.promo.on) {
+      const note = document.getElementById('promoGlitterNote');
+      if (note) { note.textContent = 'Full Glitter isn\'t available for either bottle with this promo.'; note.style.color = ''; }
+      return;
+    }
+
+    // Sticker picker for the promo bottle (same search as the extra-sticker picker).
+    const query = document.getElementById('promoStickerSearch').value;
+    const list = extraStickerCandidates(query);
+    const resultsEl = document.getElementById('promoStickerResults');
+    if (!allStickers.length) {
+      resultsEl.innerHTML = '<p class="xs-empty">Loading stickers…</p>';
+    } else if (!list.length) {
+      resultsEl.innerHTML = `<p class="xs-empty">No stickers match "${query.replace(/</g, '&lt;')}" — try another word, or browse all stickers below.</p>`;
+    } else {
+      resultsEl.innerHTML = list.map(st => {
+        const on = myOrder.promo.sticker && myOrder.promo.sticker.id === st.id;
+        return `<button type="button" class="xs-t ${on ? 'on' : ''}" data-id="${st.id}"><img src="${publicImageUrl(st.image_path)}" alt="${stickerLabel(st)}" loading="lazy"><b>${stickerLabel(st)}</b></button>`;
+      }).join('');
+      resultsEl.querySelectorAll('.xs-t').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const st = allStickers.find(x => x.id === btn.dataset.id);
+          if (st) setPromoSticker(st);
+        });
+      });
+    }
+    const chosen = document.getElementById('promoStickerChosen');
+    const ps = myOrder.promo.sticker;
+    chosen.innerHTML = ps
+      ? `Chosen: <button type="button" class="xs-chip" id="promoChip"><img src="${publicImageUrl(ps.image_path)}" alt="">${stickerLabel(ps)} <u>✕</u></button>`
+      : '';
+    const chip = document.getElementById('promoChip');
+    if (chip) chip.addEventListener('click', () => setPromoSticker(ps));
+
+    // Pattern chips for the promo bottle (optional).
+    const chipsEl = document.getElementById('promoPatternChips');
+    // Safety net: drop a pattern that's not allowed for the promo bottle.
+    if (myOrder.promo.pattern && PROMO_EXCLUDED_PATTERNS.includes(myOrder.promo.pattern.id)) myOrder.promo.pattern = null;
+    chipsEl.innerHTML = promoPatternOptions().map(p => {
+      const on = myOrder.promo.pattern && myOrder.promo.pattern.id === p.id;
+      return `<button type="button" class="promo-chip ${on ? 'on' : ''}" data-id="${p.id}">${p.label}${p.extra ? ' +RM' + p.extra : ''}${on ? ' ✓' : ''}</button>`;
+    }).join('');
+    chipsEl.querySelectorAll('.promo-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = promoPatternOptions().find(x => x.id === btn.dataset.id);
+        if (!p) return;
+        myOrder.promo.pattern = (myOrder.promo.pattern && myOrder.promo.pattern.id === p.id) ? null : p;
+        updateOrderSummary();
+      });
+    });
+  }
+
+  document.getElementById('promoToggle').addEventListener('click', () => {
+    if (!promoAvailable()) {
+      document.getElementById('tumblerOptions').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    myOrder.promo.on = !myOrder.promo.on;
+    if (!myOrder.promo.on && pickMode === 'promo') setPickMode(null);
+    if (currentStickerView) currentStickerView();
+    updateOrderSummary();
+  });
+  document.getElementById('promoStickerSearch').addEventListener('input', () => renderPromo());
+  document.getElementById('promoStickerBrowse').addEventListener('click', () => {
+    setPickMode('promo');
+    document.getElementById('stickerStatus').closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // Loads the promo on/off + price + bottle name from the "settings" table.
+  // Any problem (table not created yet, offline…) simply leaves the promo off.
+  async function loadPromoSettings(){
+    if (!client) return;
+    try {
+      const { data, error } = await client.from('settings').select('*');
+      if (error || !data) return;
+      const row = data.find(r => r.key === 'promo');
+      const v = row && row.value;
+      if (!v) return;
+      promoSettings.enabled = v.enabled === true;
+      const price = Number(v.price);
+      if (Number.isFinite(price) && price >= 0) promoSettings.price = price;
+      const usual = Number(v.usual_price);
+      promoSettings.usual_price = Number.isFinite(usual) && usual > 0 ? usual : 0;
+      if (typeof v.bottle_name === 'string' && v.bottle_name.trim()) promoSettings.bottle_name = v.bottle_name.trim();
+      renderPromoBanner();
+      renderTumblerOptions();
+      updateOrderSummary();
+    } catch (err) {
+      console.error('promo settings error:', err && err.message);
+    }
+  }
 
   // ---- Floating "my order" bar: once something is picked, a small bar at the bottom
   // shows how many things are picked + the running total, and jumps to the order
@@ -1173,7 +1442,7 @@
   function updateOrderBar(){
     const bar = document.getElementById('orderBar');
     if (!bar) return;
-    const count = [myOrder.tumbler, myOrder.sticker, myOrder.pattern].filter(Boolean).length + myOrder.addons.length + myOrder.extraStickers.length;
+    const count = [myOrder.tumbler, myOrder.sticker, myOrder.pattern].filter(Boolean).length + myOrder.addons.length + myOrder.extraStickers.length + (myOrder.promo.on ? 1 : 0);
     const total = orderTotal();
     document.getElementById('orderBarText').textContent =
       `🛒 ${count} picked` + (total !== null ? ` · ${fmtRM(total)}${myOrder.delivery ? '' : '+'}` : '');
@@ -1228,6 +1497,7 @@
     if (!myOrder.sticker) missing.push('a sticker (step ②)');
     if (hasCustomNameAddon() && !cleanCustomName()) missing.push('the name for your Custom Name add-on (step ④)');
     if (myOrder.extraOn && !myOrder.extraStickers.length) missing.push('which extra sticker you want (step ④)');
+    if (myOrder.promo.on && !myOrder.promo.sticker) missing.push(`a sticker for your ${promoSettings.bottle_name} (step ④)`);
     if (!myOrder.delivery) missing.push('West or East Malaysia delivery');
     if (!((document.getElementById('orderName') || {}).value || '').trim()) missing.push('your name');
     if (!((document.getElementById('orderTiktok') || {}).value || '').trim()) missing.push('your TikTok handle');
@@ -1319,9 +1589,11 @@
       const soldOut = s.status === 'sold_out';
       const isMain = myOrder.sticker && myOrder.sticker.id === s.id;
       const isExtra = myOrder.extraStickers.some(x => x.id === s.id);
-      const picked = isMain || isExtra;
-      const showTags = pickingExtra || myOrder.extraStickers.length > 0;
-      const forTag = showTags && isExtra ? '<span class="for-tag extra">➕ Extra</span>' : (showTags && isMain ? '<span class="for-tag">Free</span>' : '');
+      const isPromo = myOrder.promo.on && myOrder.promo.sticker && myOrder.promo.sticker.id === s.id;
+      const picked = isMain || isExtra || isPromo;
+      const showTags = !!pickMode || myOrder.extraStickers.length > 0 || !!(myOrder.promo.on && myOrder.promo.sticker);
+      const forTag = !showTags ? '' : (isPromo && (pickMode === 'promo' || !isMain) ? '<span class="for-tag promo">🎁 Promo</span>'
+        : (isExtra ? '<span class="for-tag extra">➕ Extra</span>' : (isMain ? '<span class="for-tag">Free</span>' : '')));
       const badgeClass = s.status === 'available' ? 'status-available' : (s.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
       return `
         <div class="sticker-thumb ${soldOut ? 'sold-out' : ''} ${picked ? 'picked' : ''}" data-id="${s.id}">
@@ -1360,10 +1632,15 @@
       }
 
       el.addEventListener('click', () => {
-        if (pickingExtra) {
+        if (pickMode === 'extra') {
           // Browsing for the EXTRA sticker: taps add/remove the extra, the free one stays as it is.
           if (myOrder.sticker && myOrder.sticker.id === s.id) return;
           toggleExtraSticker(s);
+          return;
+        }
+        if (pickMode === 'promo') {
+          // Browsing for the promo bottle's sticker (the same design as the free one is allowed).
+          setPromoSticker(s);
           return;
         }
         myOrder.sticker = (myOrder.sticker && myOrder.sticker.id === s.id) ? null : s;
@@ -1660,6 +1937,7 @@
     }
     allStickers = stickersRes.data || [];
     renderExtraStickerPanel(); // in case the extra-sticker picker was opened before stickers finished loading
+    renderPromo();
     openStickerFromLink();
     allCategories = categoriesRes.data || [];
     allSubcategories = subcategoriesRes.data || [];
@@ -1736,6 +2014,7 @@
   loadStickers();
   loadCatalogueContent();
   loadAddons();
+  loadPromoSettings();
 
   // "?s=D001" in the address (the 📷 link in an order message) opens that sticker's big photo.
   function stickerCodeFromLink(){
