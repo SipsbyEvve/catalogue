@@ -555,6 +555,10 @@
   .promo-banner span{ font-size:0.8rem; opacity:0.95; }
   .option-card.has-promo{ margin-bottom:8px; }
   .option-card.locked{ opacity:0.45; cursor:not-allowed; }
+  .option-card.sold-out{ opacity:0.5; cursor:not-allowed; background:#f3eee7; }
+  .option-card .t-status{ display:inline-block; font-size:0.62rem; font-weight:800; text-transform:uppercase; letter-spacing:0.3px; padding:2px 8px; border-radius:999px; margin-bottom:4px; }
+  .option-card .t-status.sold{ background:#efe6d8; color:#8a7863; }
+  .option-card .t-status.pre{ background:#fbe2e2; color:#b23b3b; }
   .option-card.locked .oprice{ color:#b0452f; }
   .option-card .promo-tag{
     position:absolute; left:50%; transform:translateX(-50%); bottom:-11px; white-space:nowrap;
@@ -938,12 +942,21 @@
   // out themselves. The reference photos stay exactly as they were — these are
   // just extra tappable options added below each one.
   // ==================================================================
-  const TUMBLER_OPTIONS = [
-    { id: 't1', label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55 },
-    { id: 't2', label: '02 · 700ml Acrylic', detail: '', price: 70 },
-    { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75 },
-    { id: 't4', label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85 },
+  // Tumbler styles — Evvyne manages these in admin (🥤 Tumblers: add styles, prices,
+  // In Stock / Preorder / Sold Out). This list is only the fallback used until the admin
+  // list loads (or if the "settings" table isn't set up).
+  let TUMBLER_OPTIONS = [
+    { id: 't1', label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55, status: 'available' },
+    { id: 't2', label: '02 · 700ml Acrylic', detail: '', price: 70, status: 'available' },
+    { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75, status: 'available' },
+    { id: 't4', label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85, status: 'available' },
   ];
+  // How a tumbler is written in the order message / saved order, e.g.
+  // "04 · 600ml Stainless Steel (RM85)" — plus " · Preorder" when it's a preorder style.
+  function tumblerText(t){
+    if (!t) return '';
+    return `${t.label} (RM${t.price})${t.status === 'preorder' ? ' · Preorder' : ''}`;
+  }
   const PATTERN_OPTIONS = [
     { id: 'p1', label: 'Normal Cateye', extra: 0 },
     { id: 'p2', label: 'Swirl Flow Cateye', extra: 0 },
@@ -967,12 +980,14 @@
   // ---- Promotion: buy the 03 Fat Bottle, add a smaller bottle for a special price. ----
   // Evvyne turns it on/off and sets the price + bottle name in admin (stored in the
   // Supabase "settings" table). Off by default, and stays off if that table isn't set up.
-  const PROMO_TUMBLER_ID = 't3'; // 03 · 600ml Fat Bottle
+  // Which tumbler unlocks the promo is chosen in admin (default: 03).
   const PROMO_EXCLUDED_PATTERNS = ['p4']; // Full Glitter isn't available for the promo bottle (per Evvyne)
   const promoPatternOptions = () => PATTERN_OPTIONS.filter(p => !PROMO_EXCLUDED_PATTERNS.includes(p.id));
-  const promoSettings = { enabled: false, price: 29, usual_price: 55, bottle_name: '300ml Kids Bottle' };
+  const promoSettings = { enabled: false, price: 29, usual_price: 55, bottle_name: '300ml Kids Bottle', tumbler_id: 't3' };
+  function promoTumbler(){ return TUMBLER_OPTIONS.find(t => t.id === promoSettings.tumbler_id) || null; }
+  function promoTumblerName(){ const t = promoTumbler(); return t ? t.label : 'the promo tumbler'; }
   function promoAvailable(){
-    return promoSettings.enabled && !!myOrder.tumbler && myOrder.tumbler.id === PROMO_TUMBLER_ID;
+    return promoSettings.enabled && !!promoTumbler() && !!myOrder.tumbler && myOrder.tumbler.id === promoSettings.tumbler_id;
   }
   function promoPatternText(p){ return p ? `${p.label}${p.extra ? ' (+RM' + p.extra + ')' : ''}` : ''; }
   // While the customer is browsing the main gallery to pick a sticker for something other
@@ -1036,9 +1051,11 @@
     const el = document.getElementById('tumblerOptions');
     if (!el) return;
     el.innerHTML = TUMBLER_OPTIONS.map(o => {
-      const promo = promoSettings.enabled && o.id === PROMO_TUMBLER_ID;
+      const soldOut = o.status === 'sold_out';
+      const promo = promoSettings.enabled && o.id === promoSettings.tumbler_id && !soldOut;
       return `
-      <div class="option-card ${myOrder.tumbler && myOrder.tumbler.id === o.id ? 'picked' : ''} ${promo ? 'has-promo' : ''}" data-id="${o.id}">
+      <div class="option-card ${myOrder.tumbler && myOrder.tumbler.id === o.id ? 'picked' : ''} ${promo ? 'has-promo' : ''} ${soldOut ? 'sold-out' : ''}" data-id="${o.id}">
+        ${soldOut ? '<span class="t-status sold">Sold Out</span>' : (o.status === 'preorder' ? '<span class="t-status pre">Preorder</span>' : '')}
         <span class="oname">${o.label}</span>
         <span class="oprice">${o.detail ? o.detail + ' · ' : ''}RM${o.price}</span>
         ${promo ? `<span class="promo-tag">🎁 Promo: +RM${promoSettings.price} bottle</span>` : ''}
@@ -1048,6 +1065,7 @@
     el.querySelectorAll('.option-card').forEach(card => {
       card.addEventListener('click', () => {
         const o = TUMBLER_OPTIONS.find(x => x.id === card.dataset.id);
+        if (!o || o.status === 'sold_out') return; // sold-out styles can't be picked
         myOrder.tumbler = (myOrder.tumbler && myOrder.tumbler.id === o.id) ? null : o;
         renderTumblerOptions();
         updateOrderSummary();
@@ -1080,7 +1098,7 @@
 
   function buildWhatsAppMessage(){
     const lines = ["Hi! I'd like to order 🐳", ''];
-    lines.push(`Tumbler: ${myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : '(please tell me which one — see photo above)'}`);
+    lines.push(`Tumbler: ${myOrder.tumbler ? tumblerText(myOrder.tumbler) : '(please tell me which one — see photo above)'}`);
     lines.push(`Sticker: ${myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : '(please tell me the code)'}`);
     if (myOrder.sticker) lines.push(`📷 ${stickerPhotoLink(myOrder.sticker)}`);
     myOrder.extraStickers.forEach(x => {
@@ -1119,7 +1137,7 @@
       el.textContent = text;
       el.className = 'val' + (cls ? ' ' + cls : '');
     };
-    set('pickTumbler', myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : 'Not picked yet', myOrder.tumbler ? '' : 'missing');
+    set('pickTumbler', myOrder.tumbler ? tumblerText(myOrder.tumbler) : 'Not picked yet', myOrder.tumbler ? '' : 'missing');
     const extraTxt = myOrder.extraStickers.map(x => `${stickerLabel(x)} (+RM${EXTRA_STICKER_PRICE})`).join(', ');
     if (myOrder.sticker) set('pickSticker', extraTxt ? `${stickerLabel(myOrder.sticker)} (free), ${extraTxt}` : stickerLabel(myOrder.sticker), '');
     else set('pickSticker', extraTxt ? `Not picked yet · extra: ${extraTxt}` : 'Not picked yet', 'missing');
@@ -1141,7 +1159,7 @@
     if (promoClearedPattern) {
       set('pickPattern', 'Decide on live date', 'soft');
       const note = document.getElementById('promoGlitterNote');
-      if (note) { note.textContent = 'Full Glitter was removed from your 03 — it isn\'t available with this promo.'; note.style.color = '#b0452f'; }
+      if (note) { note.textContent = `Full Glitter was removed from your ${promoTumblerName()} — it isn't available with this promo.`; note.style.color = '#b0452f'; }
     }
     document.getElementById('promoSummary').style.display = myOrder.promo.on ? '' : 'none';
     document.getElementById('bottle1Lbl').style.display = myOrder.promo.on ? '' : 'none';
@@ -1317,7 +1335,7 @@
     const b = document.getElementById('promoBanner');
     if (!b) return;
     if (!promoSettings.enabled) { b.style.display = 'none'; return; }
-    b.innerHTML = `<b>🎁 PROMO: Buy the 03 Fat Bottle, add RM${promoSettings.price} for a ${promoSettings.bottle_name}!</b>`
+    b.innerHTML = `<b>🎁 PROMO: Buy the ${promoTumblerName()}, add RM${promoSettings.price} for a ${promoSettings.bottle_name}!</b>`
       + `<span>${promoSettings.usual_price ? `Usual price RM${promoSettings.usual_price} · ` : ''}Pick a sticker &amp; pattern for both bottles (Full Glitter not included)</span>`;
     b.style.display = '';
   }
@@ -1336,8 +1354,8 @@
     document.getElementById('promoCardUsual').textContent = promoSettings.usual_price ? `RM${promoSettings.usual_price}` : '';
     document.getElementById('promoCardPrice').textContent = `+RM${promoSettings.price}`;
     document.getElementById('promoCardSub').textContent = !available
-      ? 'Pick the 03 Fat Bottle in step ① to unlock this promo'
-      : (myOrder.promo.on ? 'Promo with 03 Fat Bottle ✓ added — tap to remove' : 'Promo with your 03 Fat Bottle — tap to add');
+      ? `Pick the ${promoTumblerName()} in step ① to unlock this promo`
+      : (myOrder.promo.on ? `Promo with ${promoTumblerName()} ✓ added — tap to remove` : `Promo with your ${promoTumblerName()} — tap to add`);
     document.querySelectorAll('.promo-name-inline').forEach(el => { el.textContent = promoSettings.bottle_name; });
 
     const panel = document.getElementById('promoPanel');
@@ -1410,17 +1428,38 @@
     document.getElementById('stickerStatus').closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
-  // Loads the promo on/off + price + bottle name from the "settings" table.
-  // Any problem (table not created yet, offline…) simply leaves the promo off.
+  // Loads admin-managed settings from the "settings" table: the tumbler list
+  // (styles, prices, In Stock / Preorder / Sold Out) and the promo (on/off, price,
+  // bottle name, which tumbler unlocks it). Any problem (table not created yet,
+  // offline…) keeps the built-in tumbler list and leaves the promo off.
+  function applyTumblerSettings(v){
+    const list = v && Array.isArray(v.list) ? v.list : null;
+    if (!list || !list.length) return;
+    const clean = list.filter(t => t && t.id && t.label).map(t => ({
+      id: String(t.id), label: String(t.label), detail: t.detail ? String(t.detail) : '',
+      price: Number.isFinite(Number(t.price)) ? Number(t.price) : 0,
+      status: ['available', 'preorder', 'sold_out'].includes(t.status) ? t.status : 'available',
+    }));
+    if (!clean.length) return;
+    TUMBLER_OPTIONS = clean;
+    // Keep the customer's pick in sync (updated price/status), or drop it if it's gone or sold out.
+    if (myOrder.tumbler) {
+      const fresh = TUMBLER_OPTIONS.find(t => t.id === myOrder.tumbler.id);
+      myOrder.tumbler = fresh && fresh.status !== 'sold_out' ? fresh : null;
+    }
+  }
   async function loadPromoSettings(){
     if (!client) return;
     try {
       const { data, error } = await client.from('settings').select('*');
       if (error || !data) return;
+      const tumblerRow = data.find(r => r.key === 'tumblers');
+      if (tumblerRow) applyTumblerSettings(tumblerRow.value);
       const row = data.find(r => r.key === 'promo');
       const v = row && row.value;
-      if (!v) return;
+      if (!v) { renderTumblerOptions(); updateOrderSummary(); return; }
       promoSettings.enabled = v.enabled === true;
+      if (typeof v.tumbler_id === 'string' && v.tumbler_id) promoSettings.tumbler_id = v.tumbler_id;
       const price = Number(v.price);
       if (Number.isFinite(price) && price >= 0) promoSettings.price = price;
       const usual = Number(v.usual_price);
@@ -1509,7 +1548,7 @@
     const row = {
       customer_name: (document.getElementById('orderName') || {}).value.trim() || null,
       tiktok_handle: (document.getElementById('orderTiktok') || {}).value.trim() || null,
-      tumbler: myOrder.tumbler ? `${myOrder.tumbler.label} (RM${myOrder.tumbler.price})` : null,
+      tumbler: myOrder.tumbler ? tumblerText(myOrder.tumbler) : null,
       sticker_code: myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : null,
       pattern: myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : null,
       addons: addonsTextForOrder(),

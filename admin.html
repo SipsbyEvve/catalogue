@@ -213,6 +213,16 @@
   .custom-name-label:has(input:disabled:placeholder-shown){ display:none; }
   .noqty-heading{ font-size:0.92rem; margin:14px 0 8px; color:#b0452f; }
   .noqty-heading.muted{ color:var(--muted); }
+  .tumbler-row{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; background:#fff; }
+  .tumbler-row.is-sold_out{ background:#f3eee7; }
+  .tumbler-row.is-preorder{ background:#fff4f4; }
+  .tumbler-row input, .tumbler-row select{ margin:0; padding:7px 9px; font-size:0.85rem; }
+  .tumbler-row .t-label{ flex:2 1 180px; }
+  .tumbler-row .t-detail{ flex:1 1 120px; }
+  .tumbler-row .t-price{ width:80px; flex:none; }
+  .tumbler-row .t-status{ width:auto; flex:none; }
+  .tumbler-row .row-actions{ display:flex; gap:4px; }
+  .tumbler-row .row-actions button{ margin:0; padding:6px 9px; font-size:0.8rem; }
   .promo-switch{ display:flex; align-items:center; gap:10px; font-weight:700; margin:6px 0 12px; cursor:pointer; }
   .promo-switch input{ width:22px; height:22px; accent-color:#1ea952; }
   .promo-switch.on span{ color:#1e7a45; }
@@ -452,11 +462,22 @@
       <div id="visitStats">Loading…</div>
     </div>
 
+    <div class="card" id="tumblersCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">🥤 Tumblers</h2>
+      <p class="hint">The tumbler styles customers can pick in step ①. Change a price, mark a style <b>Sold Out</b> (greyed out, can't be picked) or <b>Preorder</b> (can still be ordered, marked "Preorder"), or add a new style. Press <b>Save tumblers</b> when you're done.</p>
+      <div id="tumblerRows"></div>
+      <button class="add-new-btn" id="addTumblerBtn" type="button">+ Add tumbler style</button>
+      <button id="saveTumblersBtn" type="button" style="margin-top:10px;">Save tumblers</button>
+      <p class="hint" id="tumblerStatusMsg" style="margin-top:8px;"></p>
+      <p class="hint" style="margin-top:4px;">Tip: the tumbler photo in step ① is a separate picture — if you add a new style, also update "① Tumbler options photo" in the catalogue photos section.</p>
+    </div>
+
     <div class="card" id="promoCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🎁 Promotion</h2>
-      <p class="hint">Buy the <b>03 Fat Bottle</b>, add a smaller bottle for a special price. Customers only see it while it's switched ON.</p>
+      <p class="hint">Buy a chosen tumbler (e.g. the 03 Fat Bottle), add a smaller bottle for a special price. Customers only see it while it's switched ON.</p>
       <label class="promo-switch"><input type="checkbox" id="promoEnabled"> <span id="promoEnabledLabel">OFF — customers can't see the promo</span></label>
       <div class="promo-fields">
+        <label>Customer must buy this tumbler<select id="promoTumblerId"></select></label>
         <label>Promo bottle name<input type="text" id="promoBottleName" placeholder="300ml Kids Bottle"></label>
         <label>Promo price (RM)<input type="number" id="promoPrice" min="0" step="1" placeholder="29"></label>
         <label>Usual price shown crossed out (RM) <small>(leave blank to hide)</small><input type="number" id="promoUsualPrice" min="0" step="1" placeholder="55"></label>
@@ -642,6 +663,7 @@
     await refreshList(); // needs to finish (populates allStickersAdmin) before renderOrders builds its sticker dropdown
     renderCatalogueSlots();
     await renderAddons(); // needs to finish (populates allAddonsAdmin) before renderOrders builds its add-ons checkboxes
+    await loadTumblersAdmin(); // the orders tumbler dropdown + promo tumbler picker use this list
     renderSearchMisses();
     renderVisitStats();
     renderOrders();
@@ -2166,22 +2188,31 @@
   // Orders — a simple manual log, filled in from WhatsApp
   // ==================================================================
 
-  // Mirrors index.html's TUMBLER_OPTIONS so the manual-add/edit dropdown offers
-  // the same choices the customer sees. NOTE: kept in sync by hand — if the
-  // tumbler lineup or prices change in index.html, update this list too.
-  const TUMBLER_OPTIONS_ADMIN = [
-    { label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55 },
-    { label: '02 · 700ml Acrylic', detail: '', price: 70 },
-    { label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75 },
-    { label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85 },
-  ].map(o => `${o.label} (RM${o.price})`);
+  // Tumbler styles — the same list customers see, managed in the 🥤 Tumblers card
+  // (saved in the "settings" table). The orders dropdown is built from it.
+  const DEFAULT_TUMBLERS = [
+    { id: 't1', label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55, status: 'available' },
+    { id: 't2', label: '02 · 700ml Acrylic', detail: '', price: 70, status: 'available' },
+    { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75, status: 'available' },
+    { id: 't4', label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85, status: 'available' },
+  ];
+  let tumblerListAdmin = DEFAULT_TUMBLERS.map(t => ({ ...t }));
+  const tumblerOrderText = t => `${t.label} (RM${t.price})`;
+  const PREORDER_SUFFIX = ' · Preorder';
 
   function tumblerOptionsHtml(selected){
     const value = selected || '';
-    const known = TUMBLER_OPTIONS_ADMIN.includes(value);
+    // An order placed while a style was on preorder is saved as "... (RM85) · Preorder" —
+    // keep that exact text selected so it isn't lost.
+    const base = value.endsWith(PREORDER_SUFFIX) ? value.slice(0, -PREORDER_SUFFIX.length) : value;
+    const texts = tumblerListAdmin.map(tumblerOrderText);
     let opts = `<option value="">— select tumbler —</option>`;
-    opts += TUMBLER_OPTIONS_ADMIN.map(v => `<option value="${v}" ${v === value ? 'selected' : ''}>${v}</option>`).join('');
-    if (value && !known) opts += `<option value="${value}" selected>${value} (not in list)</option>`;
+    opts += texts.map(v => {
+      const isSel = v === base;
+      const shown = isSel ? value : v;
+      return `<option value="${shown}" ${isSel ? 'selected' : ''}>${shown}</option>`;
+    }).join('');
+    if (value && !texts.includes(base)) opts += `<option value="${value}" selected>${value} (not in list)</option>`;
     return opts;
   }
 
@@ -2504,16 +2535,102 @@
   }
 
 
+
+  // ==================================================================
+  // 🥤 Tumblers — styles customers can pick in step ① (saved in "settings", key "tumblers").
+  // ==================================================================
+  let tumblersTableReady = true;
+  function renderTumblerRows(){
+    const wrap = document.getElementById('tumblerRows');
+    wrap.innerHTML = tumblerListAdmin.map((t, i) => `
+      <div class="tumbler-row is-${t.status}" data-index="${i}">
+        <input type="text" class="t-label" value="${(t.label || '').replace(/"/g, '&quot;')}" placeholder="e.g. 05 · 500ml Glass">
+        <input type="text" class="t-detail" value="${(t.detail || '').replace(/"/g, '&quot;')}" placeholder="Detail (optional)">
+        <input type="number" class="t-price" value="${t.price ?? ''}" min="0" step="1" placeholder="RM">
+        <select class="t-status">
+          <option value="available" ${t.status === 'available' ? 'selected' : ''}>In Stock</option>
+          <option value="preorder" ${t.status === 'preorder' ? 'selected' : ''}>Preorder</option>
+          <option value="sold_out" ${t.status === 'sold_out' ? 'selected' : ''}>Sold Out</option>
+        </select>
+        <div class="row-actions">
+          <button type="button" class="secondary t-up" title="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" class="secondary t-down" title="Move down" ${i === tumblerListAdmin.length - 1 ? 'disabled' : ''}>↓</button>
+          <button type="button" class="danger t-remove" title="Remove this style">✕</button>
+        </div>
+      </div>`).join('');
+    wrap.querySelectorAll('.tumbler-row').forEach(row => {
+      const i = Number(row.dataset.index);
+      const t = tumblerListAdmin[i];
+      row.querySelector('.t-label').addEventListener('input', e => { t.label = e.target.value; });
+      row.querySelector('.t-detail').addEventListener('input', e => { t.detail = e.target.value; });
+      row.querySelector('.t-price').addEventListener('input', e => { t.price = e.target.value === '' ? '' : Number(e.target.value); });
+      row.querySelector('.t-status').addEventListener('change', e => { t.status = e.target.value; row.className = `tumbler-row is-${t.status}`; });
+      row.querySelector('.t-up').addEventListener('click', () => { [tumblerListAdmin[i - 1], tumblerListAdmin[i]] = [tumblerListAdmin[i], tumblerListAdmin[i - 1]]; renderTumblerRows(); });
+      row.querySelector('.t-down').addEventListener('click', () => { [tumblerListAdmin[i + 1], tumblerListAdmin[i]] = [tumblerListAdmin[i], tumblerListAdmin[i + 1]]; renderTumblerRows(); });
+      row.querySelector('.t-remove').addEventListener('click', () => {
+        if (!confirm(`Remove "${t.label || 'this style'}" from the catalogue? (Past orders keep their details.) Press Save tumblers to apply.`)) return;
+        tumblerListAdmin.splice(i, 1);
+        renderTumblerRows();
+      });
+    });
+  }
+  async function loadTumblersAdmin(){
+    const msg = document.getElementById('tumblerStatusMsg');
+    const { data, error } = await client.from('settings').select('*');
+    if (error) {
+      tumblersTableReady = false;
+      msg.textContent = '⚠️ Run supabase-setup-settings.sql in Supabase first, then refresh this page.';
+      renderTumblerRows();
+      return;
+    }
+    tumblersTableReady = true;
+    const row = (data || []).find(r => r.key === 'tumblers');
+    const list = row && row.value && Array.isArray(row.value.list) ? row.value.list : null;
+    if (list && list.length) tumblerListAdmin = list.map(t => ({ ...t }));
+    msg.textContent = row && row.updated_at ? `Last saved ${new Date(row.updated_at).toLocaleString()}` : 'Showing the current styles — press Save tumblers once to start managing them here.';
+    renderTumblerRows();
+  }
+  document.getElementById('addTumblerBtn').addEventListener('click', () => {
+    tumblerListAdmin.push({ id: 't' + Date.now().toString(36), label: '', detail: '', price: '', status: 'available' });
+    renderTumblerRows();
+    const rows = document.querySelectorAll('#tumblerRows .tumbler-row');
+    rows[rows.length - 1].querySelector('.t-label').focus();
+  });
+  document.getElementById('saveTumblersBtn').addEventListener('click', async () => {
+    if (!tumblersTableReady) { showToast('Run supabase-setup-settings.sql in Supabase first', true); return; }
+    const list = tumblerListAdmin.map(t => ({ ...t, label: String(t.label || '').trim(), detail: String(t.detail || '').trim() }));
+    const bad = list.find(t => !t.label || t.price === '' || !Number.isFinite(Number(t.price)) || Number(t.price) < 0);
+    if (!list.length) { showToast('Keep at least one tumbler style', true); return; }
+    if (bad) { showToast('Every style needs a name and a price (a number)', true); return; }
+    const clean = list.map(t => ({ id: t.id, label: t.label, detail: t.detail, price: Number(t.price), status: t.status || 'available' }));
+    const { error } = await client.from('settings').upsert({ key: 'tumblers', value: { list: clean }, updated_at: new Date().toISOString() });
+    if (error) { showToast(error.message, true); return; }
+    tumblerListAdmin = clean;
+    showToast('✅ Tumblers saved — customers see the change now');
+    document.getElementById('tumblerStatusMsg').textContent = `Last saved ${new Date().toLocaleString()}`;
+    renderTumblerRows();
+    fillPromoTumblerSelect(document.getElementById('promoTumblerId').value);
+    renderOrders(); // refresh the orders tumbler dropdown
+  });
+
   // ==================================================================
   // Promotion settings — saved in the "settings" table (key "promo"), read by the catalogue.
   // ==================================================================
-  const PROMO_DEFAULTS = { enabled: false, price: 29, usual_price: 55, bottle_name: '300ml Kids Bottle' };
+  const PROMO_DEFAULTS = { enabled: false, price: 29, usual_price: 55, bottle_name: '300ml Kids Bottle', tumbler_id: 't3' };
   function showPromoEnabledLabel(){
     const on = document.getElementById('promoEnabled').checked;
     document.getElementById('promoEnabledLabel').textContent = on ? 'ON — customers can see the promo now' : 'OFF — customers can\'t see the promo';
     document.querySelector('.promo-switch').classList.toggle('on', on);
   }
+  function fillPromoTumblerSelect(selectedId){
+    const sel = document.getElementById('promoTumblerId');
+    sel.innerHTML = tumblerListAdmin.map(t => `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''}>${t.label}</option>`).join('');
+    if (selectedId && !tumblerListAdmin.some(t => t.id === selectedId)) {
+      sel.insertAdjacentHTML('afterbegin', `<option value="${selectedId}" selected>(removed style — pick another)</option>`);
+    }
+  }
   function fillPromoForm(v){
+    fillPromoTumblerSelect(v.tumbler_id || 't3');
     document.getElementById('promoEnabled').checked = v.enabled === true;
     document.getElementById('promoBottleName').value = v.bottle_name || '';
     document.getElementById('promoPrice').value = (v.price ?? '') === '' ? '' : v.price;
@@ -2542,7 +2659,8 @@
       showToast('Please enter a promo price (a number, e.g. 29)', true); return;
     }
     if (!Number.isFinite(usual) || usual < 0) { showToast('Usual price must be a number (or leave it blank)', true); return; }
-    const value = { enabled: document.getElementById('promoEnabled').checked, price, usual_price: usual, bottle_name: name };
+    const value = { enabled: document.getElementById('promoEnabled').checked, price, usual_price: usual, bottle_name: name,
+                    tumbler_id: document.getElementById('promoTumblerId').value || 't3' };
     const { error } = await client.from('settings').upsert({ key: 'promo', value, updated_at: new Date().toISOString() });
     if (error) { showToast(error.message, true); return; }
     showToast(value.enabled ? '✅ Promotion saved — it\'s ON for customers' : '✅ Promotion saved — it\'s OFF');
