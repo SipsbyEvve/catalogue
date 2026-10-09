@@ -266,6 +266,8 @@
   }
   .option-card .oname{ font-size:0.85rem; font-weight:700; display:block; color:var(--ink); }
   .option-card .oprice{ font-size:0.78rem; color:var(--muted); margin-top:2px; display:block; }
+  .option-card .oprice-sub{ display:block; font-size:0.7rem; color:var(--muted); opacity:0.85; margin-top:1px; }
+  .glitter-note{ margin:-4px 0 12px; font-size:0.8rem; color:var(--muted); line-height:1.5; }
   .option-card.picked{
     border-color:var(--wa-dark); background:#e8f9ee;
     box-shadow:0 0 0 3px rgba(37,211,102,0.30), var(--shadow);
@@ -518,6 +520,22 @@
   }
   .send-warning ul{ margin:6px 0; padding-left:20px; }
   .cta-row .btn-whatsapp.incomplete{ background:#a9bfb1; box-shadow:none; }
+  .send-backup{
+    margin-top:14px; background:#fff; border:2px dashed var(--wa); border-radius:14px; padding:14px 16px;
+    font-size:0.88rem; color:var(--ink);
+  }
+  .send-backup .sb-title{ font-weight:800; color:var(--brown-dark); margin-bottom:4px; }
+  .send-backup p{ margin:0 0 10px; color:var(--muted); line-height:1.45; }
+  .send-backup .sb-copy{
+    width:100%; padding:12px; border:none; border-radius:12px; background:var(--brown-dark); color:#fff;
+    font-family:inherit; font-size:0.95rem; font-weight:700; cursor:pointer;
+  }
+  .send-backup .sb-copy.done{ background:var(--wa-dark); }
+  .send-backup .sb-retry{ display:block; text-align:center; margin-top:10px; font-weight:700; color:var(--wa-dark); }
+  .send-backup textarea{
+    width:100%; box-sizing:border-box; margin-top:10px; border:1px solid var(--line); border-radius:10px;
+    padding:10px; font-family:inherit; font-size:0.82rem; color:var(--ink); background:#fbf7f1;
+  }
   .order-fields input.field-missing{ border-color:#d9534f; background:#fff5f5; }
   .cta-row .btn-whatsapp{
     width:100%; justify-content:center; padding:16px 20px; font-size:1.08rem; font-weight:700;
@@ -703,6 +721,7 @@
     <p class="note">(you can also decide during your live date)</p>
     <img id="img-step3_patterns" class="zoomable" src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
     <p class="note" style="margin-top:14px;">Tap to pick a pattern (optional):</p>
+    <p class="glitter-note">✨ Full Glitter is +RM10 for the 600ml Fat Bottle only — all other bottles remain +RM5.</p>
     <div class="option-grid" id="patternOptions"></div>
   </section>
 
@@ -813,6 +832,14 @@
       </a>
     </div>
     <p class="note" style="margin-top:10px;">This opens WhatsApp with your order already filled in — just press send! 💛</p>
+    <div class="send-backup" id="sendBackup" style="display:none;">
+      <div class="sb-title">WhatsApp didn't open? · WhatsApp 没打开？</div>
+      <p>Copy your order, then paste it to us on WhatsApp <b>@evvyne</b> 💛<br>复制订单，再贴到 WhatsApp 发给我们就可以了。</p>
+      <button type="button" class="sb-copy" id="copyOrderBtn">📋 Copy my order · 复制订单</button>
+      <p id="copyFallbackNote" style="display:none;margin:10px 0 0;">Long-press the text below → Copy · 长按下面的文字 → 复制</p>
+      <textarea id="orderTextBox" rows="8" readonly style="display:none;"></textarea>
+      <a class="sb-retry" id="retryWaLink" href="https://wa.me/evvyne" target="_blank" rel="noopener">Try opening WhatsApp again ↗ · 再试一次</a>
+    </div>
   </section>
 
   <section class="step faq">
@@ -948,7 +975,7 @@
   let TUMBLER_OPTIONS = [
     { id: 't1', label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55, status: 'available' },
     { id: 't2', label: '02 · 700ml Acrylic', detail: '', price: 70, status: 'available' },
-    { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75, status: 'available' },
+    { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75, status: 'available', glitter_price: 10 },
     { id: 't4', label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85, status: 'available' },
   ];
   // How a tumbler is written in the order message / saved order, e.g.
@@ -963,6 +990,36 @@
     { id: 'p3', label: 'Lava', extra: 0 },
     { id: 'p4', label: 'Full Glitter', extra: 5 },
   ];
+  // Full Glitter costs more on some tumblers (the 03 fat bottle uses much more glitter
+  // and solution) — set per style in admin (🥤 Tumblers → "Glitter +RM"). Styles without
+  // their own price use the usual +RM5.
+  const GLITTER_ID = 'p4';
+  const GLITTER_FALLBACK_BY_TUMBLER = { t3: 10 };
+  const GLITTER_NOTE_NAME = { t3: '600ml Fat Bottle' }; // how a style is named in the small line under Full Glitter's price // used if admin hasn't saved a glitter price yet
+  function glitterPriceFor(t){
+    const base = PATTERN_OPTIONS.find(p => p.id === GLITTER_ID).extra;
+    if (!t) return base;
+    if (t.glitter_price !== undefined && t.glitter_price !== null && t.glitter_price !== '' && Number.isFinite(Number(t.glitter_price))) return Number(t.glitter_price);
+    return GLITTER_FALLBACK_BY_TUMBLER[t.id] ?? base;
+  }
+  // The extra a pattern costs on the customer's picked tumbler.
+  function patternExtra(p){
+    if (!p) return 0;
+    return p.id === GLITTER_ID ? glitterPriceFor(myOrder.tumbler) : (p.extra || 0);
+  }
+  // "Full Glitter (+RM10)" / "Lava"
+  function patternText(p){
+    const x = patternExtra(p);
+    return p ? `${p.label}${x ? ' (+RM' + x + ')' : ''}` : '';
+  }
+  // Price shown on a pattern card. Before a tumbler is picked, Full Glitter shows the
+  // usual price, with any style that costs differently on a smaller line below, e.g. "600ml Fat Bottle: +RM10".
+  function patternCardPrice(o){
+    if (o.id !== GLITTER_ID || myOrder.tumbler) { const x = patternExtra(o); return x ? '+RM' + x : 'included'; }
+    const others = TUMBLER_OPTIONS.filter(t => t.status !== 'sold_out' && glitterPriceFor(t) !== o.extra)
+      .map(t => `<span class="oprice-sub">${GLITTER_NOTE_NAME[t.id] || t.label}: +RM${glitterPriceFor(t)}</span>`);
+    return '+RM' + o.extra + others.join('');
+  }
 
   // Shipping: West Malaysia free, East Malaysia RM13 (per Evvyne).
   const DELIVERY_OPTIONS = {
@@ -1013,7 +1070,7 @@
   function orderTotal(){
     if (!myOrder.tumbler) return null;
     let total = myOrder.tumbler.price;
-    if (myOrder.pattern) total += myOrder.pattern.extra || 0;
+    if (myOrder.pattern) total += patternExtra(myOrder.pattern);
     myOrder.addons.forEach(a => { total += priceFromLabel(a.price_label); });
     total += myOrder.extraStickers.length * EXTRA_STICKER_PRICE;
     if (myOrder.promo.on) total += promoSettings.price + (myOrder.promo.pattern ? myOrder.promo.pattern.extra || 0 : 0);
@@ -1082,7 +1139,7 @@
     el.innerHTML = PATTERN_OPTIONS.map(o => `
       <div class="option-card ${myOrder.pattern && myOrder.pattern.id === o.id ? 'picked' : ''} ${lockedByPromo(o.id) ? 'locked' : ''}" data-id="${o.id}">
         <span class="oname">${o.label}</span>
-        <span class="oprice">${lockedByPromo(o.id) ? 'Not available with the promo' : (o.extra ? '+RM' + o.extra : 'included')}</span>
+        <span class="oprice">${lockedByPromo(o.id) ? 'Not available with the promo' : patternCardPrice(o)}</span>
       </div>
     `).join('');
     el.querySelectorAll('.option-card').forEach(card => {
@@ -1106,7 +1163,7 @@
       lines.push(`📷 ${stickerPhotoLink(x)}`);
     });
     if (myOrder.extraOn && !myOrder.extraStickers.length) lines.push('Extra sticker: (please tell me which one)');
-    lines.push(`Pattern: ${myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : '(can decide on your live date)'}`);
+    lines.push(`Pattern: ${myOrder.pattern ? patternText(myOrder.pattern) : '(can decide on your live date)'}`);
     if (myOrder.promo.on) {
       lines.push('');
       lines.push(`🎁 Promo bottle: ${promoSettings.bottle_name} (+RM${promoSettings.price})`);
@@ -1143,7 +1200,7 @@
     else set('pickSticker', extraTxt ? `Not picked yet · extra: ${extraTxt}` : 'Not picked yet', 'missing');
     renderExtraStickerPanel();
     // Pattern is optional (can be decided on the live date), so an empty pick isn't shown as an error.
-    set('pickPattern', myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : 'Decide on live date', myOrder.pattern ? '' : 'soft');
+    set('pickPattern', myOrder.pattern ? patternText(myOrder.pattern) : 'Decide on live date', myOrder.pattern ? '' : 'soft');
     // Promo bottle drops off automatically if the promo is switched off or the 03 is un-picked.
     if (myOrder.promo.on && !promoAvailable()) { myOrder.promo.on = false; if (pickMode === 'promo') setPickMode(null); }
     let promoClearedPattern = false;
@@ -1151,7 +1208,7 @@
       myOrder.pattern = null; // Full Glitter isn't allowed on either bottle with the promo
       promoClearedPattern = true;
     }
-    const lockKey = myOrder.promo.on ? 'promo' : 'none';
+    const lockKey = (myOrder.promo.on ? 'promo' : 'none') + '|' + (myOrder.tumbler ? myOrder.tumbler.id + ':' + glitterPriceFor(myOrder.tumbler) : '') + '|' + TUMBLER_OPTIONS.map(t => t.id + glitterPriceFor(t) + t.status).join();
     if (promoClearedPattern || renderPatternOptions.lastLock !== lockKey) {
       renderPatternOptions.lastLock = lockKey;
       renderPatternOptions();
@@ -1439,6 +1496,7 @@
       id: String(t.id), label: String(t.label), detail: t.detail ? String(t.detail) : '',
       price: Number.isFinite(Number(t.price)) ? Number(t.price) : 0,
       status: ['available', 'preorder', 'sold_out'].includes(t.status) ? t.status : 'available',
+      ...(t.glitter_price !== undefined && t.glitter_price !== null && t.glitter_price !== '' && Number.isFinite(Number(t.glitter_price)) ? { glitter_price: Number(t.glitter_price) } : {}),
     }));
     if (!clean.length) return;
     TUMBLER_OPTIONS = clean;
@@ -1550,7 +1608,7 @@
       tiktok_handle: (document.getElementById('orderTiktok') || {}).value.trim() || null,
       tumbler: myOrder.tumbler ? tumblerText(myOrder.tumbler) : null,
       sticker_code: myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : null,
-      pattern: myOrder.pattern ? `${myOrder.pattern.label}${myOrder.pattern.extra ? ' (+RM' + myOrder.pattern.extra + ')' : ''}` : null,
+      pattern: myOrder.pattern ? patternText(myOrder.pattern) : null,
       addons: addonsTextForOrder(),
       delivery: myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : null,
       status: 'pending',
@@ -1604,6 +1662,54 @@
         return;
       }
       logOrder();
+      showSendBackup();
+    });
+  }
+
+  // ---- Backup if WhatsApp doesn't open (TikTok's in-app browser, older WhatsApp…):
+  // customers can copy the whole order and paste it to us themselves. ----
+  async function copyText(text){
+    try {
+      if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+    } catch (e) {}
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e) { return false; }
+  }
+  function showSendBackup(){
+    const box = document.getElementById('sendBackup');
+    if (!box) return;
+    document.getElementById('retryWaLink').href = `https://wa.me/evvyne?text=${encodeURIComponent(buildWhatsAppMessage())}`;
+    const btn = document.getElementById('copyOrderBtn');
+    btn.textContent = '📋 Copy my order · 复制订单';
+    btn.classList.remove('done');
+    document.getElementById('orderTextBox').style.display = 'none';
+    document.getElementById('copyFallbackNote').style.display = 'none';
+    box.style.display = '';
+  }
+  const copyOrderBtn = document.getElementById('copyOrderBtn');
+  if (copyOrderBtn) {
+    copyOrderBtn.addEventListener('click', async () => {
+      const text = buildWhatsAppMessage();
+      const box = document.getElementById('orderTextBox');
+      box.value = text;
+      const ok = await copyText(text);
+      if (ok) {
+        copyOrderBtn.textContent = '✓ Copied! Now paste it in WhatsApp · 已复制';
+        copyOrderBtn.classList.add('done');
+      } else {
+        // Copy blocked by this browser: show the text so they can long-press → Copy.
+        document.getElementById('copyFallbackNote').style.display = '';
+        box.style.display = '';
+        box.focus(); box.select();
+      }
     });
   }
 
