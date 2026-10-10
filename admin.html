@@ -221,6 +221,8 @@
   .tumbler-row .t-detail{ flex:1 1 120px; }
   .tumbler-row .t-price{ width:80px; flex:none; }
   .tumbler-row .t-status{ width:auto; flex:none; }
+  .tumbler-row .t-glitter-wrap{ display:flex; align-items:center; gap:4px; flex:none; font-size:0.78rem; font-weight:600; color:#8a6d3b; margin:0; white-space:nowrap; }
+  .tumbler-row .t-glitter{ width:62px; }
   .tumbler-row .row-actions{ display:flex; gap:4px; }
   .tumbler-row .row-actions button{ margin:0; padding:6px 9px; font-size:0.8rem; }
   .promo-switch{ display:flex; align-items:center; gap:10px; font-weight:700; margin:6px 0 12px; cursor:pointer; }
@@ -440,6 +442,14 @@
       <h2 style="margin-top:0;font-size:1.1rem;">🖼️ Catalogue photos</h2>
       <p class="hint">The big photos on steps ① ③ ④ ⑤ of your public page. Replace or remove them here — changes go live right away, no GitHub needed.</p>
       <div id="catalogueSlots">Loading…</div>
+    </div>
+
+    <div class="card" id="optimizeCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">🗜️ Make photos lighter</h2>
+      <p class="hint">Makes a smaller copy of your big photos (stickers, category covers, catalogue photos) so each customer visit uses much less of your Supabase traffic. The photos look the same. <b>Nothing is deleted</b> — your original files stay in Supabase Storage; the catalogue just shows the lighter copy.</p>
+      <button type="button" id="optimizeScanBtn">Check my photos</button>
+      <p class="msg" id="optimizeMsg"></p>
+      <button type="button" id="optimizeRunBtn" style="display:none;margin-top:8px;"></button>
     </div>
 
     <div class="card">
@@ -744,26 +754,47 @@
   }
 
   // ---- shrink + re-compress before upload (invisible to you — same photo, smaller file) ----
-  // Skips anything already small; otherwise caps the longer side at 1600px and
-  // re-encodes as JPEG at ~82% quality, which is usually not noticeable to the eye.
-  async function compressImageBlob(sourceBlob, maxDim = 1600, quality = 0.82){
-    if (!sourceBlob || sourceBlob.size < 200 * 1024) return sourceBlob;
+  // Caps the longer side (stickers 1000px, covers 800px, catalogue photos 1400px — still sharp on
+  // phones) and re-encodes. Photos with a see-through background keep it (WebP/PNG); everything
+  // else becomes a JPEG at ~80% quality. If the result isn't smaller, the original is used.
+  function canvasToBlob(canvas, type, quality){
+    return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+  }
+  function canvasHasTransparency(ctx, w, h){
+    try {
+      const d = ctx.getImageData(0, 0, w, h).data;
+      for (let i = 3; i < d.length; i += 16) if (d[i] < 250) return true;
+    } catch (e) {}
+    return false;
+  }
+  async function compressImageBlob(sourceBlob, maxDim = 1000, quality = 0.8){
+    if (!sourceBlob) return sourceBlob;
     try {
       const img = await loadImageFromBlob(sourceBlob);
-      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      const longest = Math.max(img.naturalWidth, img.naturalHeight);
+      if (sourceBlob.size < 150 * 1024 && longest <= maxDim) return sourceBlob; // already light
+      const scale = Math.min(1, maxDim / longest);
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(img.naturalWidth * scale);
       canvas.height = Math.round(img.naturalHeight * scale);
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const compressed = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
-      // Only use the compressed version if it's actually smaller — otherwise keep the original.
-      return (compressed && compressed.size < sourceBlob.size) ? compressed : sourceBlob;
+      let out;
+      if (canvasHasTransparency(ctx, canvas.width, canvas.height)) {
+        out = await canvasToBlob(canvas, 'image/webp', quality);
+        if (!out || out.type !== 'image/webp') out = await canvasToBlob(canvas, 'image/png');
+      } else {
+        out = await canvasToBlob(canvas, 'image/jpeg', quality);
+      }
+      return (out && out.size < sourceBlob.size) ? out : sourceBlob;
     } catch (e) {
       console.error('Compression skipped:', e.message || e);
       return sourceBlob;
     }
   }
+  // Browsers keep photos for a year (every upload gets a new file name, so a replaced photo
+  // still shows up straight away) — repeat visitors don't download them again.
+  const IMAGE_CACHE_SECONDS = '31536000';
 
   // ---- toast: brief "Saved!" style confirmation, used after quick in-place edits ----
   let toastTimer = null;
@@ -876,7 +907,7 @@
     const path = `${category.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}-${safeName}`;
 
     const { error: uploadError } = await client.storage.from('stickers').upload(path, finalBlob, {
-      cacheControl: '3600',
+      cacheControl: IMAGE_CACHE_SECONDS,
       upsert: false,
       contentType: finalBlob.type || 'image/jpeg',
     });
@@ -1095,7 +1126,7 @@
       const path = `${category.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}-${i}-${safeName}`;
 
       const { error: uploadError } = await client.storage.from('stickers').upload(path, finalBlob, {
-        cacheControl: '3600', upsert: false, contentType: finalBlob.type || 'image/jpeg',
+        cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: finalBlob.type || 'image/jpeg',
       });
       if (uploadError) {
         failCount++;
@@ -1635,8 +1666,9 @@
         msgEl.className = 'msg slot-msg';
         const safeName = (file.name || 'photo.jpg').replace(/[^a-zA-Z0-9.\-_]/g, '_');
         const path = `catalogue/${slot.key}-${Date.now()}-${safeName}`;
-        const { error: upErr } = await client.storage.from('stickers').upload(path, file, {
-          cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg',
+        const upFile = await compressImageBlob(file, 1400);
+        const { error: upErr } = await client.storage.from('stickers').upload(path, upFile, {
+          cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: upFile.type || 'image/jpeg',
         });
         if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg slot-msg error'; return; }
 
@@ -1802,8 +1834,9 @@
         msgEl.className = 'msg cat-msg';
         const safeName = (file.name || 'cover.jpg').replace(/[^a-zA-Z0-9.\-_]/g, '_');
         const path = `categories/${cat.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}-${safeName}`;
-        const { error: upErr } = await client.storage.from('stickers').upload(path, file, {
-          cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg',
+        const upFile = await compressImageBlob(file, 800);
+        const { error: upErr } = await client.storage.from('stickers').upload(path, upFile, {
+          cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: upFile.type || 'image/jpeg',
         });
         if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg cat-msg error'; return; }
 
@@ -1994,8 +2027,9 @@
         msgEl.className = 'msg subcat-msg';
         const safeName = (file.name || 'cover.jpg').replace(/[^a-zA-Z0-9.\-_]/g, '_');
         const path = `subcategories/${sc.category.replace(/[^a-zA-Z0-9]/g, '_')}-${sc.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}-${safeName}`;
-        const { error: upErr } = await client.storage.from('stickers').upload(path, file, {
-          cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg',
+        const upFile = await compressImageBlob(file, 800);
+        const { error: upErr } = await client.storage.from('stickers').upload(path, upFile, {
+          cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: upFile.type || 'image/jpeg',
         });
         if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg subcat-msg error'; return; }
 
@@ -2193,7 +2227,7 @@
   const DEFAULT_TUMBLERS = [
     { id: 't1', label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55, status: 'available' },
     { id: 't2', label: '02 · 700ml Acrylic', detail: '', price: 70, status: 'available' },
-    { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75, status: 'available' },
+    { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75, status: 'available', glitter_price: 10 },
     { id: 't4', label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85, status: 'available' },
   ];
   let tumblerListAdmin = DEFAULT_TUMBLERS.map(t => ({ ...t }));
@@ -2229,15 +2263,28 @@
   }
 
   // Mirrors index.html's PATTERN_OPTIONS — same manual-sync caveat as the tumbler list above.
-  const PATTERN_OPTIONS_ADMIN = [
-    { label: 'Normal Cateye', extra: 0 },
-    { label: 'Swirl Flow Cateye', extra: 0 },
-    { label: 'Lava', extra: 0 },
-    { label: 'Full Glitter', extra: 5 },
-  ].map(o => `${o.label}${o.extra ? ' (+RM' + o.extra + ')' : ''}`);
+  // Full Glitter's price depends on the tumbler (set per style in 🥤 Tumblers, "Glitter +RM");
+  // styles without their own price use +RM5, and the 03 fat bottle defaults to +RM10.
+  const GLITTER_DEFAULT_PRICE = 5;
+  const GLITTER_FALLBACK_BY_TUMBLER = { t3: 10 };
+  function glitterPriceOf(t){
+    if (t && t.glitter_price !== undefined && t.glitter_price !== null && t.glitter_price !== '' && Number.isFinite(Number(t.glitter_price))) return Number(t.glitter_price);
+    return (t && GLITTER_FALLBACK_BY_TUMBLER[t.id]) ?? GLITTER_DEFAULT_PRICE;
+  }
+  // Every Full Glitter price in use gets its own choice, e.g. "Full Glitter (+RM5)" and "Full Glitter (+RM10)".
+  function patternOptionsAdmin(){
+    const glitter = [...new Set([GLITTER_DEFAULT_PRICE, ...tumblerListAdmin.map(glitterPriceOf)])].sort((a, b) => a - b);
+    return [
+      { label: 'Normal Cateye', extra: 0 },
+      { label: 'Swirl Flow Cateye', extra: 0 },
+      { label: 'Lava', extra: 0 },
+      ...glitter.map(x => ({ label: 'Full Glitter', extra: x })),
+    ].map(o => `${o.label}${o.extra ? ' (+RM' + o.extra + ')' : ''}`);
+  }
 
   function patternOptionsHtml(selected){
     const value = selected || '';
+    const PATTERN_OPTIONS_ADMIN = patternOptionsAdmin();
     const known = PATTERN_OPTIONS_ADMIN.includes(value);
     let opts = `<option value="">— select pattern —</option>`;
     opts += PATTERN_OPTIONS_ADMIN.map(v => `<option value="${v}" ${v === value ? 'selected' : ''}>${v}</option>`).join('');
@@ -2537,6 +2584,121 @@
 
 
   // ==================================================================
+  // 🗜️ Make photos lighter — makes a smaller copy of each big photo already uploaded and
+  // points the catalogue at it. Never deletes or overwrites anything: originals stay in Storage.
+  // ==================================================================
+  const OPT_PREFIX = 'opt-';
+  const OPT_MIN_BYTES = 150 * 1024;
+  let optimizeQueue = [];
+
+  async function listStorageSizes(){
+    const sizes = new Map();
+    async function walk(prefix){
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await client.storage.from('stickers').list(prefix, { limit: 1000, offset });
+        if (error) throw error;
+        for (const it of data || []) {
+          const full = prefix ? `${prefix}/${it.name}` : it.name;
+          if (!it.id || !it.metadata) await walk(full); // a folder
+          else sizes.set(full, Number(it.metadata.size) || 0);
+        }
+        if (!data || data.length < 1000) break;
+      }
+    }
+    await walk('');
+    return sizes;
+  }
+  const fmtMB = (bytes) => (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  const isOptimizedPath = (path) => path.slice(path.lastIndexOf('/') + 1).startsWith(OPT_PREFIX);
+
+  async function collectPhotoRows(){
+    const rows = [];
+    const [st, cats, subs, cc] = await Promise.all([
+      client.from('stickers').select('id, code, name, image_path'),
+      client.from('categories').select('name, cover_image_path'),
+      client.from('subcategories').select('id, name, cover_image_path'),
+      client.from('catalogue_content').select('slot, image_path'),
+    ]);
+    for (const r of [st, cats, subs, cc]) if (r.error) throw r.error;
+    (st.data || []).forEach(r => r.image_path && rows.push({ label: r.code || r.name, path: r.image_path, maxDim: 1000, save: (p) => client.from('stickers').update({ image_path: p }).eq('id', r.id) }));
+    (cats.data || []).forEach(r => r.cover_image_path && rows.push({ label: `Cover: ${r.name}`, path: r.cover_image_path, maxDim: 800, save: (p) => client.from('categories').update({ cover_image_path: p }).eq('name', r.name) }));
+    (subs.data || []).forEach(r => r.cover_image_path && rows.push({ label: `Cover: ${r.name}`, path: r.cover_image_path, maxDim: 800, save: (p) => client.from('subcategories').update({ cover_image_path: p }).eq('id', r.id) }));
+    (cc.data || []).forEach(r => r.image_path && rows.push({ label: `Catalogue photo: ${r.slot}`, path: r.image_path, maxDim: 1400, save: (p) => client.from('catalogue_content').update({ image_path: p }).eq('slot', r.slot) }));
+    return rows;
+  }
+
+  document.getElementById('optimizeScanBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('optimizeMsg');
+    const runBtn = document.getElementById('optimizeRunBtn');
+    const scanBtn = document.getElementById('optimizeScanBtn');
+    runBtn.style.display = 'none';
+    msg.className = 'msg'; msg.textContent = 'Checking…';
+    scanBtn.disabled = true;
+    try {
+      const [sizes, rows] = await Promise.all([listStorageSizes(), collectPhotoRows()]);
+      optimizeQueue = rows.filter(r => !isOptimizedPath(r.path) && (sizes.get(r.path) || 0) > OPT_MIN_BYTES)
+        .map(r => ({ ...r, size: sizes.get(r.path) }));
+      const total = optimizeQueue.reduce((a, r) => a + r.size, 0);
+      if (!optimizeQueue.length) {
+        msg.className = 'msg ok';
+        msg.textContent = `✅ All ${rows.length} photos are already light — nothing to do.`;
+      } else {
+        msg.textContent = `${optimizeQueue.length} of ${rows.length} photos are big (${fmtMB(total)} in total). Making them lighter downloads each one once (${fmtMB(total)} of traffic, one time only).`;
+        runBtn.textContent = `🗜️ Make ${optimizeQueue.length} photos lighter`;
+        runBtn.style.display = '';
+      }
+    } catch (e) {
+      msg.className = 'msg error';
+      msg.textContent = 'Couldn\'t check right now: ' + (e.message || e);
+    } finally {
+      scanBtn.disabled = false;
+    }
+  });
+
+  document.getElementById('optimizeRunBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('optimizeMsg');
+    const runBtn = document.getElementById('optimizeRunBtn');
+    runBtn.disabled = true;
+    let done = 0, saved = 0, skipped = 0;
+    const failed = [];
+    for (const item of optimizeQueue) {
+      msg.className = 'msg';
+      msg.textContent = `Working… ${done + 1} of ${optimizeQueue.length} (${item.label})`;
+      try {
+        const { data: blob, error: dlErr } = await client.storage.from('stickers').download(item.path);
+        if (dlErr) throw dlErr;
+        const small = await compressImageBlob(blob, item.maxDim, 0.8);
+        if (small === blob || small.size > blob.size * 0.9) { skipped++; done++; continue; }
+        const ext = small.type === 'image/jpeg' ? 'jpg' : (small.type === 'image/webp' ? 'webp' : 'png');
+        const slash = item.path.lastIndexOf('/');
+        const dir = slash >= 0 ? item.path.slice(0, slash + 1) : '';
+        const base = item.path.slice(slash + 1).replace(/\.[^.]+$/, '');
+        const newPath = `${dir}${OPT_PREFIX}${Date.now()}-${base}.${ext}`;
+        const { error: upErr } = await client.storage.from('stickers').upload(newPath, small, {
+          cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: small.type,
+        });
+        if (upErr) throw upErr;
+        const { error: dbErr } = await item.save(newPath);
+        if (dbErr) throw dbErr;
+        saved += blob.size - small.size;
+      } catch (e) {
+        failed.push(`${item.label} (${e.message || e})`);
+      }
+      done++;
+    }
+    runBtn.style.display = 'none';
+    runBtn.disabled = false;
+    msg.className = failed.length ? 'msg error' : 'msg ok';
+    msg.textContent = `✅ Done — ${done - skipped - failed.length} photos made lighter, saving ${fmtMB(saved)} per full browse.`
+      + (skipped ? ` ${skipped} were already about as small as they can be.` : '')
+      + (failed.length ? ` ⚠️ ${failed.length} couldn't be done (still showing the original): ${failed.slice(0, 5).join(', ')}${failed.length > 5 ? '…' : ''}` : '')
+      + ' Originals are kept in Storage.';
+    showToast('✅ Photos updated');
+    // Redraw the admin lists so they show the lighter copies.
+    try { await renderCategories(); await renderSubcategories(); await refreshList(); renderCatalogueSlots(); } catch (e) {}
+  });
+
+  // ==================================================================
   // 🥤 Tumblers — styles customers can pick in step ① (saved in "settings", key "tumblers").
   // ==================================================================
   let tumblersTableReady = true;
@@ -2547,6 +2709,7 @@
         <input type="text" class="t-label" value="${(t.label || '').replace(/"/g, '&quot;')}" placeholder="e.g. 05 · 500ml Glass">
         <input type="text" class="t-detail" value="${(t.detail || '').replace(/"/g, '&quot;')}" placeholder="Detail (optional)">
         <input type="number" class="t-price" value="${t.price ?? ''}" min="0" step="1" placeholder="RM">
+        <label class="t-glitter-wrap" title="Extra charge for the Full Glitter pattern on this style">✨ Glitter +RM <input type="number" class="t-glitter" value="${glitterPriceOf(t)}" min="0" step="1"></label>
         <select class="t-status">
           <option value="available" ${t.status === 'available' ? 'selected' : ''}>In Stock</option>
           <option value="preorder" ${t.status === 'preorder' ? 'selected' : ''}>Preorder</option>
@@ -2564,6 +2727,7 @@
       row.querySelector('.t-label').addEventListener('input', e => { t.label = e.target.value; });
       row.querySelector('.t-detail').addEventListener('input', e => { t.detail = e.target.value; });
       row.querySelector('.t-price').addEventListener('input', e => { t.price = e.target.value === '' ? '' : Number(e.target.value); });
+      row.querySelector('.t-glitter').addEventListener('input', e => { t.glitter_price = e.target.value === '' ? '' : Number(e.target.value); });
       row.querySelector('.t-status').addEventListener('change', e => { t.status = e.target.value; row.className = `tumbler-row is-${t.status}`; });
       row.querySelector('.t-up').addEventListener('click', () => { [tumblerListAdmin[i - 1], tumblerListAdmin[i]] = [tumblerListAdmin[i], tumblerListAdmin[i - 1]]; renderTumblerRows(); });
       row.querySelector('.t-down').addEventListener('click', () => { [tumblerListAdmin[i + 1], tumblerListAdmin[i]] = [tumblerListAdmin[i], tumblerListAdmin[i + 1]]; renderTumblerRows(); });
@@ -2602,7 +2766,9 @@
     const bad = list.find(t => !t.label || t.price === '' || !Number.isFinite(Number(t.price)) || Number(t.price) < 0);
     if (!list.length) { showToast('Keep at least one tumbler style', true); return; }
     if (bad) { showToast('Every style needs a name and a price (a number)', true); return; }
-    const clean = list.map(t => ({ id: t.id, label: t.label, detail: t.detail, price: Number(t.price), status: t.status || 'available' }));
+    const badGlitter = list.find(t => t.glitter_price !== undefined && t.glitter_price !== '' && (!Number.isFinite(Number(t.glitter_price)) || Number(t.glitter_price) < 0));
+    if (badGlitter) { showToast('Glitter +RM must be a number (or leave it empty for +RM5)', true); return; }
+    const clean = list.map(t => ({ id: t.id, label: t.label, detail: t.detail, price: Number(t.price), status: t.status || 'available', glitter_price: glitterPriceOf({ ...t, glitter_price: t.glitter_price === '' ? GLITTER_DEFAULT_PRICE : t.glitter_price }) }));
     const { error } = await client.from('settings').upsert({ key: 'tumblers', value: { list: clean }, updated_at: new Date().toISOString() });
     if (error) { showToast(error.message, true); return; }
     tumblerListAdmin = clean;
