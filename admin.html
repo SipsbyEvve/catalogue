@@ -237,6 +237,18 @@
   .extra-sticker-label select{ width:auto; max-width:240px; padding:5px 8px; font-size:0.82rem; }
   .extra-sticker-label[data-empty="1"]:has(select:disabled){ display:none; }
   .o-total{ flex:1 1 100%; font-weight:800; color:var(--brown-dark); font-size:0.9rem; }
+  .o-date{ flex:1 1 100%; font-size:0.78rem; color:var(--muted); font-weight:600; }
+  .orders-toolbar{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .orders-toolbar input, .orders-toolbar select{ margin:0; padding:8px 10px; font-size:0.85rem; width:auto; }
+  .orders-toolbar input{ flex:1 1 180px; }
+  .orders-toolbar button{ margin:0; padding:8px 12px; font-size:0.85rem; }
+  .sales-tiles{ display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-bottom:12px; }
+  .sales-tile{ background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .sales-tile .num{ font-size:1.25rem; font-weight:800; color:var(--brown-dark); }
+  .sales-tile .lbl{ font-size:0.75rem; color:var(--muted); font-weight:600; }
+  .sales-list h4{ margin:10px 0 4px; font-size:0.85rem; }
+  .sales-list .sl-row{ display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-bottom:1px dashed var(--line); font-size:0.85rem; }
+  .sales-list .sl-row:last-child{ border-bottom:none; }
   .addon-check-label{ display:inline-flex; align-items:center; gap:4px; font-size:0.82rem; color:var(--ink); }
   .addon-legacy-note{ font-size:0.78rem; color:var(--muted); font-style:italic; }
   .o-paid-btn{ white-space:nowrap; }
@@ -496,9 +508,38 @@
       <p class="hint" id="promoStatusMsg" style="margin-top:8px;"></p>
     </div>
 
+    <div class="card" id="salesCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">📈 Sales</h2>
+      <p class="hint">Worked out from your orders. Sales count only orders you've marked <b>Paid</b>.</p>
+      <select id="salesPeriod" style="width:auto;margin:0 0 12px;">
+        <option value="month">This month</option>
+        <option value="lastmonth">Last month</option>
+        <option value="7">Last 7 days</option>
+        <option value="all">All time</option>
+      </select>
+      <div id="salesStats">Loading…</div>
+    </div>
+
     <div class="card">
       <h2 style="margin-top:0;font-size:1.1rem;">📦 Orders</h2>
       <p class="hint">Orders sent from the catalogue show up here automatically. Check them against your WhatsApp chats, then press Mark Paid.</p>
+      <div class="orders-toolbar">
+        <input type="search" id="ordersSearch" placeholder="Search name, TikTok, sticker…">
+        <select id="ordersPeriod">
+          <option value="all">All dates</option>
+          <option value="today">Today</option>
+          <option value="7">Last 7 days</option>
+          <option value="month">This month</option>
+          <option value="lastmonth">Last month</option>
+        </select>
+        <select id="ordersStatus">
+          <option value="all">Paid + unpaid</option>
+          <option value="pending">Unpaid only</option>
+          <option value="paid">Paid only</option>
+        </select>
+        <button type="button" class="secondary" id="ordersCsvBtn">⬇️ Export CSV</button>
+      </div>
+      <p class="hint" id="ordersCount" style="margin:0 0 10px;"></p>
       <button class="clear-empty-btn" id="clearEmptyOrdersBtn" style="display:none;"></button>
       <div id="ordersList">Loading…</div>
       <button class="add-new-btn" id="addOrderBtn">+ Add order</button>
@@ -507,7 +548,7 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
 <script>
   // ---- Fill these in from Supabase → Project Settings → API ----
   const SUPABASE_URL = "https://heeatmscxouwevoonpti.supabase.co";
@@ -2452,13 +2493,16 @@
     const el = document.getElementById('ordersList');
     const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
     if (error) { el.textContent = error.message; return; }
-    emptyOrderIds = (data || []).filter(isEmptyOrder).map(o => o.id);
+    allOrdersAdmin = data || [];
+    emptyOrderIds = allOrdersAdmin.filter(isEmptyOrder).map(o => o.id);
     updateClearEmptyButton();
-    if (!data || data.length === 0) { el.innerHTML = '<p class="hint">No orders logged yet.</p>'; return; }
+    renderSalesStats();
+    if (!data || data.length === 0) { el.innerHTML = '<p class="hint">No orders logged yet.</p>'; applyOrderFilters(); return; }
     el.innerHTML = data.map(o => {
       const isPaid = o.status === 'paid';
       return `
       <div class="addon-row order-row" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
+        <span class="o-date">📅 ${fmtOrderDate(o.created_at)}</span>
         <input type="text" class="o-name" value="${o.customer_name || ''}" placeholder="Name" disabled style="flex:1;min-width:90px;">
         <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" disabled style="flex:1;min-width:90px;">
         <select class="o-tumbler" disabled style="flex:1;min-width:130px;">${tumblerOptionsHtml(o.tumbler)}</select>
@@ -2519,6 +2563,7 @@
         saveBtn.style.display = 'none';
         editBtn.style.display = '';
         showToast('✅ Saved!');
+        renderSalesStats();
       });
 
       // "Mark Paid" is a toggle, not a one-way switch: clicking it again while
@@ -2555,6 +2600,8 @@
           }
           const stockWarning = warnings.length ? warnings.join(' ') : null;
           order.status = newStatus;
+          renderSalesStats();
+          applyOrderFilters();
           btn.classList.toggle('is-paid', newStatus === 'paid');
           btn.textContent = newStatus === 'paid' ? '✓ Paid' : 'Mark Paid';
           showToast(stockWarning || (newStatus === 'paid' ? '✅ Marked paid!' : '↩️ Un-marked'), !!stockWarning);
@@ -2579,7 +2626,141 @@
         renderOrders();
       });
     });
+    applyOrderFilters();
   }
+
+  // ==================================================================
+  // Orders: search / date / paid filters, CSV export, and 📈 Sales stats
+  // ==================================================================
+  let allOrdersAdmin = [];
+  function fmtOrderDate(iso){
+    const d = new Date(iso);
+    if (!iso || isNaN(d)) return '—';
+    return d.toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+  function inPeriod(iso, period){
+    if (period === 'all') return true;
+    const d = new Date(iso);
+    if (!iso || isNaN(d)) return false;
+    const now = new Date();
+    if (period === 'today') return d.toDateString() === now.toDateString();
+    if (period === '7') return now - d <= 7 * 24 * 60 * 60 * 1000;
+    if (period === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    if (period === 'lastmonth') {
+      const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return d.getFullYear() === lm.getFullYear() && d.getMonth() === lm.getMonth();
+    }
+    return true;
+  }
+  // Same sum as the "Total:" line on each order, worked out from the saved order.
+  function orderDataTotal(o){
+    if (!o.tumbler) return null;
+    let t = amountIn(o.tumbler) + amountIn(o.pattern) + amountIn(o.delivery);
+    String(o.addons || '').split(',').forEach(seg => { t += amountIn(seg); });
+    return t;
+  }
+  const fmtRMAdmin = (n) => 'RM' + (Number.isInteger(n) ? n : n.toFixed(2));
+  function orderMatches(o){
+    const q = (document.getElementById('ordersSearch').value || '').trim().toLowerCase();
+    const period = document.getElementById('ordersPeriod').value;
+    const status = document.getElementById('ordersStatus').value;
+    if (!inPeriod(o.created_at, period)) return false;
+    if (status === 'paid' && o.status !== 'paid') return false;
+    if (status === 'pending' && o.status === 'paid') return false;
+    if (q) {
+      const hay = [o.customer_name, o.tiktok_handle, o.sticker_code, o.tumbler, o.pattern, o.addons].join(' ').toLowerCase();
+      if (!q.split(/\s+/).every(w => hay.includes(w))) return false;
+    }
+    return true;
+  }
+  function applyOrderFilters(){
+    const countEl = document.getElementById('ordersCount');
+    let shown = 0;
+    document.querySelectorAll('#ordersList .order-row').forEach(row => {
+      const o = allOrdersAdmin.find(x => x.id === row.dataset.id);
+      const ok = !o || orderMatches(o);
+      row.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+    const total = allOrdersAdmin.length;
+    const filtered = shown !== total;
+    if (countEl) countEl.textContent = total ? (filtered ? `Showing ${shown} of ${total} orders` : `${total} order${total === 1 ? '' : 's'}`) : '';
+    if (filtered && shown === 0 && countEl) countEl.textContent = `No orders match — showing 0 of ${total}`;
+  }
+  ['ordersSearch', 'ordersPeriod', 'ordersStatus'].forEach(id => {
+    document.getElementById(id).addEventListener(id === 'ordersSearch' ? 'input' : 'change', applyOrderFilters);
+  });
+
+  document.getElementById('ordersCsvBtn').addEventListener('click', () => {
+    const list = allOrdersAdmin.filter(o => !isEmptyOrder(o) && orderMatches(o));
+    if (!list.length) { showToast('No orders to export with these filters.', true); return; }
+    const header = ['Date', 'Name', 'TikTok', 'Tumbler', 'Sticker', 'Pattern', 'Add-ons', 'Delivery', 'Total (RM)', 'Status'];
+    const rows = list.map(o => {
+      const total = orderDataTotal(o);
+      return [fmtOrderDate(o.created_at), o.customer_name, o.tiktok_handle, o.tumbler, o.sticker_code, o.pattern, o.addons, o.delivery,
+        total === null ? '' : total, o.status === 'paid' ? 'Paid' : 'Unpaid'].map(csvEscape).join(',');
+    });
+    // The BOM at the start makes Excel show Chinese / emoji correctly.
+    const csv = '\ufeff' + [header.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`✅ Exported ${list.length} order${list.length === 1 ? '' : 's'}`);
+  });
+
+  function renderSalesStats(){
+    const el = document.getElementById('salesStats');
+    if (!el) return;
+    const period = document.getElementById('salesPeriod').value;
+    const inRange = allOrdersAdmin.filter(o => !isEmptyOrder(o) && inPeriod(o.created_at, period));
+    const paid = inRange.filter(o => o.status === 'paid');
+    const unpaid = inRange.filter(o => o.status !== 'paid');
+    const sum = (list) => list.reduce((a, o) => a + (orderDataTotal(o) || 0), 0);
+    const shipping = paid.reduce((a, o) => a + amountIn(o.delivery), 0);
+
+    const count = (map, key, n = 1) => { if (key) map.set(key, (map.get(key) || 0) + n); };
+    const tumblers = new Map(), stickers = new Map(), patterns = new Map(), addons = new Map();
+    paid.forEach(o => {
+      count(tumblers, o.tumbler ? o.tumbler.replace(/\s*\(RM[^)]*\)/i, '').replace(PREORDER_SUFFIX, '').trim() : '');
+      count(stickers, o.sticker_code);
+      count(patterns, o.pattern ? o.pattern.replace(/\s*\(\+?RM[^)]*\)/i, '').trim() : '');
+      String(o.addons || '').split(',').map(x => x.trim()).filter(Boolean).forEach(seg => {
+        const promoBottle = seg.match(/^Promo bottle:\s*(.+?)\s*\(/i);
+        if (promoBottle) { count(tumblers, '🎁 ' + promoBottle[1] + ' (promo)'); return; }
+        const extra = seg.match(/^Extra sticker:\s*([^\s(]+)/i);
+        if (extra) { count(stickers, extra[1]); count(addons, 'Extra sticker'); return; }
+        const promoSticker = seg.match(/^Promo sticker:\s*([^\s(]+)/i);
+        if (promoSticker) { count(stickers, promoSticker[1]); return; }
+        if (/^(Promo pattern|Name on tumbler):/i.test(seg)) return;
+        count(addons, seg.replace(/\s*\(\+?RM[^)]*\)/i, '').trim());
+      });
+    });
+    const listHtml = (title, map, limit = 99) => {
+      const rows = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
+      if (!rows.length) return '';
+      return `<h4>${title}</h4>` + rows.map(([k, v]) => `<div class="sl-row"><span>${k.replace(/</g, '&lt;')}</span><b>${v}</b></div>`).join('');
+    };
+    el.innerHTML = `
+      <div class="sales-tiles">
+        <div class="sales-tile"><div class="num">${paid.length}</div><div class="lbl">Paid orders</div></div>
+        <div class="sales-tile"><div class="num">${fmtRMAdmin(sum(paid))}</div><div class="lbl">Sales${shipping ? ` (incl. ${fmtRMAdmin(shipping)} shipping)` : ''}</div></div>
+        <div class="sales-tile"><div class="num">${unpaid.length}</div><div class="lbl">Unpaid orders${unpaid.length ? ` · ${fmtRMAdmin(sum(unpaid))} waiting` : ''}</div></div>
+      </div>
+      ${paid.length ? `<div class="sales-list">
+        ${listHtml('🥤 Tumblers sold', tumblers)}
+        ${listHtml('🎀 Top stickers', stickers, 5)}
+        ${listHtml('✨ Patterns', patterns)}
+        ${listHtml('🧊 Add-ons', addons)}
+      </div>` : '<p class="hint" style="margin:0;">No paid orders in this period yet.</p>'}
+    `;
+  }
+  document.getElementById('salesPeriod').addEventListener('change', renderSalesStats);
 
 
 

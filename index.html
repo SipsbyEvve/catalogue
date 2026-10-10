@@ -267,6 +267,21 @@
   .option-card .oname{ font-size:0.85rem; font-weight:700; display:block; color:var(--ink); }
   .option-card .oprice{ font-size:0.78rem; color:var(--muted); margin-top:2px; display:block; }
   .option-card .oprice-sub{ display:block; font-size:0.7rem; color:var(--muted); opacity:0.85; margin-top:1px; }
+  .offline-box{ background:#fff; border:2px dashed var(--wa); border-radius:16px; padding:18px; text-align:center; }
+  .offline-box .ob-title{ font-weight:800; font-size:1rem; color:var(--brown-dark); margin-bottom:6px; }
+  .offline-box p{ margin:0 0 14px; color:var(--muted); font-size:0.88rem; line-height:1.5; }
+  .offline-box .ob-btn{ width:100%; justify-content:center; box-sizing:border-box; }
+  .offline-box .ob-retry{ margin-top:10px; background:none; border:none; color:var(--brown-dark); font-family:inherit; font-weight:700; font-size:0.85rem; cursor:pointer; text-decoration:underline; }
+
+  /* Two stickers per row in the gallery (less scrolling on phones). */
+  #stickerCats .sticker-grid{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+  #stickerCats .sticker-thumb .info{ padding:7px 9px; gap:6px; flex-wrap:wrap; }
+  #stickerCats .sticker-thumb .code-tag{ font-size:0.82rem; }
+  #stickerCats .sticker-thumb .badge{ font-size:0.58rem; padding:2px 7px; }
+  #stickerCats .sticker-thumb .pick-check{ width:28px; height:28px; font-size:0.95rem; top:6px; right:6px; }
+  #stickerCats .sticker-thumb .zoom-btn{ bottom:auto; top:6px; left:6px; right:auto; }
+  #stickerCats .sticker-thumb .new-ribbon, #stickerCats .sticker-thumb .for-tag{ top:38px; left:6px; font-size:0.6rem; padding:2px 7px; }
+  #stickerCats .notify-btn{ width:calc(100% - 12px); margin:6px; padding:6px 4px; font-size:0.66rem; }
   .glitter-note{ margin:-4px 0 12px; font-size:0.8rem; color:var(--muted); line-height:1.5; }
   .option-card.picked{
     border-color:var(--wa-dark); background:#e8f9ee;
@@ -900,7 +915,7 @@
   <button class="lightbox-close" id="lightboxClose" aria-label="Close">✕</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js"></script>
 <script>
   // ---- Fill these in from Supabase → Project Settings → API ----
   const SUPABASE_URL = "https://heeatmscxouwevoonpti.supabase.co";
@@ -909,7 +924,8 @@
 
   const STATUS_LABEL = { available: "In Stock", preorder: "Preorder", sold_out: "Sold Out" };
   const CONFIGURED = !SUPABASE_URL.startsWith("PASTE_") && !SUPABASE_ANON_KEY.startsWith("PASTE_");
-  const client = CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+  // If the Supabase library itself can't load, the page still works (just without the live gallery).
+  const client = (CONFIGURED && window.supabase) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
   const catGrid = document.getElementById('stickerCats');
   const statusEl = document.getElementById('stickerStatus');
@@ -1591,10 +1607,10 @@
   function missingOrderBits(){
     const missing = [];
     if (!myOrder.tumbler) missing.push('a tumbler (step ①)');
-    if (!myOrder.sticker) missing.push('a sticker (step ②)');
+    if (!myOrder.sticker && !stickersUnavailable) missing.push('a sticker (step ②)');
     if (hasCustomNameAddon() && !cleanCustomName()) missing.push('the name for your Custom Name add-on (step ④)');
-    if (myOrder.extraOn && !myOrder.extraStickers.length) missing.push('which extra sticker you want (step ④)');
-    if (myOrder.promo.on && !myOrder.promo.sticker) missing.push(`a sticker for your ${promoSettings.bottle_name} (step ④)`);
+    if (myOrder.extraOn && !myOrder.extraStickers.length && !stickersUnavailable) missing.push('which extra sticker you want (step ④)');
+    if (myOrder.promo.on && !myOrder.promo.sticker && !stickersUnavailable) missing.push(`a sticker for your ${promoSettings.bottle_name} (step ④)`);
     if (!myOrder.delivery) missing.push('West or East Malaysia delivery');
     if (!((document.getElementById('orderName') || {}).value || '').trim()) missing.push('your name');
     if (!((document.getElementById('orderTiktok') || {}).value || '').trim()) missing.push('your TikTok handle');
@@ -2119,22 +2135,50 @@
     });
   });
 
+  // When the sticker gallery can't load (Supabase down / over its limit, no internet…),
+  // customers can still order: a friendly note with a WhatsApp button, and the sticker
+  // stops being a required field (they tell us the design in the chat instead).
+  let stickersUnavailable = false;
+  function showStickersOffline(){
+    stickersUnavailable = true;
+    statusEl.style.display = 'none';
+    catGrid.className = '';
+    const msg = "Hi! I'd like to order a tumbler 🐳 Could you send me the sticker designs?";
+    catGrid.innerHTML = `
+      <div class="offline-box">
+        <div class="ob-title">Our sticker gallery can't load right now 🙏</div>
+        <p>You can still order! Pick your tumbler and fill in step ⑥, then tell us which sticker you'd like in the WhatsApp chat — or message us and we'll send you the designs.</p>
+        <a class="btn btn-whatsapp ob-btn" href="https://wa.me/evvyne?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 WhatsApp us for the designs</a>
+        <button type="button" class="ob-retry" id="stickersRetryBtn">↻ Try loading again</button>
+      </div>`;
+    document.getElementById('stickersRetryBtn').addEventListener('click', () => {
+      catGrid.innerHTML = '';
+      statusEl.textContent = 'Loading stickers…';
+      statusEl.style.display = 'block';
+      loadStickers();
+    });
+    refreshSendState();
+  }
+
   async function loadStickers(){
-    if (!client) {
-      statusEl.textContent = "Sticker gallery isn't connected yet — add your Supabase URL and anon key in index.html.";
-      return;
+    if (!client) { showStickersOffline(); return; }
+    let stickersRes, categoriesRes, subcategoriesRes;
+    try {
+      [stickersRes, categoriesRes, subcategoriesRes] = await Promise.all([
+        client.from('stickers').select('*').order('sort_order', { ascending: true }),
+        client.from('categories').select('*').order('sort_order', { ascending: true }),
+        client.from('subcategories').select('*').order('sort_order', { ascending: true }),
+      ]);
+    } catch (e) {
+      stickersRes = { error: e };
     }
-    const [stickersRes, categoriesRes, subcategoriesRes] = await Promise.all([
-      client.from('stickers').select('*').order('sort_order', { ascending: true }),
-      client.from('categories').select('*').order('sort_order', { ascending: true }),
-      client.from('subcategories').select('*').order('sort_order', { ascending: true }),
-    ]);
 
     if (stickersRes.error) {
-      statusEl.textContent = "Couldn't load stickers right now — please try again later.";
       console.error('Sticker load error:', stickersRes.error.message || JSON.stringify(stickersRes.error));
+      showStickersOffline();
       return;
     }
+    stickersUnavailable = false;
     if (categoriesRes.error) {
       console.warn('Categories load error (showing categories from stickers instead):', categoriesRes.error.message || JSON.stringify(categoriesRes.error));
     }
