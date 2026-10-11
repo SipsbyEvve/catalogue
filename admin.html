@@ -456,6 +456,13 @@
       <div id="catalogueSlots">Loading…</div>
     </div>
 
+    <div class="card" id="backupCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">💾 Backup to my computer</h2>
+      <p class="hint">Downloads a copy of all your catalogue data — stickers, categories, orders, tumblers, promo, add-ons and photo settings — as one file you keep on your computer. Nothing on the site changes. (The photos themselves stay in Supabase; the file remembers which photo goes with each sticker.)</p>
+      <button type="button" id="backupBtn">⬇️ Download backup</button>
+      <p class="msg" id="backupMsg"></p>
+    </div>
+
     <div class="card" id="optimizeCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🗜️ Make photos lighter</h2>
       <p class="hint">Makes a smaller copy of your big photos (stickers, category covers, catalogue photos) so each customer visit uses much less of your Supabase traffic. The photos look the same. <b>Nothing is deleted</b> — your original files stay in Supabase Storage; the catalogue just shows the lighter copy.</p>
@@ -1627,10 +1634,10 @@
   // Catalogue photos (① ③ ④ ⑤) — one row per fixed "slot"
   // ==================================================================
   const SLOTS = [
-    { key: 'step1_tumbler', label: '① Tumbler options photo', fallback: 'assets/tumbler-options.png' },
-    { key: 'step3_patterns', label: '③ Patterns photo', fallback: 'assets/patterns.jpg' },
-    { key: 'step4_rules', label: '⑤ Read-before-you-buy photo', fallback: 'assets/read-before-buy.jpg' },
-    { key: 'step5_order', label: '⑥ Order process photo', fallback: 'assets/order-process.jpg' },
+    { key: 'step1_tumbler', label: '① Tumbler options photo', fallback: 'tumbler-options.png' },
+    { key: 'step3_patterns', label: '③ Patterns photo', fallback: 'patterns.jpg' },
+    { key: 'step4_rules', label: '⑤ Read-before-you-buy photo', fallback: 'read-before-buy.jpg' },
+    { key: 'step5_order', label: '⑥ Order process photo', fallback: 'order-process.jpg' },
     { key: 'site_logo', label: '🖼️ Shop logo (shown at the top of your page)', fallback: '' },
   ];
   const pendingSlotFile = {};
@@ -2763,6 +2770,68 @@
   document.getElementById('salesPeriod').addEventListener('change', renderSalesStats);
 
 
+
+  // ==================================================================
+  // 💾 Backup — reads every table and downloads it as one JSON file. Read-only: changes nothing.
+  // ==================================================================
+  const BACKUP_TABLES = ['stickers', 'categories', 'subcategories', 'orders', 'addons', 'catalogue_content', 'settings', 'search_misses'];
+  async function fetchWholeTable(table){
+    const PAGE = 1000; // Supabase returns at most 1000 rows per request, so read in pages
+    let rows = [];
+    for (let from = 0; ; from += PAGE) {
+      let q = client.from(table).select('*');
+      const paged = typeof q.range === 'function';
+      if (paged) q = q.range(from, from + PAGE - 1);
+      const { data, error } = await q;
+      if (error) throw error;
+      rows = rows.concat(data || []);
+      if (!paged || !data || data.length < PAGE) break;
+    }
+    return rows;
+  }
+  function showLastBackup(){
+    let last = null;
+    try { last = localStorage.getItem('sbe_last_backup'); } catch (e) {}
+    const msg = document.getElementById('backupMsg');
+    if (last && !msg.textContent) { msg.className = 'msg'; msg.textContent = `Last backup on this device: ${fmtOrderDate(last)}`; }
+  }
+  document.getElementById('backupBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('backupBtn');
+    const msg = document.getElementById('backupMsg');
+    btn.disabled = true;
+    msg.className = 'msg'; msg.textContent = 'Collecting your data…';
+    const backup = { app: 'Sips by Evve catalogue', exported_at: new Date().toISOString(), tables: {}, problems: {} };
+    for (const t of BACKUP_TABLES) {
+      try { backup.tables[t] = await fetchWholeTable(t); }
+      catch (e) { backup.problems[t] = e.message || String(e); }
+    }
+    const got = Object.keys(backup.tables);
+    if (!got.length) {
+      msg.className = 'msg error';
+      msg.textContent = 'Couldn\'t read your data right now (is Supabase working?): ' + Object.values(backup.problems)[0];
+      btn.disabled = false;
+      return;
+    }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sips-by-evve-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    try { localStorage.setItem('sbe_last_backup', backup.exported_at); } catch (e) {}
+    const n = (t) => (backup.tables[t] || []).length;
+    const skipped = Object.keys(backup.problems).filter(t => t !== 'search_misses');
+    msg.className = skipped.length ? 'msg error' : 'msg ok';
+    msg.textContent = `✅ Backup downloaded — ${n('stickers')} stickers, ${n('orders')} orders, ${n('categories')} categories, ${n('addons')} add-ons.`
+      + (skipped.length ? ` ⚠️ Couldn't include: ${skipped.join(', ')}.` : '')
+      + ' Keep the file somewhere safe (e.g. Google Drive).';
+    btn.disabled = false;
+    showToast('✅ Backup downloaded');
+  });
+  showLastBackup();
 
   // ==================================================================
   // 🗜️ Make photos lighter — makes a smaller copy of each big photo already uploaded and
