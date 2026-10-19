@@ -700,7 +700,7 @@
 
   <section class="step">
     <h2>① Choose your tumbler ❄️</h2>
-    <img id="img-step1_tumbler" class="zoomable" src="assets/tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
+    <img id="img-step1_tumbler" class="zoomable" src="tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
     <p class="note" style="margin-top:14px;">Tap to pick your tumbler:</p>
     <div class="option-grid" id="tumblerOptions"></div>
   </section>
@@ -734,7 +734,7 @@
   <section class="step">
     <h2>③ Take a look at our patterns</h2>
     <p class="note">(you can also decide during your live date)</p>
-    <img id="img-step3_patterns" class="zoomable" src="assets/patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
+    <img id="img-step3_patterns" class="zoomable" src="patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
     <p class="note" style="margin-top:14px;">Tap to pick a pattern (optional):</p>
     <p class="glitter-note">✨ Full Glitter is +RM10 for the 600ml Fat Bottle only — all other bottles remain +RM5.</p>
     <div class="option-grid" id="patternOptions"></div>
@@ -793,14 +793,14 @@
 
   <section class="step">
     <h2>⑤ Read this before you buy ⚠️</h2>
-    <img id="img-step4_rules" class="zoomable" src="assets/read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu" loading="lazy">
+    <img id="img-step4_rules" class="zoomable" src="read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu" loading="lazy">
     <p class="zoom-caption">🔍 Tap image to enlarge</p>
   </section>
 
   <section class="step" id="orderSection">
     <h2>⑥ Send me your order!</h2>
     <p class="note">(and wait for your date! 💛)</p>
-    <img id="img-step5_order" class="zoomable" src="assets/order-process.jpg" alt="Order process — send your order, stock check, payment request, pay within 2 days, queue slot given, made live" loading="lazy">
+    <img id="img-step5_order" class="zoomable" src="order-process.jpg" alt="Order process — send your order, stock check, payment request, pay within 2 days, queue slot given, made live" loading="lazy">
     <p class="zoom-caption">🔍 Tap image to enlarge</p>
 
     <div class="order-summary" id="orderSummary">
@@ -937,6 +937,45 @@
 
   function publicImageUrl(path){
     return client.storage.from('stickers').getPublicUrl(path).data.publicUrl;
+  }
+  // Small preview copy (made in admin) for lists and grids — saved at "thumbs/<same path>".
+  // The big photo is only downloaded when someone taps 🔍.
+  function thumbUrl(path){ return publicImageUrl('thumbs/' + path); }
+
+  // Photos copied onto GitHub (next to index.html) don't use any Supabase traffic.
+  // photos.json (made by admin → 📦 Photos on GitHub) lists which ones are there, by photo path,
+  // so a photo replaced in admin later simply uses Supabase until the next GitHub upload.
+  let ghPhotos = { thumbs: {}, main: {} };
+  const ghPhotosReady = (async () => {
+    try {
+      const r = await fetch('photos.json', { cache: 'no-cache' });
+      if (!r.ok) return;
+      const j = await r.json();
+      ghPhotos = { thumbs: (j && j.thumbs) || {}, main: (j && j.main) || {} };
+    } catch (e) { /* no GitHub photos yet — everything comes from Supabase */ }
+  })();
+  const ghPhotosWait = () => Promise.race([ghPhotosReady, new Promise(r => setTimeout(r, 2000))]);
+
+  // If an image can't load, try the next address in its fallback list (GitHub → Supabase preview → full photo).
+  window.nextImgSrc = function(img){
+    const list = (img.dataset.fb || '').split('|').filter(Boolean);
+    if (!list.length) { img.onerror = null; return; }
+    const next = list.shift();
+    img.dataset.fb = list.join('|');
+    img.src = next;
+  };
+  // Addresses to try for a list/grid picture, best first.
+  function thumbSources(path){
+    const list = [];
+    if (ghPhotos.thumbs[path]) list.push(ghPhotos.thumbs[path]);
+    list.push(thumbUrl(path), publicImageUrl(path));
+    return list;
+  }
+  // <img> that shows the small preview (from GitHub when it's there), quietly falling back
+  // to the Supabase preview, then the full photo.
+  function thumbImg(path, alt, extra = ''){
+    const [first, ...rest] = thumbSources(path);
+    return `<img src="${first}" data-fb="${rest.join('|')}" onerror="nextImgSrc(this)" alt="${alt}"${extra}>`;
   }
 
   function openLightbox(sticker, imgUrl){
@@ -1331,7 +1370,7 @@
         const isMain = myOrder.sticker && myOrder.sticker.id === s.id;
         const isOn = myOrder.extraStickers.some(x => x.id === s.id);
         const cls = isMain ? 'main' : (isOn ? 'on' : (full ? 'full' : ''));
-        return `<button type="button" class="xs-t ${cls}" data-id="${s.id}">${isMain ? '<span class="xs-tag">Free</span>' : ''}<img src="${publicImageUrl(s.image_path)}" alt="${stickerLabel(s)}" loading="lazy"><b>${stickerLabel(s)}</b></button>`;
+        return `<button type="button" class="xs-t ${cls}" data-id="${s.id}">${isMain ? '<span class="xs-tag">Free</span>' : ''}${thumbImg(s.image_path, stickerLabel(s), ' loading="lazy"')}<b>${stickerLabel(s)}</b></button>`;
       }).join('');
       resultsEl.querySelectorAll('.xs-t').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1344,7 +1383,7 @@
 
     const chosenEl = document.getElementById('extraStickerChosen');
     chosenEl.innerHTML = myOrder.extraStickers.length
-      ? `Extra: ${myOrder.extraStickers.map(x => `<button type="button" class="xs-chip" data-id="${x.id}"><img src="${publicImageUrl(x.image_path)}" alt="">${stickerLabel(x)} <u>✕</u></button>`).join('')}
+      ? `Extra: ${myOrder.extraStickers.map(x => `<button type="button" class="xs-chip" data-id="${x.id}">${thumbImg(x.image_path, '')}${stickerLabel(x)} <u>✕</u></button>`).join('')}
          <span class="xs-note">${full ? `Max ${MAX_EXTRA_STICKERS} extra sticker per tumbler — tap ✕ to change it.` : `+RM${EXTRA_STICKER_PRICE} each · tap again to remove`}</span>`
       : '';
     chosenEl.querySelectorAll('.xs-chip').forEach(chip => {
@@ -1450,7 +1489,7 @@
     } else {
       resultsEl.innerHTML = list.map(st => {
         const on = myOrder.promo.sticker && myOrder.promo.sticker.id === st.id;
-        return `<button type="button" class="xs-t ${on ? 'on' : ''}" data-id="${st.id}"><img src="${publicImageUrl(st.image_path)}" alt="${stickerLabel(st)}" loading="lazy"><b>${stickerLabel(st)}</b></button>`;
+        return `<button type="button" class="xs-t ${on ? 'on' : ''}" data-id="${st.id}">${thumbImg(st.image_path, stickerLabel(st), ' loading="lazy"')}<b>${stickerLabel(st)}</b></button>`;
       }).join('');
       resultsEl.querySelectorAll('.xs-t').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1462,7 +1501,7 @@
     const chosen = document.getElementById('promoStickerChosen');
     const ps = myOrder.promo.sticker;
     chosen.innerHTML = ps
-      ? `Chosen: <button type="button" class="xs-chip" id="promoChip"><img src="${publicImageUrl(ps.image_path)}" alt="">${stickerLabel(ps)} <u>✕</u></button>`
+      ? `Chosen: <button type="button" class="xs-chip" id="promoChip">${thumbImg(ps.image_path, '')}${stickerLabel(ps)} <u>✕</u></button>`
       : '';
     const chip = document.getElementById('promoChip');
     if (chip) chip.addEventListener('click', () => setPromoSticker(ps));
@@ -1775,17 +1814,16 @@
 
   function stickerThumbsHtml(stickers){
     return stickers.map(s => {
-      const url = publicImageUrl(s.image_path);
       const soldOut = s.status === 'sold_out';
       const m = thumbMarks(s);
-      const ratio = imgRatioCache[url];
+      const ratio = imgRatioCache[s.id];
       const badgeClass = s.status === 'available' ? 'status-available' : (s.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
       return `
         <div class="sticker-thumb ${soldOut ? 'sold-out' : ''} ${m.picked ? 'picked' : ''}" data-id="${s.id}">
           <span class="tag-slot">${m.tagHtml}</span>
           <span class="pick-check">✓</span>
           <button type="button" class="zoom-btn" title="View full size">🔍</button>
-          <img src="${url}" alt="${s.code || s.name}" loading="lazy"${ratio ? ` style="aspect-ratio:${ratio};"` : ''}>
+          ${thumbImg(s.image_path, s.code || s.name, ` loading="lazy"${ratio ? ` style="aspect-ratio:${ratio};"` : ''}`)}
           <div class="info">
             <span class="code-tag">${s.code ? s.code : s.name}</span>
             <span class="badge ${badgeClass}">${STATUS_LABEL[s.status] || s.status}</span>
@@ -1803,7 +1841,7 @@
 
       const img = el.querySelector('img');
       const rememberRatio = () => {
-        if (img.naturalWidth && img.naturalHeight) imgRatioCache[img.getAttribute('src')] = `${img.naturalWidth} / ${img.naturalHeight}`;
+        if (img.naturalWidth && img.naturalHeight) imgRatioCache[s.id] = `${img.naturalWidth} / ${img.naturalHeight}`;
       };
       if (img.complete) rememberRatio(); else img.addEventListener('load', rememberRatio, { once: true });
 
@@ -1865,10 +1903,10 @@
     catGrid.className = 'cat-grid';
     catGrid.innerHTML = list.map(c => {
       const count = (byCategory[c.name] || []).length;
-      const cover = c.cover_image_path ? publicImageUrl(c.cover_image_path) : null;
+      const cover = c.cover_image_path || null;
       return `
         <div class="cat-cover-card" data-category="${c.name}">
-          ${cover ? `<img src="${cover}" alt="${c.name}" loading="lazy">` : `<div class="no-cover">🎀</div>`}
+          ${cover ? thumbImg(cover, c.name, ' loading="lazy"') : `<div class="no-cover">🎀</div>`}
           <div class="label">
             <span class="name">${c.name}</span>
             <span class="count">${count} design${count === 1 ? '' : 's'}</span>
@@ -1900,10 +1938,10 @@
       <div class="cat-grid">
         ${subcatList.map(sc => {
           const count = (bySubcat[sc.name] || []).length;
-          const cover = sc.cover_image_path ? publicImageUrl(sc.cover_image_path) : null;
+          const cover = sc.cover_image_path || null;
           return `
             <div class="cat-cover-card" data-subcategory="${sc.name}">
-              ${cover ? `<img src="${cover}" alt="${sc.name}" loading="lazy">` : `<div class="no-cover">🎀</div>`}
+              ${cover ? thumbImg(cover, sc.name, ' loading="lazy"') : `<div class="no-cover">🎀</div>`}
               <div class="label">
                 <span class="name">${sc.name}</span>
                 <span class="count">${count} design${count === 1 ? '' : 's'}</span>
@@ -2179,6 +2217,7 @@
       return;
     }
     stickersUnavailable = false;
+    await ghPhotosWait();
     if (categoriesRes.error) {
       console.warn('Categories load error (showing categories from stickers instead):', categoriesRes.error.message || JSON.stringify(categoriesRes.error));
     }
@@ -2194,7 +2233,7 @@
     renderCategoryGrid();
   }
 
-  // ---- ① ③ ④ ⑤ catalogue photos (falls back to the bundled assets/*.* if not set) ----
+  // ---- ① ③ ④ ⑤ catalogue photos (falls back to the bundled backup photos next to index.html if not set) ----
   // ---- + shop logo (site_logo slot — no bundled fallback, stays hidden until set) ----
   // Retries a couple of times on a transient network hiccup instead of giving up after one failed attempt.
   async function loadCatalogueContent(attempt = 1){
@@ -2213,12 +2252,16 @@
       return;
     }
     if (!data) return;
+    await ghPhotosWait();
     data.forEach(row => {
       if (!row.image_path) return; // keep the default bundled image (or hidden logo)
       if (row.slot === 'site_logo') {
         const logo = document.getElementById('brandLogo');
         if (logo) {
-          logo.src = publicImageUrl(row.image_path);
+          const [first, ...rest] = thumbSources(row.image_path);
+          logo.dataset.fb = rest.join('|');
+          logo.onerror = () => nextImgSrc(logo);
+          logo.src = first;
           logo.style.display = 'block';
         }
         // The logo image already has your shop name on it, so hide the plain text underneath it.
@@ -2227,7 +2270,15 @@
         return;
       }
       const img = document.getElementById(`img-${row.slot}`);
-      if (img) img.src = publicImageUrl(row.image_path);
+      if (!img) return;
+      const gh = ghPhotos.main[row.slot];
+      if (gh && gh.path === row.image_path && gh.file) {
+        img.dataset.fb = publicImageUrl(row.image_path); // GitHub copy first, Supabase if it can't load
+        img.onerror = () => nextImgSrc(img);
+        img.src = gh.file;
+      } else {
+        img.src = publicImageUrl(row.image_path);
+      }
     });
   }
 

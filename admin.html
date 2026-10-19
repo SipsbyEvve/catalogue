@@ -463,9 +463,17 @@
       <p class="msg" id="backupMsg"></p>
     </div>
 
+    <div class="card" id="githubPhotosCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">📦 Photos on GitHub</h2>
+      <p class="hint">Puts copies of the small sticker previews, covers, logo and the 4 big catalogue photos on GitHub, so customers browsing your catalogue use (almost) no Supabase traffic — even during lives. Your photos in Supabase stay exactly as they are. Do this after "Make photos lighter", and again every few months when you've added new stickers (new ones still show fine before that — they just come from Supabase).</p>
+      <p class="msg" id="githubPhotosStatus" style="margin-top:0;"></p>
+      <button type="button" id="githubPhotosBtn">📦 Download photos for GitHub</button>
+      <p class="msg" id="githubPhotosMsg"></p>
+    </div>
+
     <div class="card" id="optimizeCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🗜️ Make photos lighter</h2>
-      <p class="hint">Makes a smaller copy of your big photos (stickers, category covers, catalogue photos) so each customer visit uses much less of your Supabase traffic. The photos look the same. <b>Nothing is deleted</b> — your original files stay in Supabase Storage; the catalogue just shows the lighter copy.</p>
+      <p class="hint">Makes a smaller copy of your big photos (stickers, category covers, catalogue photos), plus a small preview of each sticker, cover and the logo for the catalogue's lists — the full photo only loads when a customer taps 🔍. Each customer visit uses much less of your Supabase traffic, and the photos look the same. <b>Nothing is deleted</b> — your original files stay in Supabase Storage.</p>
       <button type="button" id="optimizeScanBtn">Check my photos</button>
       <p class="msg" id="optimizeMsg"></p>
       <button type="button" id="optimizeRunBtn" style="display:none;margin-top:8px;"></button>
@@ -601,11 +609,10 @@
       </div>
       <div class="restock-list">
         ${preorderStickers.map(s => {
-          const url = client.storage.from('stickers').getPublicUrl(s.image_path).data.publicUrl;
           return `
             <label class="restock-row" data-id="${s.id}">
               <input type="checkbox" class="restock-check">
-              <img src="${url}" alt="${s.code || s.name}" onerror="handleImgError(this)">
+              <img ${thumbOrFull(s.image_path)} alt="${s.code || s.name}" onerror="handleImgError(this)">
               <div class="info">
                 <div class="code">${s.code || s.name}</div>
                 <div class="cat">${s.category}${s.subcategory ? ' · ' + s.subcategory : ''}</div>
@@ -726,6 +733,7 @@
     renderVisitStats();
     renderOrders();
     loadPromoAdmin();
+    refreshGithubPhotoStatus();
   }
   function showLogin(){
     loginSection.style.display = 'block';
@@ -843,6 +851,22 @@
   // Browsers keep photos for a year (every upload gets a new file name, so a replaced photo
   // still shows up straight away) — repeat visitors don't download them again.
   const IMAGE_CACHE_SECONDS = '31536000';
+  // Small preview copies for the catalogue's lists and grids, saved at "thumbs/<same path>".
+  // Customers only download the big photo when they tap 🔍. Never replaces the photo itself.
+  const THUMB_DIM = { sticker: 400, cover: 400, logo: 700 };
+  async function uploadThumb(path, sourceBlob, maxDim){
+    try {
+      const small = await compressImageBlob(sourceBlob, maxDim, 0.75);
+      const { error } = await client.storage.from('stickers').upload('thumbs/' + path, small, {
+        cacheControl: IMAGE_CACHE_SECONDS, upsert: true, contentType: small.type || 'image/jpeg',
+      });
+      if (error) console.error('Preview upload failed:', error.message);
+      return !error;
+    } catch (e) {
+      console.error('Preview upload failed:', e.message || e);
+      return false;
+    }
+  }
 
   // ---- toast: brief "Saved!" style confirmation, used after quick in-place edits ----
   let toastTimer = null;
@@ -965,6 +989,7 @@
       uploadBtn.disabled = false;
       return;
     }
+    await uploadThumb(path, finalBlob, THUMB_DIM.sticker);
 
     const siblingMax = allStickersAdmin
       .filter(s => s.category === category && (s.subcategory || null) === (subcategory || null))
@@ -1182,6 +1207,7 @@
         done++;
         continue;
       }
+      await uploadThumb(path, finalBlob, THUMB_DIM.sticker);
 
       const code = item.code.trim();
       const itemStockQty = parseStockQtyInput(item.stockQty);
@@ -1326,7 +1352,18 @@
   // A photo occasionally fails to load on the first try (a network blip), and until now that
   // left a permanently broken image until you manually refreshed the whole page. This quietly
   // retries a few times in the background instead.
+  // Lists use the small preview ("thumbs/<path>"); if there isn't one yet, switch to the full photo.
+  function thumbOrFull(path){
+    const full = client.storage.from('stickers').getPublicUrl(path).data.publicUrl;
+    const thumb = client.storage.from('stickers').getPublicUrl('thumbs/' + path).data.publicUrl;
+    return `src="${thumb}" data-full="${full}"`;
+  }
   function handleImgError(img){
+    if (img.dataset.full && !img.dataset.usedFull) {
+      img.dataset.usedFull = '1';
+      img.src = img.dataset.full;
+      return;
+    }
     const tries = (parseInt(img.dataset.retryCount || '0', 10)) + 1;
     if (tries > 3) return; // give up quietly after 3 tries
     img.dataset.retryCount = String(tries);
@@ -1396,10 +1433,10 @@
     stickerList.className = 'cat-grid';
     stickerList.innerHTML = list.map(c => {
       const count = (byCategory[c.name] || []).length;
-      const cover = c.cover_image_path ? client.storage.from('stickers').getPublicUrl(c.cover_image_path).data.publicUrl : null;
+      const cover = c.cover_image_path ? thumbOrFull(c.cover_image_path) : null;
       return `
         <div class="cat-cover-card" data-category="${c.name}">
-          ${cover ? `<img src="${cover}" alt="${c.name}" loading="lazy" onerror="handleImgError(this)">` : `<div class="no-cover">🎀</div>`}
+          ${cover ? `<img ${cover} alt="${c.name}" loading="lazy" onerror="handleImgError(this)">` : `<div class="no-cover">🎀</div>`}
           <div class="label">
             <span class="name">${c.name}</span>
             <span class="count">${count} sticker${count === 1 ? '' : 's'}</span>
@@ -1414,14 +1451,13 @@
   }
 
   function stickerRowHtml(s){
-    const url = client.storage.from('stickers').getPublicUrl(s.image_path).data.publicUrl;
     return `
       <div class="sticker-row" data-id="${s.id}">
         <div class="reorder-btns">
           <button type="button" class="reorder-btn move-up" title="Move up">▲</button>
           <button type="button" class="reorder-btn move-down" title="Move down">▼</button>
         </div>
-        <img src="${url}" alt="${s.name}" onerror="handleImgError(this)">
+        <img ${thumbOrFull(s.image_path)} alt="${s.name}" onerror="handleImgError(this)">
         <div class="info">
           <div class="n">${s.name}</div>
           <div class="c">${s.category}</div>
@@ -1493,10 +1529,10 @@
       <div class="cat-grid">
         ${subcatList.map(sc => {
           const count = (bySubcat[sc.name] || []).length;
-          const cover = sc.cover_image_path ? client.storage.from('stickers').getPublicUrl(sc.cover_image_path).data.publicUrl : null;
+          const cover = sc.cover_image_path ? thumbOrFull(sc.cover_image_path) : null;
           return `
             <div class="cat-cover-card" data-subcategory="${sc.name}">
-              ${cover ? `<img src="${cover}" alt="${sc.name}" loading="lazy" onerror="handleImgError(this)">` : `<div class="no-cover">🎀</div>`}
+              ${cover ? `<img ${cover} alt="${sc.name}" loading="lazy" onerror="handleImgError(this)">` : `<div class="no-cover">🎀</div>`}
               <div class="label">
                 <span class="name">${sc.name}</span>
                 <span class="count">${count} sticker${count === 1 ? '' : 's'}</span>
@@ -1719,6 +1755,7 @@
           cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: upFile.type || 'image/jpeg',
         });
         if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg slot-msg error'; return; }
+        if (slot.key === 'site_logo') await uploadThumb(path, upFile, THUMB_DIM.logo);
 
         const { error: dbErr } = await client.from('catalogue_content')
           .upsert({ slot: slot.key, image_path: path, updated_at: new Date().toISOString() });
@@ -1887,6 +1924,7 @@
           cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: upFile.type || 'image/jpeg',
         });
         if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg cat-msg error'; return; }
+        await uploadThumb(path, upFile, THUMB_DIM.cover);
 
         const { error: dbErr } = await client.from('categories').update({ cover_image_path: path }).eq('name', cat.name);
         if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg cat-msg error'; return; }
@@ -2080,6 +2118,7 @@
           cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: upFile.type || 'image/jpeg',
         });
         if (upErr) { msgEl.textContent = upErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        await uploadThumb(path, upFile, THUMB_DIM.cover);
 
         const { error: dbErr } = await client.from('subcategories').update({ cover_image_path: path }).eq('id', sc.id);
         if (dbErr) { msgEl.textContent = dbErr.message; msgEl.className = 'msg subcat-msg error'; return; }
@@ -2772,6 +2811,124 @@
 
 
   // ==================================================================
+  // 📦 Photos on GitHub — builds a zip of small previews + the big catalogue photos with a
+  // photos.json list, for Evvyne to upload next to index.html. Read-only on Supabase.
+  // ==================================================================
+  function loadScriptOnce(src){
+    return new Promise((resolve, reject) => {
+      if ([...document.scripts].some(sc => sc.src === src)) return resolve();
+      const el = document.createElement('script');
+      el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('Couldn\'t load ' + src));
+      document.head.appendChild(el);
+    });
+  }
+  function shortHash(text){ // FNV-1a — a short, stable file name for each photo path
+    let h = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16).padStart(8, '0');
+  }
+  const extFor = (type) => type === 'image/webp' ? 'webp' : (type === 'image/png' ? 'png' : 'jpg');
+  async function readGithubManifest(){
+    try {
+      const r = await fetch('photos.json', { cache: 'no-store' });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { return null; }
+  }
+  async function refreshGithubPhotoStatus(){
+    const el = document.getElementById('githubPhotosStatus');
+    if (!el) return;
+    try {
+      const [manifest, rows] = await Promise.all([readGithubManifest(), collectPhotoRows()]);
+      if (!manifest) { el.className = 'msg'; el.textContent = 'No photos on GitHub yet.'; return; }
+      const onGh = new Set(Object.keys(manifest.thumbs || {}));
+      const missing = rows.filter(r => r.thumbDim && !onGh.has(r.path)).length;
+      const mainMissing = rows.filter(r => !r.thumbDim && r.label.startsWith('Catalogue photo') && !Object.values(manifest.main || {}).some(m => m.path === r.path)).length;
+      el.className = (missing || mainMissing) ? 'msg' : 'msg ok';
+      el.textContent = `On GitHub: ${onGh.size} previews + ${Object.keys(manifest.main || {}).length} catalogue photos (made ${fmtOrderDate(manifest.made_at)}).`
+        + ((missing || mainMissing) ? ` ${missing + mainMissing} newer photo${missing + mainMissing === 1 ? '' : 's'} not on GitHub yet — they still show fine (from Supabase).` : ' ✅ Everything is on GitHub.');
+    } catch (e) {
+      el.textContent = '';
+    }
+  }
+  document.getElementById('githubPhotosBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('githubPhotosBtn');
+    const msg = document.getElementById('githubPhotosMsg');
+    btn.disabled = true;
+    msg.className = 'msg'; msg.textContent = 'Getting ready…';
+    try {
+      await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+      const rows = await collectPhotoRows();
+      const thumbRows = rows.filter(r => r.thumbDim);
+      const mainRows = rows.filter(r => !r.thumbDim && r.label.startsWith('Catalogue photo'));
+      const manifest = { app: 'Sips by Evve catalogue', made_at: new Date().toISOString(), thumbs: {}, main: {} };
+      const files = []; // [{ name, blob }]
+      const usedNames = new Set();
+      const uniqueName = (base, ext) => { let n = `${base}.${ext}`, i = 2; while (usedNames.has(n)) n = `${base}-${i++}.${ext}`; usedNames.add(n); return n; };
+      const failed = [];
+      let i = 0;
+      for (const r of thumbRows) {
+        i++;
+        msg.textContent = `Collecting photos… ${i} of ${thumbRows.length + mainRows.length}`;
+        try {
+          let { data: blob, error } = await client.storage.from('stickers').download('thumbs/' + r.path);
+          if (error || !blob) { // no preview made yet — make one from the photo
+            const res = await client.storage.from('stickers').download(r.path);
+            if (res.error) throw res.error;
+            blob = await compressImageBlob(res.data, r.thumbDim, 0.75);
+          }
+          const name = uniqueName('p-' + shortHash(r.path), extFor(blob.type));
+          files.push({ name, blob });
+          manifest.thumbs[r.path] = name;
+        } catch (e) { failed.push(r.label); }
+      }
+      for (const r of mainRows) {
+        i++;
+        msg.textContent = `Collecting photos… ${i} of ${thumbRows.length + mainRows.length}`;
+        try {
+          const { data, error } = await client.storage.from('stickers').download(r.path);
+          if (error) throw error;
+          const blob = data.size > 600 * 1024 ? await compressImageBlob(data, 1400, 0.8) : data;
+          const slot = r.label.replace('Catalogue photo: ', '');
+          const name = uniqueName(`m-${slot}-${shortHash(r.path)}`, extFor(blob.type));
+          files.push({ name, blob });
+          manifest.main[slot] = { path: r.path, file: name };
+        } catch (e) { failed.push(r.label); }
+      }
+      if (!files.length) throw new Error('No photos found');
+      // GitHub's web upload takes at most 100 files at a time, so split into folders of up to 95.
+      // photos.json goes in the LAST folder, so it's uploaded after the photos it lists.
+      const zip = new JSZip();
+      const PER = 95;
+      const batches = Math.ceil((files.length + 1) / PER);
+      files.forEach((f, idx) => zip.folder(`upload-${Math.floor(idx / PER) + 1}-of-${batches}`).file(f.name, f.blob));
+      zip.folder(`upload-${batches}-of-${batches}`).file('photos.json', JSON.stringify(manifest, null, 1));
+      zip.file('HOW TO UPLOAD.txt',
+        'Upload the files inside each folder to GitHub, in order (upload-1 first, the last one last),\n'
+        + 'into the same place as index.html: Add file -> Upload files -> drag in all files from ONE folder -> Commit changes.\n'
+        + 'Then do the next folder. Old p-*.jpg / m-*.jpg files can stay; photos.json says which ones are used.\n\n'
+        + '把每个文件夹里面的文件依序上传到 GitHub（跟 index.html 同一层）：Add file -> Upload files -> 拖入一个文件夹里的全部文件 -> Commit changes。\n'
+        + '先 upload-1，最后才是最后一个（里面有 photos.json）。旧的 p-*/m-* 文件可以留着。\n');
+      msg.textContent = 'Making the zip…';
+      const out = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(out);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sips-photos-for-github-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      msg.className = failed.length ? 'msg error' : 'msg ok';
+      msg.textContent = `✅ Zip downloaded — ${files.length} photos in ${batches} folder${batches === 1 ? '' : 's'}. Unzip it, then upload each folder's files to GitHub (next to index.html), one folder at a time, in order.`
+        + (failed.length ? ` ⚠️ ${failed.length} couldn't be added (they'll keep showing from Supabase): ${failed.slice(0, 5).join(', ')}${failed.length > 5 ? '…' : ''}` : '');
+    } catch (e) {
+      msg.className = 'msg error';
+      msg.textContent = 'Couldn\'t make the zip: ' + (e.message || e);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ==================================================================
   // 💾 Backup — reads every table and downloads it as one JSON file. Read-only: changes nothing.
   // ==================================================================
   const BACKUP_TABLES = ['stickers', 'categories', 'subcategories', 'orders', 'addons', 'catalogue_content', 'settings', 'search_misses'];
@@ -2870,10 +3027,10 @@
       client.from('catalogue_content').select('slot, image_path'),
     ]);
     for (const r of [st, cats, subs, cc]) if (r.error) throw r.error;
-    (st.data || []).forEach(r => r.image_path && rows.push({ label: r.code || r.name, path: r.image_path, maxDim: 1000, save: (p) => client.from('stickers').update({ image_path: p }).eq('id', r.id) }));
-    (cats.data || []).forEach(r => r.cover_image_path && rows.push({ label: `Cover: ${r.name}`, path: r.cover_image_path, maxDim: 800, save: (p) => client.from('categories').update({ cover_image_path: p }).eq('name', r.name) }));
-    (subs.data || []).forEach(r => r.cover_image_path && rows.push({ label: `Cover: ${r.name}`, path: r.cover_image_path, maxDim: 800, save: (p) => client.from('subcategories').update({ cover_image_path: p }).eq('id', r.id) }));
-    (cc.data || []).forEach(r => r.image_path && rows.push({ label: `Catalogue photo: ${r.slot}`, path: r.image_path, maxDim: 1400, save: (p) => client.from('catalogue_content').update({ image_path: p }).eq('slot', r.slot) }));
+    (st.data || []).forEach(r => r.image_path && rows.push({ label: r.code || r.name, path: r.image_path, maxDim: 1000, thumbDim: THUMB_DIM.sticker, save: (p) => client.from('stickers').update({ image_path: p }).eq('id', r.id) }));
+    (cats.data || []).forEach(r => r.cover_image_path && rows.push({ label: `Cover: ${r.name}`, path: r.cover_image_path, maxDim: 800, thumbDim: THUMB_DIM.cover, save: (p) => client.from('categories').update({ cover_image_path: p }).eq('name', r.name) }));
+    (subs.data || []).forEach(r => r.cover_image_path && rows.push({ label: `Cover: ${r.name}`, path: r.cover_image_path, maxDim: 800, thumbDim: THUMB_DIM.cover, save: (p) => client.from('subcategories').update({ cover_image_path: p }).eq('id', r.id) }));
+    (cc.data || []).forEach(r => r.image_path && rows.push({ label: r.slot === 'site_logo' ? 'Logo' : `Catalogue photo: ${r.slot}`, path: r.image_path, maxDim: 1400, thumbDim: r.slot === 'site_logo' ? THUMB_DIM.logo : 0, save: (p) => client.from('catalogue_content').update({ image_path: p }).eq('slot', r.slot) }));
     return rows;
   }
 
@@ -2886,15 +3043,24 @@
     scanBtn.disabled = true;
     try {
       const [sizes, rows] = await Promise.all([listStorageSizes(), collectPhotoRows()]);
-      optimizeQueue = rows.filter(r => !isOptimizedPath(r.path) && (sizes.get(r.path) || 0) > OPT_MIN_BYTES)
-        .map(r => ({ ...r, size: sizes.get(r.path) }));
+      optimizeQueue = rows.map(r => ({
+        ...r,
+        size: sizes.get(r.path) || 0,
+        needsShrink: !isOptimizedPath(r.path) && (sizes.get(r.path) || 0) > OPT_MIN_BYTES,
+        needsThumb: !!r.thumbDim && sizes.has(r.path) && !sizes.has('thumbs/' + r.path),
+      })).filter(r => r.needsShrink || r.needsThumb);
+      const shrinkN = optimizeQueue.filter(r => r.needsShrink).length;
+      const thumbN = optimizeQueue.filter(r => r.needsThumb).length;
       const total = optimizeQueue.reduce((a, r) => a + r.size, 0);
       if (!optimizeQueue.length) {
         msg.className = 'msg ok';
-        msg.textContent = `✅ All ${rows.length} photos are already light — nothing to do.`;
+        msg.textContent = `✅ All ${rows.length} photos are already light and have small previews — nothing to do.`;
       } else {
-        msg.textContent = `${optimizeQueue.length} of ${rows.length} photos are big (${fmtMB(total)} in total). Making them lighter downloads each one once (${fmtMB(total)} of traffic, one time only).`;
-        runBtn.textContent = `🗜️ Make ${optimizeQueue.length} photos lighter`;
+        const parts = [];
+        if (shrinkN) parts.push(`${shrinkN} big photo${shrinkN === 1 ? '' : 's'} to make lighter`);
+        if (thumbN) parts.push(`${thumbN} small preview${thumbN === 1 ? '' : 's'} to create (for the sticker lists, covers and logo)`);
+        msg.textContent = `Found ${parts.join(' and ')}. This downloads each photo once (about ${fmtMB(total)} of traffic, one time only).`;
+        runBtn.textContent = `🗜️ Do it now (${optimizeQueue.length} photos)`;
         runBtn.style.display = '';
       }
     } catch (e) {
@@ -2909,7 +3075,7 @@
     const msg = document.getElementById('optimizeMsg');
     const runBtn = document.getElementById('optimizeRunBtn');
     runBtn.disabled = true;
-    let done = 0, saved = 0, skipped = 0;
+    let done = 0, saved = 0, skipped = 0, shrunk = 0, thumbs = 0;
     const failed = [];
     for (const item of optimizeQueue) {
       msg.className = 'msg';
@@ -2917,20 +3083,33 @@
       try {
         const { data: blob, error: dlErr } = await client.storage.from('stickers').download(item.path);
         if (dlErr) throw dlErr;
-        const small = await compressImageBlob(blob, item.maxDim, 0.8);
-        if (small === blob || small.size > blob.size * 0.9) { skipped++; done++; continue; }
-        const ext = small.type === 'image/jpeg' ? 'jpg' : (small.type === 'image/webp' ? 'webp' : 'png');
-        const slash = item.path.lastIndexOf('/');
-        const dir = slash >= 0 ? item.path.slice(0, slash + 1) : '';
-        const base = item.path.slice(slash + 1).replace(/\.[^.]+$/, '');
-        const newPath = `${dir}${OPT_PREFIX}${Date.now()}-${base}.${ext}`;
-        const { error: upErr } = await client.storage.from('stickers').upload(newPath, small, {
-          cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: small.type,
-        });
-        if (upErr) throw upErr;
-        const { error: dbErr } = await item.save(newPath);
-        if (dbErr) throw dbErr;
-        saved += blob.size - small.size;
+        let finalPath = item.path, finalBlob = blob;
+        if (item.needsShrink) {
+          const small = await compressImageBlob(blob, item.maxDim, 0.8);
+          if (small === blob || small.size > blob.size * 0.9) {
+            skipped++;
+          } else {
+            const ext = small.type === 'image/jpeg' ? 'jpg' : (small.type === 'image/webp' ? 'webp' : 'png');
+            const slash = item.path.lastIndexOf('/');
+            const dir = slash >= 0 ? item.path.slice(0, slash + 1) : '';
+            const base = item.path.slice(slash + 1).replace(/\.[^.]+$/, '');
+            const newPath = `${dir}${OPT_PREFIX}${Date.now()}-${base}.${ext}`;
+            const { error: upErr } = await client.storage.from('stickers').upload(newPath, small, {
+              cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: small.type,
+            });
+            if (upErr) throw upErr;
+            const { error: dbErr } = await item.save(newPath);
+            if (dbErr) throw dbErr;
+            saved += blob.size - small.size;
+            shrunk++;
+            finalPath = newPath; finalBlob = small;
+          }
+        }
+        // Small preview for lists / grids (made from the photo customers now see).
+        if (item.thumbDim && (item.needsThumb || finalPath !== item.path)) {
+          if (await uploadThumb(finalPath, finalBlob, item.thumbDim)) thumbs++;
+          else failed.push(`${item.label} (preview)`);
+        }
       } catch (e) {
         failed.push(`${item.label} (${e.message || e})`);
       }
@@ -2939,7 +3118,9 @@
     runBtn.style.display = 'none';
     runBtn.disabled = false;
     msg.className = failed.length ? 'msg error' : 'msg ok';
-    msg.textContent = `✅ Done — ${done - skipped - failed.length} photos made lighter, saving ${fmtMB(saved)} per full browse.`
+    msg.textContent = `✅ Done —`
+      + (shrunk ? ` ${shrunk} photos made lighter (saving ${fmtMB(saved)}).` : '')
+      + (thumbs ? ` ${thumbs} small previews created.` : '')
       + (skipped ? ` ${skipped} were already about as small as they can be.` : '')
       + (failed.length ? ` ⚠️ ${failed.length} couldn't be done (still showing the original): ${failed.slice(0, 5).join(', ')}${failed.length > 5 ? '…' : ''}` : '')
       + ' Originals are kept in Storage.';
