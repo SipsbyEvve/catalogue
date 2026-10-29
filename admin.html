@@ -32,7 +32,7 @@
   }
   label{ display:block; font-weight:600; font-size:0.88rem; margin:14px 0 6px; }
   label:first-child{ margin-top:0; }
-  input[type=email], input[type=password], input[type=text], input[type=file], select{
+  input[type=email], input[type=password], input[type=text], input[type=url], input[type=file], select{
     width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
     font-size:0.95rem; background:#fff; color:var(--ink); font-family:inherit;
   }
@@ -238,6 +238,17 @@
   .extra-sticker-label[data-empty="1"]:has(select:disabled){ display:none; }
   .o-total{ flex:1 1 100%; font-weight:800; color:var(--brown-dark); font-size:0.9rem; }
   .o-date{ flex:1 1 100%; font-size:0.78rem; color:var(--muted); font-weight:600; }
+  .hidden-when{ font-size:0.75rem; font-weight:700; color:#8858c7; margin-top:2px; }
+  .hide-toggle-row{ margin-top:12px; background:#f6f0fd; border:1px dashed #c9b2ea; border-radius:10px; padding:8px 10px; }
+  .hidden-actions{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+  .hidden-actions button{ margin:0; }
+  .hidden-schedule{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:0.85rem; color:var(--muted); }
+  .hidden-schedule input{ width:auto; margin:0; padding:7px 9px; }
+  .hidden-schedule button{ margin:0; }
+  .live-card .live-state{ font-weight:800; font-size:0.95rem; margin:0 0 10px; }
+  .live-card .live-state.on{ color:#e0245e; }
+  .live-card .live-toggle{ width:100%; font-size:1rem; padding:12px; }
+  .live-card .live-toggle.on{ background:#e0245e; border-color:#e0245e; color:#fff; }
   .orders-toolbar{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
   .orders-toolbar input, .orders-toolbar select{ margin:0; padding:8px 10px; font-size:0.85rem; width:auto; }
   .orders-toolbar input{ flex:1 1 180px; }
@@ -335,6 +346,15 @@
       <button class="secondary" id="logoutBtn">Log out</button>
     </div>
 
+    <div class="card live-card" id="liveCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">🔴 Live on TikTok</h2>
+      <p class="hint">Turn this on when you start a live — your catalogue shows a red "LIVE now — tap to join" bar at the top that opens your live. Turn it off when you finish (it also switches itself off after 8 hours, just in case).</p>
+      <label for="liveUrl">Your TikTok live link</label>
+      <input type="url" id="liveUrl" placeholder="https://www.tiktok.com/@yourname/live">
+      <p class="live-state" id="liveState">Loading…</p>
+      <button type="button" class="live-toggle" id="liveToggleBtn">🔴 I'm going live — show the bar</button>
+    </div>
+
     <div class="card">
       <h2 style="margin-top:0;font-size:1.1rem;">Add stickers</h2>
       <div class="add-tabs">
@@ -371,6 +391,10 @@
         </select>
         <label for="stickerStockQty">Stock count (optional — leave blank if you don't want to track a number for this one; if you do, it'll auto-flip to Sold Out at 0)</label>
         <input type="number" id="stickerStockQty" min="0" placeholder="e.g. 10">
+        <div class="checkbox-row hide-toggle-row">
+          <input type="checkbox" id="stickerHideToggle">
+          <label for="stickerHideToggle">🙈 Hide for now — customers can't see it until you open it (in "🙈 Hidden stickers" below)</label>
+        </div>
         <button id="uploadBtn">Upload sticker</button>
         <p class="msg" id="uploadMsg"></p>
       </div>
@@ -394,6 +418,10 @@
           <option value="preorder">Preorder</option>
           <option value="sold_out">Sold Out</option>
         </select>
+        <div class="checkbox-row hide-toggle-row">
+          <input type="checkbox" id="bulkHideToggle">
+          <label for="bulkHideToggle">🙈 Hide this whole batch for now — open them later (all at once, a few at a time, or at a set time) in "🙈 Hidden stickers" below</label>
+        </div>
         <div class="batch-grid" id="bulkBatchGrid"></div>
         <button id="bulkUploadBtn" style="display:none;">Upload all (0)</button>
         <p class="msg" id="bulkUploadMsg"></p>
@@ -442,6 +470,7 @@
         <h2 style="margin-top:0;font-size:1.1rem;">Existing stickers</h2>
         <button class="secondary" id="restockModeBtn" type="button">📦 Restock: Preorder → In Stock</button>
         <button class="secondary" id="noQtyBtn" type="button">📋 No quantity set</button>
+        <button class="secondary" id="hiddenModeBtn" type="button">🙈 Hidden stickers</button>
         <button class="secondary" id="exportCsvBtn" type="button">⬇️ Export CSV</button>
       </div>
       <p class="hint">Browse by category, just like customers do — click a category to see and manage its stickers. Or search across every category at once:</p>
@@ -669,7 +698,11 @@
     });
   }
 
-  restockModeBtn.addEventListener('click', () => { if (noQtyMode) setNoQtyMode(false); toggleRestockMode(); });
+  restockModeBtn.addEventListener('click', () => {
+    if (noQtyMode) setNoQtyMode(false);
+    if (typeof hiddenMode !== 'undefined' && hiddenMode) { hiddenMode = false; updateHiddenCount(); }
+    toggleRestockMode();
+  });
 
   // ---- "No quantity set" filter: every sticker whose stock count is still blank ----
   // (so Mark Paid can't deduct it and it won't turn Sold Out by itself). In Stock /
@@ -678,6 +711,7 @@
   let noQtyMode = false;
   const hasNoQty = s => s.stock_qty === null || s.stock_qty === undefined;
   function updateNoQtyCount(){
+    if (typeof updateHiddenCount === 'function') { try { updateHiddenCount(); } catch (e) {} }
     if (noQtyMode) return;
     const n = allStickersAdmin.filter(hasNoQty).length;
     noQtyBtn.textContent = n ? `📋 No quantity set (${n})` : '📋 No quantity set ✓';
@@ -715,9 +749,125 @@
     // After a save, redraw so stickers that now have a quantity drop off the list.
     wireStickerRows(missing, renderNoQtyList, () => { if (noQtyMode) renderNoQtyList(); });
   }
-  noQtyBtn.addEventListener('click', () => setNoQtyMode(!noQtyMode));
+  noQtyBtn.addEventListener('click', () => { if (hiddenMode) setHiddenMode(false); setNoQtyMode(!noQtyMode); });
   // Typing in the search box leaves the filter.
-  stickerSearchInput.addEventListener('input', () => { if (noQtyMode) { noQtyMode = false; updateNoQtyCount(); } });
+  stickerSearchInput.addEventListener('input', () => {
+    if (noQtyMode) { noQtyMode = false; updateNoQtyCount(); }
+    if (hiddenMode) { hiddenMode = false; updateHiddenCount(); }
+  });
+
+  // ---- 🙈 Hidden stickers: uploaded but not shown to customers yet ----
+  // release_at empty = shown as normal; a future time = hidden until then (HIDDEN_UNTIL = until opened by hand).
+  // Opening sets release_at to the opening time, so 🆕 New Arrivals counts from then.
+  const HIDDEN_UNTIL = '9999-12-31T00:00:00Z';
+  const hiddenModeBtn = document.getElementById('hiddenModeBtn');
+  let hiddenMode = false;
+  const isHiddenNow = s => !!s.release_at && new Date(s.release_at).getTime() > Date.now();
+  const isHiddenByHand = s => !!s.release_at && new Date(s.release_at).getFullYear() >= 9000;
+  function hiddenLabel(s){
+    if (!isHiddenNow(s)) return '';
+    if (isHiddenByHand(s)) return '🙈 Hidden';
+    return '⏰ Opens ' + new Date(s.release_at).toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  }
+  function updateHiddenCount(){
+    if (hiddenMode) return;
+    const n = allStickersAdmin.filter(isHiddenNow).length;
+    hiddenModeBtn.textContent = n ? `🙈 Hidden stickers (${n})` : '🙈 Hidden stickers';
+  }
+  function setHiddenMode(on){
+    hiddenMode = on;
+    if (on) {
+      if (restockMode) { restockMode = false; restockModeBtn.textContent = '📦 Restock: Preorder → In Stock'; }
+      if (noQtyMode) { noQtyMode = false; updateNoQtyCount(); }
+      stickerSearchInput.value = '';
+      hiddenModeBtn.textContent = '← Back to categories';
+      renderHiddenList();
+    } else {
+      updateHiddenCount();
+      renderStickerCategoryGrid();
+    }
+  }
+  async function setReleaseAt(ids, value, okText){
+    const { error } = await client.from('stickers').update({ release_at: value }).in('id', ids);
+    if (error) {
+      showToast(/release_at/i.test(error.message || '') ? 'Run supabase-setup-hidden-stickers.sql in Supabase first' : error.message, true);
+      return false;
+    }
+    ids.forEach(id => { const st = allStickersAdmin.find(x => x.id === id); if (st) st.release_at = value; });
+    showToast(okText);
+    return true;
+  }
+  function renderHiddenList(){
+    const hidden = allStickersAdmin.filter(isHiddenNow)
+      .sort((a, b) => new Date(a.release_at) - new Date(b.release_at) || (a.code || '').localeCompare(b.code || ''));
+    stickerList.className = '';
+    if (!hidden.length) {
+      stickerList.innerHTML = '<p class="hint">No hidden stickers right now. To hide new ones, tick "🙈 Hide for now" when you upload them.</p>';
+      return;
+    }
+    // Default schedule suggestion: tomorrow 8pm
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    const pad = n => String(n).padStart(2, '0');
+    const defDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    stickerList.innerHTML = `
+      <p class="hint">Customers can't see these yet. Tick the ones you want, then open them now or pick a time — they'll appear by themselves at that time and stay in 🆕 New Arrivals for a week from then.</p>
+      <div class="restock-toolbar">
+        <label><input type="checkbox" id="hiddenSelectAll"> Select all</label>
+        <span class="restock-count" id="hiddenCount">0 selected</span>
+      </div>
+      <div class="restock-list">
+        ${hidden.map(st => `
+          <label class="restock-row" data-id="${st.id}">
+            <input type="checkbox" class="hidden-check">
+            <img ${thumbOrFull(st.image_path)} alt="${st.code || st.name}" onerror="handleImgError(this)">
+            <div class="info">
+              <div class="code">${st.code || st.name}</div>
+              <div class="cat">${st.category}${st.subcategory ? ' · ' + st.subcategory : ''}</div>
+              <div class="hidden-when">${hiddenLabel(st)}</div>
+            </div>
+          </label>`).join('')}
+      </div>
+      <div class="hidden-actions">
+        <button type="button" id="hiddenOpenNowBtn">🎉 Open selected now (0)</button>
+        <div class="hidden-schedule">
+          <span>or open at</span>
+          <input type="date" id="hiddenDate" value="${defDate}">
+          <input type="time" id="hiddenTime" value="20:00">
+          <button type="button" class="secondary" id="hiddenScheduleBtn">⏰ Set time</button>
+        </div>
+        <button type="button" class="secondary" id="hiddenKeepBtn">🙈 Keep selected hidden (cancel the time)</button>
+      </div>
+    `;
+    const checks = () => Array.from(stickerList.querySelectorAll('.hidden-check'));
+    const selectedIds = () => checks().filter(c => c.checked).map(c => c.closest('.restock-row').dataset.id);
+    const updateCount = () => {
+      const n = selectedIds().length;
+      document.getElementById('hiddenCount').textContent = `${n} selected`;
+      document.getElementById('hiddenOpenNowBtn').textContent = `🎉 Open selected now (${n})`;
+      checks().forEach(c => c.closest('.restock-row').classList.toggle('checked', c.checked));
+    };
+    checks().forEach(c => c.addEventListener('change', updateCount));
+    document.getElementById('hiddenSelectAll').addEventListener('change', (e) => { checks().forEach(c => { c.checked = e.target.checked; }); updateCount(); });
+    const need = () => { const ids = selectedIds(); if (!ids.length) showToast('Tick at least one sticker first', true); return ids; };
+    document.getElementById('hiddenOpenNowBtn').addEventListener('click', async () => {
+      const ids = need(); if (!ids.length) return;
+      if (await setReleaseAt(ids, new Date().toISOString(), `🎉 ${ids.length} sticker${ids.length === 1 ? '' : 's'} now on your catalogue`)) renderHiddenList();
+    });
+    document.getElementById('hiddenScheduleBtn').addEventListener('click', async () => {
+      const ids = need(); if (!ids.length) return;
+      const dv = document.getElementById('hiddenDate').value, tv = document.getElementById('hiddenTime').value || '20:00';
+      const when = new Date(`${dv}T${tv}`);
+      if (!dv || isNaN(when)) { showToast('Pick a date and time first', true); return; }
+      if (when <= new Date()) { showToast('That time has already passed — use "Open selected now" instead', true); return; }
+      const label = when.toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+      if (await setReleaseAt(ids, when.toISOString(), `⏰ ${ids.length} sticker${ids.length === 1 ? '' : 's'} will open ${label}`)) renderHiddenList();
+    });
+    document.getElementById('hiddenKeepBtn').addEventListener('click', async () => {
+      const ids = need(); if (!ids.length) return;
+      if (await setReleaseAt(ids, HIDDEN_UNTIL, '🙈 Kept hidden — open them whenever you\'re ready')) renderHiddenList();
+    });
+  }
+  hiddenModeBtn.addEventListener('click', () => setHiddenMode(!hiddenMode));
 
   async function showApp(session){
     loginSection.style.display = 'none';
@@ -734,6 +884,7 @@
     renderOrders();
     loadPromoAdmin();
     refreshGithubPhotoStatus();
+    loadLiveAdmin();
   }
   function showLogin(){
     loginSection.style.display = 'block';
@@ -995,12 +1146,14 @@
       .filter(s => s.category === category && (s.subcategory || null) === (subcategory || null))
       .reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
 
+    const hideNew = document.getElementById('stickerHideToggle').checked;
     const { error: insertError } = await client.from('stickers').insert({
       name, code: code || null, keyword: keyword || null, category, subcategory: subcategory || null, status, image_path: path,
       sort_order: siblingMax + 1, stock_qty: stockQty,
+      ...(hideNew ? { release_at: HIDDEN_UNTIL } : {}),
     });
     if (insertError) {
-      uploadMsg.textContent = insertError.message;
+      uploadMsg.textContent = hideNew && /release_at/i.test(insertError.message || '') ? 'To hide stickers, run supabase-setup-hidden-stickers.sql in Supabase first (then try again).' : insertError.message;
       uploadMsg.className = 'msg error';
       uploadBtn.disabled = false;
       return;
@@ -1212,14 +1365,16 @@
       const code = item.code.trim();
       const itemStockQty = parseStockQtyInput(item.stockQty);
       const itemStatus = deriveStatusFromStock(status, itemStockQty, null); // brand-new sticker, no previous status
+      const hideBatch = document.getElementById('bulkHideToggle').checked;
       const { error: insertError } = await client.from('stickers').insert({
         name: code, code: code || null, keyword: item.keyword.trim() || null,
         category, subcategory: subcategory || null, status: itemStatus, image_path: path,
         sort_order: nextSortOrder(category, subcategory), stock_qty: itemStockQty,
+        ...(hideBatch ? { release_at: HIDDEN_UNTIL } : {}),
       });
       if (insertError) {
         failCount++;
-        markBulkItemResult(item.id, false, insertError.message);
+        markBulkItemResult(item.id, false, hideBatch && /release_at/i.test(insertError.message || '') ? 'Run supabase-setup-hidden-stickers.sql in Supabase first' : insertError.message);
       } else {
         markBulkItemResult(item.id, true);
       }
@@ -1461,6 +1616,7 @@
         <div class="info">
           <div class="n">${s.name}</div>
           <div class="c">${s.category}</div>
+          ${hiddenLabel(s) ? `<div class="hidden-when">${hiddenLabel(s)}</div>` : ''}
         </div>
         <input type="text" class="code-input" value="${s.code || ''}" placeholder="Code">
         <input type="text" class="keyword-input" value="${s.keyword || ''}" placeholder="Keyword (optional)">
@@ -1472,6 +1628,7 @@
         </select>
         <div class="row-actions">
           <button class="secondary save-btn">Save</button>
+          <button class="secondary hide-btn" title="${isHiddenNow(s) ? 'Show it on the catalogue now' : 'Hide it from customers for now'}">${isHiddenNow(s) ? '🎉 Open' : '🙈 Hide'}</button>
           <button class="secondary move-btn">Move</button>
           <button class="danger delete-btn">Delete</button>
         </div>
@@ -1582,6 +1739,20 @@
       const id = row.dataset.id;
       const sticker = stickers.find(s => s.id === id);
       if (!sticker) return;
+
+      const hideBtn = row.querySelector('.hide-btn');
+      if (hideBtn) hideBtn.addEventListener('click', async () => {
+        const opening = isHiddenNow(sticker);
+        if (!opening && !confirm(`Hide ${sticker.code || sticker.name} from customers? You can open it again any time (🙈 Hidden stickers).`)) return;
+        const ok = await setReleaseAt([id], opening ? new Date().toISOString() : HIDDEN_UNTIL, opening ? `🎉 ${sticker.code || sticker.name} is on your catalogue` : `🙈 ${sticker.code || sticker.name} hidden`);
+        if (!ok) return;
+        const label = hiddenLabel(sticker);
+        let tag = row.querySelector('.hidden-when');
+        if (label) { if (!tag) { tag = document.createElement('div'); tag.className = 'hidden-when'; row.querySelector('.info').appendChild(tag); } tag.textContent = label; }
+        else if (tag) tag.remove();
+        hideBtn.textContent = isHiddenNow(sticker) ? '🎉 Open' : '🙈 Hide';
+        updateHiddenCount();
+      });
 
       row.querySelector('.save-btn').addEventListener('click', async () => {
         const chosenStatus = row.querySelector('.status-select').value;
@@ -2809,6 +2980,46 @@
   document.getElementById('salesPeriod').addEventListener('change', renderSalesStats);
 
 
+
+  // ==================================================================
+  // 🔴 Live on TikTok — saved in "settings" (key "live"); the catalogue shows a LIVE bar.
+  // ==================================================================
+  let liveSettings = { on: false, url: '', started_at: null };
+  const LIVE_MAX_HOURS_ADMIN = 8;
+  function liveIsOn(){
+    const t = liveSettings.started_at ? new Date(liveSettings.started_at).getTime() : NaN;
+    return liveSettings.on === true && !isNaN(t) && Date.now() - t < LIVE_MAX_HOURS_ADMIN * 3600e3;
+  }
+  function renderLiveCard(){
+    const st = document.getElementById('liveState'), btn = document.getElementById('liveToggleBtn');
+    if (!st || !btn) return;
+    const on = liveIsOn();
+    st.className = 'live-state' + (on ? ' on' : '');
+    st.textContent = on ? `🔴 LIVE bar is showing on your catalogue (since ${new Date(liveSettings.started_at).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit' })})` : '⚪ Off — customers don\'t see a live bar';
+    btn.classList.toggle('on', on);
+    btn.textContent = on ? '⏹ Live finished — hide the bar' : '🔴 I\'m going live — show the bar';
+  }
+  async function loadLiveAdmin(){
+    const { data } = await client.from('settings').select('*');
+    const row = (data || []).find(r => r.key === 'live');
+    if (row && row.value) liveSettings = { ...liveSettings, ...row.value };
+    document.getElementById('liveUrl').value = liveSettings.url || '';
+    renderLiveCard();
+  }
+  document.getElementById('liveToggleBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('liveToggleBtn');
+    const url = document.getElementById('liveUrl').value.trim();
+    const turningOn = !liveIsOn();
+    if (turningOn && !/^https?:\/\//i.test(url)) { showToast('Paste your TikTok live link first (starting with https://)', true); return; }
+    const next = turningOn ? { on: true, url, started_at: new Date().toISOString() } : { ...liveSettings, url: url || liveSettings.url, on: false };
+    btn.disabled = true;
+    const { error } = await client.from('settings').upsert({ key: 'live', value: next, updated_at: new Date().toISOString() });
+    btn.disabled = false;
+    if (error) { showToast(/settings/i.test(error.message || '') ? 'Run supabase-setup-settings.sql in Supabase first' : error.message, true); return; }
+    liveSettings = next;
+    renderLiveCard();
+    showToast(turningOn ? '🔴 LIVE bar is on — customers see it now' : '⏹ LIVE bar hidden');
+  });
 
   // ==================================================================
   // 📦 Photos on GitHub — builds a zip of small previews + the big catalogue photos with a
