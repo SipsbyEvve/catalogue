@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="sbe-build" content="2026-10-29-1">
 <title>Sips by Evve — Custom Snowglobe Tumblers Catalogue</title>
 <meta property="og:title" content="Sips by Evve — Custom Snowglobe Tumblers Catalogue">
 <meta property="og:description" content="Pick your tumbler, sticker &amp; pattern, then send your order on WhatsApp 🎀 Free shipping West Malaysia.">
@@ -282,6 +283,14 @@
   #stickerCats .sticker-thumb .zoom-btn{ bottom:auto; top:6px; left:6px; right:auto; }
   #stickerCats .sticker-thumb .new-ribbon, #stickerCats .sticker-thumb .for-tag{ top:38px; left:6px; font-size:0.6rem; padding:2px 7px; }
   #stickerCats .notify-btn{ width:calc(100% - 12px); margin:6px; padding:6px 4px; font-size:0.66rem; }
+  .live-bar{
+    display:flex; align-items:center; justify-content:center; gap:8px; position:sticky; top:0; z-index:50;
+    background:#e0245e; color:#fff; font-weight:800; font-size:0.92rem; padding:10px 14px; text-decoration:none;
+    box-shadow:0 4px 14px rgba(224,36,94,0.35);
+  }
+  .live-bar .live-dot{ width:10px; height:10px; border-radius:50%; background:#fff; animation:livePulse 1.2s infinite; flex:none; }
+  .live-bar .live-go{ background:#fff; color:#e0245e; border-radius:999px; padding:3px 10px; font-size:0.8rem; margin-left:4px; }
+  @keyframes livePulse{ 0%{ opacity:1; transform:scale(1); } 50%{ opacity:0.35; transform:scale(0.8); } 100%{ opacity:1; transform:scale(1); } }
   .glitter-note{ margin:-4px 0 12px; font-size:0.8rem; color:var(--muted); line-height:1.5; }
   .option-card.picked{
     border-color:var(--wa-dark); background:#e8f9ee;
@@ -683,9 +692,19 @@
     font-weight:600;
     text-decoration:none;
   }
+  .update-bar{
+    position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:200; display:flex; align-items:center; gap:10px;
+    background:#3a2e22; color:#fff; font-weight:700; font-size:0.85rem; padding:8px 8px 8px 14px; border-radius:999px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.25); width:max-content; max-width:calc(100vw - 24px); box-sizing:border-box; white-space:nowrap;
+  }
+  .update-bar button{ margin:0; border:none; background:#25D366; color:#fff; font-weight:800; font-family:inherit; font-size:0.85rem; padding:6px 14px; border-radius:999px; cursor:pointer; flex:none; }
 </style>
 </head>
 <body>
+
+<a class="live-bar" id="liveBar" href="#" target="_blank" rel="noopener" style="display:none;">
+  <span class="live-dot"></span> LIVE now on TikTok — tap to join! <span class="live-go">Join ›</span>
+</a>
 
 <div class="hero">
   <img id="brandLogo" class="brand-logo" src="" alt="Sips by Evve logo">
@@ -1561,6 +1580,23 @@
       myOrder.tumbler = fresh && fresh.status !== 'sold_out' ? fresh : null;
     }
   }
+  // 🔴 "LIVE now" bar — switched on/off in admin. Turns itself off after 8 hours in case
+  // it's left on after a live by mistake.
+  const LIVE_MAX_HOURS = 8;
+  function applyLiveSettings(v){
+    const bar = document.getElementById('liveBar');
+    if (!bar) return;
+    const started = v && v.started_at ? new Date(v.started_at).getTime() : NaN;
+    const fresh = !isNaN(started) && Date.now() - started < LIVE_MAX_HOURS * 60 * 60 * 1000;
+    const url = v && typeof v.url === 'string' ? v.url.trim() : '';
+    if (v && v.on === true && fresh && /^https?:\/\//i.test(url)) {
+      bar.href = url;
+      bar.style.display = '';
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
   async function loadPromoSettings(){
     if (!client) return;
     try {
@@ -1568,6 +1604,8 @@
       if (error || !data) return;
       const tumblerRow = data.find(r => r.key === 'tumblers');
       if (tumblerRow) applyTumblerSettings(tumblerRow.value);
+      const liveRow = data.find(r => r.key === 'live');
+      applyLiveSettings(liveRow && liveRow.value);
       const row = data.find(r => r.key === 'promo');
       const v = row && row.value;
       if (!v) { renderTumblerOptions(); updateOrderSummary(); return; }
@@ -1687,20 +1725,20 @@
     lastLoggedOrder = { sig: signature, t: Date.now() };
     try { localStorage.setItem('sbe_last_order', JSON.stringify(lastLoggedOrder)); } catch (e) {}
 
-    const insert = (payload) => client.from('orders').insert(payload);
+    // If a newer column ("delivery") hasn't been added in Supabase yet, don't lose
+    // the order — save it again without that field.
+    const OPTIONAL_COLS = ['delivery'];
+    const insert = (payload, triesLeft = OPTIONAL_COLS.length) => client.from('orders').insert(payload).then(({ error }) => {
+      if (!error) return;
+      const col = OPTIONAL_COLS.find(c => c in payload && new RegExp(c, 'i').test(error.message || ''));
+      if (col && triesLeft > 0) {
+        const { [col]: _dropped, ...rest } = payload;
+        return insert(rest, triesLeft - 1);
+      }
+      console.error('order log error:', error.message || JSON.stringify(error));
+    });
     try {
-      insert(row).then(({ error }) => {
-        if (!error) return;
-        // If the "delivery" column hasn't been added in Supabase yet, don't lose the
-        // order — save it without that one field instead.
-        if (/delivery/i.test(error.message || '')) {
-          const { delivery, ...withoutDelivery } = row;
-          return insert(withoutDelivery).then(({ error: e2 }) => {
-            if (e2) console.error('order log error:', e2.message || JSON.stringify(e2));
-          });
-        }
-        console.error('order log error:', error.message || JSON.stringify(error));
-      }).catch(err => console.error('order log error:', err && err.message));
+      insert(row).catch(err => console.error('order log error:', err && err.message));
     } catch (err) {
       console.error('order log error:', err && err.message);
     }
@@ -1769,11 +1807,12 @@
   }
 
   // ---- "New" badge: any sticker added within the last NEW_DAYS days ----
-  const NEW_DAYS = 5;
+  const NEW_DAYS = 7;
   function isNew(s){
     // "New" = either just added, OR a preorder that was just restocked to In Stock —
     // whichever happened more recently.
-    const times = [s.created_at, s.restocked_at]
+    // A sticker that was hidden and released later counts as new from its release time.
+    const times = [s.created_at, s.restocked_at, s.release_at]
       .filter(Boolean)
       .map(t => new Date(t).getTime())
       .filter(t => !isNaN(t));
@@ -2198,6 +2237,30 @@
     refreshSendState();
   }
 
+  // release_at empty = shown as normal; a future time = hidden until then (far-future = hidden until released by hand).
+  function isReleased(s, nowMs = Date.now()){
+    if (!s.release_at) return true;
+    const t = new Date(s.release_at).getTime();
+    return isNaN(t) || t <= nowMs;
+  }
+  // If some stickers are set to open while a customer has the page open (within 12 hours), show them right on time.
+  let releaseTimer = null;
+  function scheduleNextRelease(rows, nowMs){
+    clearTimeout(releaseTimer);
+    const next = rows.map(s => s.release_at ? new Date(s.release_at).getTime() : NaN)
+      .filter(t => !isNaN(t) && t > nowMs && t - nowMs < 12 * 60 * 60 * 1000)
+      .sort((a, b) => a - b)[0];
+    if (next) releaseTimer = setTimeout(() => {
+      // Bring the newly opened stickers in without throwing the customer out of what they're looking at.
+      const t = Date.now();
+      allStickers = rows.filter(s => isReleased(s, t));
+      if (currentStickerView) currentStickerView(); else renderCategoryGrid();
+      renderExtraStickerPanel();
+      renderPromo();
+      scheduleNextRelease(rows, t);
+    }, next - nowMs + 1500);
+  }
+
   async function loadStickers(){
     if (!client) { showStickersOffline(); return; }
     let stickersRes, categoriesRes, subcategoriesRes;
@@ -2224,7 +2287,11 @@
     if (subcategoriesRes.error) {
       console.warn('Sub-categories load error (showing sub-categories from stickers instead):', subcategoriesRes.error.message || JSON.stringify(subcategoriesRes.error));
     }
-    allStickers = stickersRes.data || [];
+    // Stickers Evvyne has hidden (🙈 in admin) stay out of the catalogue until their release time.
+    const nowMs = Date.now();
+    const allRows = stickersRes.data || [];
+    allStickers = allRows.filter(s => isReleased(s, nowMs));
+    scheduleNextRelease(allRows, nowMs);
     renderExtraStickerPanel(); // in case the extra-sticker picker was opened before stickers finished loading
     renderPromo();
     openStickerFromLink();
@@ -2283,12 +2350,58 @@
   }
 
   // ---- Add-Ons list ----
+  // Before reloading for a new version, remember what the customer has picked (this tab only),
+  // and put it all back once the page has loaded again — nobody has to start over.
+  function beforeUpdateReload(){
+    try {
+      const val = id => ((document.getElementById(id) || {}).value || '');
+      sessionStorage.setItem('sbe_restore', JSON.stringify({
+        t: Date.now(), y: window.scrollY,
+        tumbler: myOrder.tumbler && myOrder.tumbler.id, sticker: myOrder.sticker && myOrder.sticker.id,
+        pattern: myOrder.pattern && myOrder.pattern.id, delivery: myOrder.delivery,
+        addons: myOrder.addons.map(a => a.id), customName: myOrder.customName,
+        extraOn: myOrder.extraOn, extra: myOrder.extraStickers.map(x => x.id),
+        promoOn: myOrder.promo.on, promoSticker: myOrder.promo.sticker && myOrder.promo.sticker.id, promoPattern: myOrder.promo.pattern && myOrder.promo.pattern.id,
+        name: val('orderName'), tiktok: val('orderTiktok'),
+      }));
+    } catch (e) {}
+    return true;
+  }
+  let loadedAddons = [];
+  function restoreOrderAfterUpdate(){
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem('sbe_restore') || 'null'); sessionStorage.removeItem('sbe_restore'); } catch (e) {}
+    if (!saved || Date.now() - saved.t > 15 * 60 * 1000) return;
+    const st = id => (id && allStickers.find(x => x.id === id)) || null;
+    const t = TUMBLER_OPTIONS.find(x => x.id === saved.tumbler && x.status !== 'sold_out');
+    myOrder.tumbler = t || null;
+    myOrder.sticker = st(saved.sticker);
+    myOrder.pattern = PATTERN_OPTIONS.find(x => x.id === saved.pattern) || null;
+    myOrder.delivery = DELIVERY_OPTIONS[saved.delivery] ? saved.delivery : null;
+    myOrder.addons = loadedAddons.filter(a => (saved.addons || []).includes(a.id));
+    document.querySelectorAll('#addonsGrid .addon-card').forEach(card => card.classList.toggle('picked', myOrder.addons.some(a => a.id === card.dataset.id)));
+    myOrder.customName = saved.customName || '';
+    const cn = document.getElementById('customNameInput'); if (cn) cn.value = myOrder.customName;
+    myOrder.extraOn = !!saved.extraOn;
+    myOrder.extraStickers = (saved.extra || []).map(st).filter(Boolean);
+    myOrder.promo = { on: !!saved.promoOn, sticker: st(saved.promoSticker), pattern: PATTERN_OPTIONS.find(x => x.id === saved.promoPattern) || null };
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+    setVal('orderName', saved.name); setVal('orderTiktok', saved.tiktok);
+    renderTumblerOptions();
+    renderPatternOptions();
+    refreshStickerMarks();
+    updateOrderSummary();
+    renderPromo();
+    setTimeout(() => window.scrollTo(0, saved.y || 0), 50);
+  }
+
   async function loadAddons(){
     if (!client) return;
     const grid = document.getElementById('addonsGrid');
     const { data, error } = await client.from('addons').select('*').order('sort_order', { ascending: true });
     if (error) { console.error('Add-ons load error:', error.message || JSON.stringify(error)); return; }
     if (!data || data.length === 0) return; // legitimately empty — keep the default cards, not an error
+    loadedAddons = data;
     grid.innerHTML = data.map(a => `
       <div class="addon-card" data-id="${a.id}">
         <span><span class="pick-box"></span><span class="name">${a.name}</span></span>
@@ -2312,10 +2425,9 @@
   renderTumblerOptions();
   renderPatternOptions();
   updateOrderSummary();
-  loadStickers();
+  const coreLoads = [loadStickers(), loadAddons(), loadPromoSettings()];
   loadCatalogueContent();
-  loadAddons();
-  loadPromoSettings();
+  Promise.allSettled(coreLoads).then(restoreOrderAfterUpdate);
 
   // "?s=D001" in the address (the 📷 link in an order message) opens that sticker's big photo.
   function stickerCodeFromLink(){
@@ -2341,6 +2453,42 @@
   } catch (err) {
     console.error('page_views log error:', err && err.message);
   }
+
+  // ==================================================================
+  // ✨ "New version" bar — every few minutes (and whenever this tab comes back to the front)
+  // check whether a newer copy of this page has been uploaded to GitHub. Each upload has a
+  // different <meta name="sbe-build">. If it changed, offer a Reload button.
+  // ==================================================================
+  (function(){
+    const meta = document.querySelector('meta[name="sbe-build"]');
+    const BUILD = meta && meta.content;
+    if (!BUILD || !/^https?:/.test(location.protocol)) return;
+    let shown = false, lastCheck = 0;
+    async function checkForUpdate(){
+      if (shown || Date.now() - lastCheck < 60 * 1000) return;
+      lastCheck = Date.now();
+      try {
+        const r = await fetch(location.pathname + '?vcheck=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return;
+        const m = (await r.text()).match(/<meta name="sbe-build" content="([^"]+)"/);
+        if (m && m[1] !== BUILD) showUpdateBar();
+      } catch (e) { /* offline — try again later */ }
+    }
+    function showUpdateBar(){
+      shown = true;
+      const bar = document.createElement('div');
+      bar.className = 'update-bar';
+      bar.innerHTML = '<span>✨ 有新版本 · New version</span><button type="button">Reload</button>';
+      bar.querySelector('button').addEventListener('click', () => {
+        if (typeof beforeUpdateReload === 'function' && beforeUpdateReload() === false) return;
+        location.reload();
+      });
+      document.body.appendChild(bar);
+    }
+    setTimeout(checkForUpdate, 20 * 1000);
+    setInterval(checkForUpdate, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+  })();
 </script>
 
 </body>

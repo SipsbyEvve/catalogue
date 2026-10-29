@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="sbe-build" content="2026-10-29-1">
 <title>Sips by Evve — Sticker Admin</title>
 <style>
   :root{
@@ -308,6 +309,12 @@
   .subcat-divider{ font-size:0.85rem; color:var(--muted); margin:18px 0 10px; font-weight:700; }
 
   #appSection{ display:none; }
+  .update-bar{
+    position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:200; display:flex; align-items:center; gap:10px;
+    background:#3a2e22; color:#fff; font-weight:700; font-size:0.85rem; padding:8px 8px 8px 14px; border-radius:999px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.25); width:max-content; max-width:calc(100vw - 24px); box-sizing:border-box; white-space:nowrap;
+  }
+  .update-bar button{ margin:0; border:none; background:#25D366; color:#fff; font-weight:800; font-family:inherit; font-size:0.85rem; padding:6px 14px; border-radius:999px; cursor:pointer; flex:none; }
 </style>
 </head>
 <body>
@@ -3481,6 +3488,52 @@
     showToast('✅ Order added!');
     renderOrders();
   });
+
+  // Don't lose work in progress when reloading for a new version.
+  function beforeUpdateReload(){
+    const editingOrder = [...document.querySelectorAll('.o-save-btn')].some(b => b.style.display !== 'none');
+    const pendingUploads = (typeof bulkBatch !== 'undefined' && bulkBatch.length) || (typeof currentFile !== 'undefined' && currentFile)
+      || (typeof pendingSlotFile !== 'undefined' && Object.keys(pendingSlotFile).length);
+    if (editingOrder || pendingUploads) {
+      return confirm('You have something not saved yet (an order being edited or photos waiting to upload). Reload anyway? Unsaved changes will be lost.');
+    }
+    return true;
+  }
+  // ==================================================================
+  // ✨ "New version" bar — every few minutes (and whenever this tab comes back to the front)
+  // check whether a newer copy of this page has been uploaded to GitHub. Each upload has a
+  // different <meta name="sbe-build">. If it changed, offer a Reload button.
+  // ==================================================================
+  (function(){
+    const meta = document.querySelector('meta[name="sbe-build"]');
+    const BUILD = meta && meta.content;
+    if (!BUILD || !/^https?:/.test(location.protocol)) return;
+    let shown = false, lastCheck = 0;
+    async function checkForUpdate(){
+      if (shown || Date.now() - lastCheck < 60 * 1000) return;
+      lastCheck = Date.now();
+      try {
+        const r = await fetch(location.pathname + '?vcheck=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return;
+        const m = (await r.text()).match(/<meta name="sbe-build" content="([^"]+)"/);
+        if (m && m[1] !== BUILD) showUpdateBar();
+      } catch (e) { /* offline — try again later */ }
+    }
+    function showUpdateBar(){
+      shown = true;
+      const bar = document.createElement('div');
+      bar.className = 'update-bar';
+      bar.innerHTML = '<span>✨ 有新版本 · New version</span><button type="button">Reload</button>';
+      bar.querySelector('button').addEventListener('click', () => {
+        if (typeof beforeUpdateReload === 'function' && beforeUpdateReload() === false) return;
+        location.reload();
+      });
+      document.body.appendChild(bar);
+    }
+    setTimeout(checkForUpdate, 20 * 1000);
+    setInterval(checkForUpdate, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+  })();
 </script>
 
 </body>
