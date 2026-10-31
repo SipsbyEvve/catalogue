@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-10-31-1">
+<meta name="sbe-build" content="2026-11-01-2">
 <title>Sips by Evve — Custom Snowglobe Tumblers Catalogue</title>
 <meta property="og:title" content="Sips by Evve — Custom Snowglobe Tumblers Catalogue">
 <meta property="og:description" content="Pick your tumbler, sticker &amp; pattern, then send your order on WhatsApp 🎀 Free shipping West Malaysia.">
@@ -89,6 +89,7 @@
   }
   section.step img{
     width:100%;
+    height:auto;
     border-radius:var(--radius);
     box-shadow:var(--shadow);
     display:block;
@@ -229,6 +230,9 @@
   .sticker-thumb .badge.status-available{ background:#e8f5ea; color:#2f7a4f; }
   .sticker-thumb .badge.status-preorder{ background:#fbe2e2; color:#b23b3b; }
   .sticker-thumb .badge.status-unavailable{ background:#efe6d8; color:#8a7863; }
+  .sticker-thumb .new-ribbon.hot{ background:#f08a24; }
+  .cat-cover-card.popular-card{ border:2px solid #f08a24; }
+  .cat-cover-card.popular-card .label{ background:linear-gradient(transparent, rgba(150,60,0,0.85)); }
   .sticker-thumb .new-ribbon{
     position:absolute; top:10px; left:10px; background:#e0524f; color:#fff; font-size:0.68rem;
     font-weight:800; letter-spacing:0.5px; text-transform:uppercase; padding:3px 9px; border-radius:999px;
@@ -276,6 +280,11 @@
 
   /* Two stickers per row in the gallery (less scrolling on phones). */
   #stickerCats .sticker-grid{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+  /* Square picture boxes: the space is fixed before the photo arrives, so cards never
+     grow/shrink while photos load (that was the "jumping" on Android). */
+  #stickerCats .sticker-thumb img{ aspect-ratio:1/1; height:auto; object-fit:contain; background:#f6efe4; }
+  .lightbox-overlay{ overscroll-behavior:contain; }
+  body.lb-open{ overflow:hidden; }
   #stickerCats .sticker-thumb .info{ padding:7px 9px; gap:6px; flex-wrap:wrap; }
   #stickerCats .sticker-thumb .code-tag{ font-size:0.82rem; }
   #stickerCats .sticker-thumb .badge{ font-size:0.58rem; padding:2px 7px; }
@@ -366,6 +375,7 @@
   .filter-panel .opt .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
   .filter-panel .opt.all .dot{ background:var(--muted); }
   .filter-panel .opt.new .dot{ background:#e0524f; }
+  .filter-panel .opt.popular .dot{ background:#f08a24; }
   .filter-panel .opt.stock .dot{ background:#2f7a4f; }
   .filter-panel .opt.pre .dot{ background:#b23b3b; }
   .filter-panel .opt.sold .dot{ background:#8a7863; }
@@ -630,6 +640,37 @@
   .promo-chip.on{ border-color:var(--wa-dark); background:var(--wa-dark); color:#fff; }
   .order-summary .group-lbl{ margin:10px 0 2px; font-size:0.72rem; font-weight:800; letter-spacing:0.3px; color:var(--brown-dark); text-transform:uppercase; }
   .order-summary .group-lbl.promo{ color:#e0524f; }
+  /* ---- several tumblers in one order ---- */
+  .bottle-card{ border:2px solid var(--line); border-radius:14px; padding:10px 12px; margin:0 0 10px; background:#fff; }
+  .bottle-card.done{ border-color:#bfe8cf; background:#f3fbf6; }
+  .order-summary.multi #curBottle{ border:2px solid var(--wa-dark); border-radius:14px; padding:10px 12px; margin:0 0 10px; box-shadow:0 0 0 3px rgba(37,211,102,0.20); }
+  .order-summary.multi #curBottle.done{ border-color:#bfe8cf; background:#f3fbf6; box-shadow:none; }
+  .bottle-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-weight:800; font-size:0.9rem; margin:2px 0 4px; color:var(--ink); }
+  .bottle-head .tag{ font-size:0.68rem; padding:2px 8px; border-radius:999px; background:#e8f5ea; color:#2f7a4f; white-space:nowrap; }
+  .bottle-head .tag.now{ background:var(--wa-dark); color:#fff; }
+  .bottle-card .bc-row{ display:flex; justify-content:space-between; gap:10px; font-size:0.84rem; padding:3px 0; border-bottom:1px dashed var(--line); }
+  .bottle-card .bc-row:last-of-type{ border-bottom:none; }
+  .bottle-card .bc-row .l{ color:var(--muted); }
+  .bottle-card .bc-row .v{ font-weight:700; text-align:right; }
+  .bsub{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px; font-size:0.88rem; font-weight:800; color:var(--brown-dark); }
+  .bsub .mini{ display:flex; gap:6px; }
+  .bsub .mini button{ border:1px solid var(--line); background:#fff; border-radius:999px; padding:5px 11px; font-family:inherit; font-size:0.76rem; font-weight:700; color:var(--brown-dark); cursor:pointer; }
+  .add-bottle-btn{ width:100%; border:2px dashed var(--brown); background:#fff8ee; color:var(--brown-dark); font-family:inherit; font-weight:800; font-size:0.95rem; border-radius:14px; padding:13px; margin:8px 0 6px; cursor:pointer; }
+  .add-bottle-btn small{ display:block; font-size:0.78rem; font-weight:700; color:var(--muted); margin-top:2px; }
+  .bottle-banner #bottleBannerText{ display:flex; flex-direction:column; line-height:1.25; min-width:0; }
+  .bottle-banner #bottleBannerText small{ font-size:0.72rem; font-weight:600; opacity:0.8; }
+  .add-bottle-note{ font-size:0.8rem; color:#b0452f; font-weight:600; margin:0 0 8px; }
+  .add-bottle-note button{ border:none; background:none; color:var(--brown-dark); font-weight:800; text-decoration:underline; font-family:inherit; cursor:pointer; padding:0 4px; }
+  .delivery-note{ font-size:0.75rem; color:var(--muted); margin:10px 0 0; }
+  .bottle-banner{
+    position:fixed; left:10px; right:10px; top:8px; z-index:45; max-width:640px; margin:0 auto;
+    background:#3a2e22; color:#fff; border-radius:14px; padding:9px 10px 9px 14px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:0.84rem; font-weight:700;
+    box-shadow:0 8px 22px rgba(0,0,0,0.22); transform:translateY(-160%); transition:transform 0.25s ease;
+  }
+  .bottle-banner.show{ transform:translateY(0); }
+  .bottle-banner button{ border:none; background:var(--wa); color:#fff; font-weight:800; border-radius:999px; padding:7px 12px; font-family:inherit; font-size:0.8rem; white-space:nowrap; cursor:pointer; }
+  .bottle-for{ display:inline-block; background:#3a2e22; color:#fff !important; font-style:normal !important; font-weight:700; border-radius:999px; padding:3px 10px; font-size:0.78rem !important; }
   .sticker-thumb .for-tag.promo{ background:#8858c7; }
 
   /* ---- extra sticker (add-on with its own sticker picker) ---- */
@@ -719,14 +760,15 @@
 
   <section class="step">
     <h2>① Choose your tumbler ❄️</h2>
-    <img id="img-step1_tumbler" class="zoomable" src="tumbler-options.png" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
-    <p class="note" style="margin-top:14px;">Tap to pick your tumbler:</p>
+    <img id="img-step1_tumbler" class="zoomable" src="tumbler-options.png" width="1024" height="576" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
+    <p class="note" style="margin-top:14px;" id="tumblerPickNote">Tap to pick your tumbler:</p>
     <div class="option-grid" id="tumblerOptions"></div>
   </section>
 
   <section class="step">
     <h2>② Choose your sticker 🎀 <em>Free!</em></h2>
     <p class="note">Tap a design to pick it — tumbler price already includes 1 sticker</p>
+    <p class="note bottle-for" id="stickerForBottle" style="display:none;"></p>
     <div class="xs-mode-banner" id="extraModeBanner" style="display:none;"></div>
     <div class="finder-row">
       <div class="search-box">
@@ -738,6 +780,7 @@
         <div class="filter-panel" id="filterPanel" style="display:none;">
           <div class="opt all active" data-filter="all"><span class="dot"></span>All</div>
           <div class="divider"></div>
+          <div class="opt popular" data-filter="popular"><span class="dot"></span>🔥 Popular</div>
           <div class="opt new" data-filter="new"><span class="dot"></span>🆕 New Arrivals</div>
           <div class="opt stock" data-filter="available"><span class="dot"></span>In Stock</div>
           <div class="opt pre" data-filter="preorder"><span class="dot"></span>Preorder</div>
@@ -753,7 +796,7 @@
   <section class="step">
     <h2>③ Take a look at our patterns</h2>
     <p class="note">(you can also decide during your live date)</p>
-    <img id="img-step3_patterns" class="zoomable" src="patterns.jpg" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
+    <img id="img-step3_patterns" class="zoomable" src="patterns.jpg" width="700" height="746" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
     <p class="note" style="margin-top:14px;">Tap to pick a pattern (optional):</p>
     <p class="glitter-note">✨ Full Glitter is +RM10 for the 600ml Fat Bottle only — all other bottles remain +RM5.</p>
     <div class="option-grid" id="patternOptions"></div>
@@ -812,30 +855,38 @@
 
   <section class="step">
     <h2>⑤ Read this before you buy ⚠️</h2>
-    <img id="img-step4_rules" class="zoomable" src="read-before-buy.jpg" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu" loading="lazy">
+    <img id="img-step4_rules" class="zoomable" src="read-before-buy.jpg" width="700" height="467" alt="Handmade and custom-made notice, in English, Chinese and Bahasa Melayu" loading="lazy">
     <p class="zoom-caption">🔍 Tap image to enlarge</p>
   </section>
 
   <section class="step" id="orderSection">
     <h2>⑥ Send me your order!</h2>
     <p class="note">(and wait for your date! 💛)</p>
-    <img id="img-step5_order" class="zoomable" src="order-process.jpg" alt="Order process — send your order, stock check, payment request, pay within 2 days, queue slot given, made live" loading="lazy">
+    <img id="img-step5_order" class="zoomable" src="order-process.jpg" width="1024" height="1536" alt="Order process — send your order, stock check, payment request, pay within 2 days, queue slot given, made live" loading="lazy">
     <p class="zoom-caption">🔍 Tap image to enlarge</p>
 
     <div class="order-summary" id="orderSummary">
-      <h3>📝 My order</h3>
-      <div class="group-lbl" id="bottle1Lbl" style="display:none;">Bottle 1</div>
+      <h3 id="orderSummaryTitle">📝 My order</h3>
+      <div id="bottlesBefore"></div>
+      <div id="curBottle">
+      <div class="bottle-head" id="bottle1Lbl" style="display:none;"></div>
       <div class="pick-row"><span class="lbl">Tumbler</span><span class="val" id="pickTumbler">Not picked yet</span></div>
       <div class="pick-row"><span class="lbl">Sticker</span><span class="val" id="pickSticker">Not picked yet</span></div>
       <div class="pick-row"><span class="lbl">Pattern</span><span class="val" id="pickPattern">Decide on live date</span></div>
       <div id="promoSummary" style="display:none;">
-        <div class="group-lbl promo">🎁 Bottle 2 · Promo</div>
+        <div class="group-lbl promo" id="promoGroupLbl">🎁 Bottle 2 · Promo</div>
         <div class="pick-row"><span class="lbl">Tumbler</span><span class="val" id="pickPromoBottle"></span></div>
         <div class="pick-row"><span class="lbl">Sticker</span><span class="val" id="pickPromoSticker"></span></div>
         <div class="pick-row"><span class="lbl">Pattern</span><span class="val" id="pickPromoPattern"></span></div>
         <div class="group-lbl" style="color:var(--muted)">Extras</div>
       </div>
       <div class="pick-row"><span class="lbl">Add-ons</span><span class="val" id="pickAddons">None</span></div>
+      <div class="bsub" id="curBottleSub" style="display:none;"></div>
+      </div>
+      <div id="bottlesAfter"></div>
+      <button type="button" class="add-bottle-btn" id="addBottleBtn">➕ Add another tumbler<small>再加一个杯子</small></button>
+      <div class="add-bottle-note" id="addBottleNote" style="display:none;"></div>
+      <p class="delivery-note" id="deliveryNote" style="display:none;">🚚 One shipping fee for the whole order · 整单只算一次运费</p>
       <div class="pick-row"><span class="lbl">Delivery</span><span class="val" id="pickDelivery">Not picked yet</span></div>
 
       <div class="delivery-choice" id="deliveryChoice">
@@ -843,7 +894,7 @@
         <button type="button" class="delivery-opt" data-region="east">East Malaysia<small>+RM13</small></button>
       </div>
 
-      <div class="total-row"><span>Total</span><span id="orderTotal">—</span></div>
+      <div class="total-row"><span id="orderTotalLbl">Total</span><span id="orderTotal">—</span></div>
 
       <div class="order-fields">
         <div>
@@ -908,6 +959,10 @@
 
 <button type="button" class="xs-back-pill" id="extraBackPill" style="display:none;">✓ Done — back to add-ons ↓</button>
 
+<div class="bottle-banner" id="bottleBanner" aria-hidden="true">
+  <span id="bottleBannerText"></span>
+  <button type="button" id="bottleBannerBtn">See order ↓</button>
+</div>
 <div class="order-bar" id="orderBar" aria-hidden="true">
   <span class="order-bar-text" id="orderBarText"></span>
   <button type="button" class="order-bar-btn" id="orderBarBtn">View order ↓</button>
@@ -964,13 +1019,13 @@
   // Photos copied onto GitHub (next to index.html) don't use any Supabase traffic.
   // photos.json (made by admin → 📦 Photos on GitHub) lists which ones are there, by photo path,
   // so a photo replaced in admin later simply uses Supabase until the next GitHub upload.
-  let ghPhotos = { thumbs: {}, main: {} };
+  let ghPhotos = { thumbs: {}, main: {}, full: {} };
   const ghPhotosReady = (async () => {
     try {
       const r = await fetch('photos.json', { cache: 'no-cache' });
       if (!r.ok) return;
       const j = await r.json();
-      ghPhotos = { thumbs: (j && j.thumbs) || {}, main: (j && j.main) || {} };
+      ghPhotos = { thumbs: (j && j.thumbs) || {}, main: (j && j.main) || {}, full: (j && j.full) || {} };
     } catch (e) { /* no GitHub photos yet — everything comes from Supabase */ }
   })();
   const ghPhotosWait = () => Promise.race([ghPhotosReady, new Promise(r => setTimeout(r, 2000))]);
@@ -987,9 +1042,13 @@
   function thumbSources(path){
     const list = [];
     if (ghPhotos.thumbs[path]) list.push(ghPhotos.thumbs[path]);
-    list.push(thumbUrl(path), publicImageUrl(path));
+    list.push(thumbUrl(path));
+    if (ghPhotos.full[path]) list.push(ghPhotos.full[path]);
+    list.push(publicImageUrl(path));
     return list;
   }
+  // The big sticker photo (🔍): the GitHub copy when there is one, otherwise Supabase.
+  function fullPhotoUrl(path){ return ghPhotos.full[path] || publicImageUrl(path); }
   // <img> that shows the small preview (from GitHub when it's there), quietly falling back
   // to the Supabase preview, then the full photo.
   function thumbImg(path, alt, extra = ''){
@@ -1000,7 +1059,10 @@
   function openLightbox(sticker, imgUrl){
     if (!client) return;
     document.querySelector('#lightbox .lightbox-box').classList.remove('plain');
-    document.getElementById('lightboxImg').src = imgUrl;
+    const lbImg = document.getElementById('lightboxImg');
+    const supa = sticker.image_path ? publicImageUrl(sticker.image_path) : imgUrl;
+    lbImg.onerror = () => { if (lbImg.src !== supa) lbImg.src = supa; }; // GitHub copy missing → Supabase
+    lbImg.src = imgUrl;
     document.getElementById('lightboxCode').textContent = sticker.code ? `Code: ${sticker.code}` : sticker.name;
     const statusBadgeClass = sticker.status === 'available' ? 'status-available' : (sticker.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
     document.getElementById('lightboxStatus').textContent = STATUS_LABEL[sticker.status] || sticker.status;
@@ -1025,6 +1087,12 @@
   document.querySelectorAll('img.zoomable').forEach(img => {
     img.addEventListener('click', () => openImageLightbox(img.currentSrc || img.src, img.alt));
   });
+
+  // While a big photo is open, the page behind it can't scroll (so closing it lands
+  // the customer exactly where they were).
+  new MutationObserver(() => {
+    document.body.classList.toggle('lb-open', document.getElementById('lightbox').classList.contains('open'));
+  }).observe(document.getElementById('lightbox'), { attributes: true, attributeFilter: ['class'] });
 
   document.getElementById('lightboxClose').addEventListener('click', () => {
     document.getElementById('lightbox').classList.remove('open');
@@ -1108,6 +1176,37 @@
   const myOrder = { tumbler: null, sticker: null, pattern: null, addons: [], delivery: null, customName: '', extraOn: false, extraStickers: [],
                     promo: { on: false, sticker: null, pattern: null } };
 
+  // ---- Several tumblers in one order ----
+  // myOrder always holds the bottle being chosen right now. The other bottles are kept in
+  // `bottles` (bottles[cur] is a stale copy of the current one — allBottles() refreshes it).
+  // Delivery, name and TikTok belong to the whole order, so they stay on myOrder.
+  function emptyBottle(){ return { tumbler: null, sticker: null, pattern: null, addons: [], customName: '', extraOn: false, extraStickers: [], promo: { on: false, sticker: null, pattern: null } }; }
+  function snapBottle(){
+    return { tumbler: myOrder.tumbler, sticker: myOrder.sticker, pattern: myOrder.pattern, addons: [...myOrder.addons], customName: myOrder.customName,
+             extraOn: myOrder.extraOn, extraStickers: [...myOrder.extraStickers], promo: { ...myOrder.promo } };
+  }
+  function loadBottle(b){
+    Object.assign(myOrder, { tumbler: b.tumbler, sticker: b.sticker, pattern: b.pattern, addons: [...b.addons], customName: b.customName || '',
+                             extraOn: !!b.extraOn, extraStickers: [...b.extraStickers], promo: { ...b.promo } });
+  }
+  // Run fn as if bottle b were the one being chosen (so the usual price/text helpers work on it).
+  function withBottle(b, fn){
+    const keep = snapBottle();
+    loadBottle(b);
+    try { return fn(); } finally { loadBottle(keep); }
+  }
+  const bottleIsEmpty = (b) => !b.tumbler && !b.sticker && !b.pattern && !b.addons.length && !b.extraOn && !b.extraStickers.length && !b.promo.on;
+  let bottles = [emptyBottle()];
+  let cur = 0;
+  function allBottles(){ const list = bottles.slice(); list[cur] = snapBottle(); return list; }
+  // The bottles that are actually part of the order (an empty "next bottle" doesn't count).
+  function orderBottles(){
+    const list = allBottles();
+    const real = list.filter(b => !bottleIsEmpty(b));
+    return real.length ? real : [list[cur]];
+  }
+  const isMulti = () => bottles.length > 1;
+
   // ---- Promotion: buy the 03 Fat Bottle, add a smaller bottle for a special price. ----
   // Evvyne turns it on/off and sets the price + bottle name in admin (stored in the
   // Supabase "settings" table). Off by default, and stays off if that table isn't set up.
@@ -1141,13 +1240,22 @@
   function cleanCustomName(){
     return (myOrder.customName || '').replace(/[,，]/g, ' ').replace(/\s+/g, ' ').trim();
   }
-  function orderTotal(){
+  // One bottle's price (tumbler + pattern + add-ons + extra sticker + promo bottle), no shipping.
+  function currentBottleSubtotal(){
     if (!myOrder.tumbler) return null;
     let total = myOrder.tumbler.price;
     if (myOrder.pattern) total += patternExtra(myOrder.pattern);
     myOrder.addons.forEach(a => { total += priceFromLabel(a.price_label); });
     total += myOrder.extraStickers.length * EXTRA_STICKER_PRICE;
     if (myOrder.promo.on) total += promoSettings.price + (myOrder.promo.pattern ? myOrder.promo.pattern.extra || 0 : 0);
+    return total;
+  }
+  const bottleSubtotal = (b) => withBottle(b, currentBottleSubtotal);
+  // Whole order: every bottle, plus shipping once.
+  function orderTotal(){
+    const subs = orderBottles().map(bottleSubtotal).filter(x => x !== null);
+    if (!subs.length) return null;
+    let total = subs.reduce((a, x) => a + x, 0);
     if (myOrder.delivery) total += DELIVERY_OPTIONS[myOrder.delivery].fee;
     return total;
   }
@@ -1227,8 +1335,9 @@
     });
   }
 
-  function buildWhatsAppMessage(){
-    const lines = ["Hi! I'd like to order 🐳", ''];
+  // The lines for the bottle being chosen (tumbler, stickers, pattern, promo, add-ons).
+  function bottleMessageLines(){
+    const lines = [];
     lines.push(`Tumbler: ${myOrder.tumbler ? tumblerText(myOrder.tumbler) : '(please tell me which one — see photo above)'}`);
     lines.push(`Sticker: ${myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : '(please tell me the code)'}`);
     if (myOrder.sticker) lines.push(`📷 ${stickerPhotoLink(myOrder.sticker)}`);
@@ -1249,6 +1358,22 @@
     if (myOrder.addons.length) {
       lines.push(`Add-ons: ${myOrder.addons.map(a => `${a.name} (${a.price_label})`).join(', ')}`);
       if (hasCustomNameAddon()) lines.push(`Name on tumbler: ${cleanCustomName() || '(please tell me)'}`);
+    }
+    return lines;
+  }
+  function buildWhatsAppMessage(){
+    const list = orderBottles();
+    let lines;
+    if (list.length === 1) {
+      lines = ["Hi! I'd like to order 🐳", '', ...withBottle(list[0], bottleMessageLines)];
+    } else {
+      lines = [`Hi! I'd like to order 🐳 (${list.length} tumblers)`];
+      list.forEach((b, i) => {
+        const part = withBottle(b, bottleMessageLines);
+        while (part.length && part[part.length - 1] === '') part.pop();
+        lines.push('', `🥤 Bottle ${i + 1}`, ...part);
+      });
+      lines.push('');
     }
     lines.push(`Delivery: ${myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : '(please tell me West or East Malaysia)'}`);
     const total = orderTotal();
@@ -1293,7 +1418,7 @@
       if (note) { note.textContent = `Full Glitter was removed from your ${promoTumblerName()} — it isn't available with this promo.`; note.style.color = '#b0452f'; }
     }
     document.getElementById('promoSummary').style.display = myOrder.promo.on ? '' : 'none';
-    document.getElementById('bottle1Lbl').style.display = myOrder.promo.on ? '' : 'none';
+    document.getElementById('promoGroupLbl').textContent = isMulti() ? '🎁 + Promo bottle' : '🎁 Bottle 2 · Promo';
     if (myOrder.promo.on) {
       set('pickPromoBottle', `${promoSettings.bottle_name} (+RM${promoSettings.price})`, '');
       set('pickPromoSticker', myOrder.promo.sticker ? stickerLabel(myOrder.promo.sticker) : 'Not picked yet', myOrder.promo.sticker ? '' : 'missing');
@@ -1309,6 +1434,8 @@
     const nameField = document.getElementById('customNameField');
     if (nameField) nameField.style.display = hasCustomNameAddon() ? '' : 'none';
 
+    renderBottles();
+
     const totalEl = document.getElementById('orderTotal');
     const total = orderTotal();
     if (totalEl) {
@@ -1323,6 +1450,165 @@
 
     updateOrderBar();
   }
+
+  // Bottle cards (the other bottles), the current bottle's header/subtotal, the
+  // "Add another tumbler" button, the "Choosing Bottle 2" banner and step labels.
+  let lastRemovedBottle = null; // { b, i } — for Undo
+  function bottleMissingBits(){
+    const missing = [];
+    if (!myOrder.tumbler) missing.push('a tumbler (step ①)');
+    if (!myOrder.sticker && !stickersUnavailable) missing.push('a sticker (step ②)');
+    if (hasCustomNameAddon() && !cleanCustomName()) missing.push('the name for your Custom Name add-on (step ④)');
+    if (myOrder.extraOn && !myOrder.extraStickers.length && !stickersUnavailable) missing.push('which extra sticker you want (step ④)');
+    if (myOrder.promo.on && !myOrder.promo.sticker && !stickersUnavailable) missing.push(`a sticker for your ${promoSettings.bottle_name} (step ④)`);
+    return missing;
+  }
+  function bottleCardHtml(b, i){
+    return withBottle(b, () => {
+      const done = bottleMissingBits().length === 0;
+      const sub = currentBottleSubtotal();
+      const stickers = [myOrder.sticker ? stickerLabel(myOrder.sticker) : '—', ...myOrder.extraStickers.map(x => stickerLabel(x) + ' (+RM' + EXTRA_STICKER_PRICE + ')')].join(', ');
+      const rows = [
+        ['Tumbler', myOrder.tumbler ? tumblerText(myOrder.tumbler) : 'Not picked yet'],
+        ['Sticker', stickers],
+        ['Pattern', myOrder.pattern ? patternText(myOrder.pattern) : 'Decide on live date'],
+      ];
+      if (myOrder.promo.on) rows.push(['🎁 Promo', `${promoSettings.bottle_name} · ${myOrder.promo.sticker ? stickerLabel(myOrder.promo.sticker) : '—'}${myOrder.promo.pattern ? ' · ' + myOrder.promo.pattern.label : ''}`]);
+      if (myOrder.addons.length) rows.push(['Add-ons', myOrder.addons.map(a => isCustomNameAddon(a) && cleanCustomName() ? `${a.name} "${cleanCustomName()}"` : a.name).join(', ')]);
+      return `<div class="bottle-card ${done ? 'done' : ''}" data-i="${i}">
+        <div class="bottle-head"><span>🥤 Bottle ${i + 1}</span><span class="tag">${done ? '✓ Done' : 'Not finished'}</span></div>
+        ${rows.map(([l, v]) => `<div class="bc-row"><span class="l">${l}</span><span class="v">${escapeHtml(v)}</span></div>`).join('')}
+        <div class="bsub"><span>${sub === null ? '—' : fmtRM(sub)}</span><span class="mini"><button type="button" class="bc-edit">✏️ Edit</button><button type="button" class="bc-del" aria-label="Remove bottle ${i + 1}">✕</button></span></div>
+      </div>`;
+    });
+  }
+  function renderBottles(){
+    const multi = isMulti();
+    const list = allBottles();
+    document.getElementById('orderSummary').classList.toggle('multi', multi);
+    const realCount = orderBottles().length;
+    document.getElementById('orderSummaryTitle').textContent = realCount > 1 ? `📝 My order (${realCount} tumblers)` : '📝 My order';
+    document.getElementById('bottlesBefore').innerHTML = list.slice(0, cur).map((b, i) => bottleCardHtml(b, i)).join('');
+    document.getElementById('bottlesAfter').innerHTML = list.slice(cur + 1).map((b, k) => bottleCardHtml(b, cur + 1 + k)).join('');
+    document.querySelectorAll('#bottlesBefore .bottle-card, #bottlesAfter .bottle-card').forEach(card => {
+      const i = +card.dataset.i;
+      card.querySelector('.bc-edit').addEventListener('click', () => editBottle(i));
+      card.querySelector('.bc-del').addEventListener('click', () => removeBottle(i));
+    });
+
+    const curDone = bottleMissingBits().length === 0;
+    const head = document.getElementById('bottle1Lbl');
+    head.style.display = (multi || myOrder.promo.on) ? '' : 'none';
+    head.innerHTML = `<span>🥤 Bottle ${cur + 1}</span>${multi ? `<span class="tag ${curDone ? '' : 'now'}">${curDone ? '✓ Done' : 'Choosing now'}</span>` : ''}`;
+    document.getElementById('curBottle').classList.toggle('done', curDone);
+    const subEl = document.getElementById('curBottleSub');
+    subEl.style.display = multi ? '' : 'none';
+    if (multi) {
+      const sub = currentBottleSubtotal();
+      subEl.innerHTML = `<span>${sub === null ? '—' : fmtRM(sub)}</span><span class="mini"><button type="button" id="curBottleDel" aria-label="Remove bottle ${cur + 1}">✕</button></span>`;
+      document.getElementById('curBottleDel').onclick = () => removeBottle(cur);
+    }
+    document.getElementById('deliveryNote').style.display = realCount > 1 ? '' : 'none';
+    document.getElementById('orderTotalLbl').textContent = realCount > 1 ? `Total (${realCount} tumblers)` : 'Total';
+
+    const note = document.getElementById('addBottleNote');
+    if (note.dataset.kind === 'missing' && curDone) { note.style.display = 'none'; note.dataset.kind = ''; }
+
+    document.getElementById('tumblerPickNote').textContent = multi ? `Tap to pick the tumbler for Bottle ${cur + 1}:` : 'Tap to pick your tumbler:';
+    const forEl = document.getElementById('stickerForBottle');
+    forEl.style.display = multi ? '' : 'none';
+    forEl.textContent = `🥤 Picking for Bottle ${cur + 1}`;
+    updateBottleBanner();
+  }
+  function updateBottleBanner(){
+    const bar = document.getElementById('bottleBanner');
+    if (!bar) return;
+    const multi = isMulti();
+    const others = allBottles().map((b, i) => i).filter(i => i !== cur && !bottleIsEmpty(bottles[i]));
+    document.getElementById('bottleBannerText').innerHTML = `<span>🥤 ${bottleIsEmpty(snapBottle()) || cur === bottles.length - 1 ? 'Choosing' : 'Editing'} Bottle ${cur + 1}</span>` +
+      (others.length ? `<small>Bottle ${others.map(i => i + 1).join(', ')} saved ✓</small>` : '');
+    const show = multi && !orderSectionVisible;
+    const live = document.getElementById('liveBar');
+    bar.style.top = (live && live.style.display !== 'none' ? Math.max(0, live.getBoundingClientRect().bottom) : 0) + 8 + 'px';
+    bar.classList.toggle('show', show);
+    bar.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
+  // After switching bottles: redraw every picker so it shows this bottle's choices.
+  function showCurrentBottleInPickers(){
+    if (pickMode) setPickMode(null);
+    renderTumblerOptions();
+    renderPatternOptions.lastLock = null;
+    document.querySelectorAll('#addonsGrid .addon-card').forEach(card => card.classList.toggle('picked', myOrder.addons.some(a => a.id === card.dataset.id)));
+    const cn = document.getElementById('customNameInput'); if (cn) cn.value = myOrder.customName || '';
+    const xs = document.getElementById('extraStickerSearch'); if (xs) xs.value = '';
+    refreshStickerMarks();
+    updateOrderSummary();
+    renderPromo();
+  }
+  function scrollToStep1(){
+    const el = document.getElementById('tumblerOptions');
+    if (el) window.scrollTo({ top: el.closest('section').getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' });
+  }
+  function showAddBottleNote(html, kind){
+    const note = document.getElementById('addBottleNote');
+    note.innerHTML = html; note.dataset.kind = kind || ''; note.style.display = '';
+  }
+  function addBottle(){
+    const missing = bottleMissingBits();
+    if (missing.length) {
+      showAddBottleNote(`Please finish Bottle ${cur + 1} first: ${missing.join(', ')} · 请先完成第 ${cur + 1} 个杯子`, 'missing');
+      return;
+    }
+    bottles[cur] = snapBottle();
+    // Reuse an empty bottle that's already there, otherwise start a new one at the end.
+    const emptyIdx = bottles.findIndex((b, i) => i !== cur && bottleIsEmpty(b));
+    if (emptyIdx >= 0) cur = emptyIdx;
+    else { bottles.push(emptyBottle()); cur = bottles.length - 1; }
+    loadBottle(bottles[cur]);
+    document.getElementById('addBottleNote').style.display = 'none';
+    lastRemovedBottle = null;
+    showCurrentBottleInPickers();
+    scrollToStep1();
+  }
+  function editBottle(i){
+    if (i === cur) return;
+    const now = snapBottle();
+    bottles[cur] = now;
+    // An empty, unfinished "next bottle" just disappears when you go back to edit another one.
+    if (bottleIsEmpty(now) && bottles.length > 1) { bottles.splice(cur, 1); if (i > cur) i--; }
+    cur = i;
+    loadBottle(bottles[cur]);
+    document.getElementById('addBottleNote').style.display = 'none';
+    showCurrentBottleInPickers();
+    scrollToStep1();
+  }
+  function removeBottle(i){
+    if (bottles.length <= 1) return;
+    bottles[cur] = snapBottle();
+    const [removed] = bottles.splice(i, 1);
+    if (i < cur) cur--;
+    else if (i === cur) cur = Math.min(cur, bottles.length - 1);
+    loadBottle(bottles[cur]);
+    lastRemovedBottle = bottleIsEmpty(removed) ? null : { b: removed, i };
+    if (lastRemovedBottle) {
+      showAddBottleNote(`Bottle ${i + 1} removed.<button type="button" id="undoRemoveBottle">Undo · 撤销</button>`, 'undo');
+      document.getElementById('undoRemoveBottle').onclick = () => {
+        if (!lastRemovedBottle) return;
+        bottles[cur] = snapBottle();
+        const { b, i: at } = lastRemovedBottle;
+        bottles.splice(Math.min(at, bottles.length), 0, b);
+        if (at <= cur) cur++;
+        lastRemovedBottle = null;
+        document.getElementById('addBottleNote').style.display = 'none';
+        showCurrentBottleInPickers();
+      };
+    } else document.getElementById('addBottleNote').style.display = 'none';
+    showCurrentBottleInPickers();
+  }
+  document.getElementById('addBottleBtn').addEventListener('click', addBottle);
+  document.getElementById('bottleBannerBtn').addEventListener('click', () => {
+    document.getElementById('orderSummary').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   document.getElementById('orderTiktok').addEventListener('input', updateOrderSummary);
   document.getElementById('orderName').addEventListener('input', updateOrderSummary);
@@ -1597,11 +1883,51 @@
     }
   }
 
+  // Settings are read once per visit and shared (promo, tumblers, live bar, popular stickers).
+  let settingsRowsPromise = null;
+  function fetchSettingsRows(){
+    if (!client) return Promise.resolve(null);
+    if (!settingsRowsPromise) settingsRowsPromise = (async () => {
+      try {
+        const { data, error } = await client.from('settings').select('*');
+        return error ? null : (data || null);
+      } catch (e) { return null; }
+    })();
+    return settingsRowsPromise;
+  }
+
+  // ---- 🔥 Popular stickers ----
+  // Evvyne's admin works out the best sellers from paid orders ("auto") and she can also
+  // push any sticker herself ("manual"). Saved in settings, key "popular".
+  let popularSettings = { auto_on: true, auto: [], manual: [] };
+  function applyPopularSettings(rows){
+    const row = (rows || []).find(r => r.key === 'popular');
+    const v = row && row.value;
+    if (!v) return;
+    popularSettings = {
+      auto_on: v.auto_on !== false,
+      auto: Array.isArray(v.auto) ? v.auto.filter(x => typeof x === 'string') : [],
+      manual: Array.isArray(v.manual) ? v.manual.filter(x => typeof x === 'string') : [],
+    };
+  }
+  // Manual picks first (in her order), then best sellers that are still in stock.
+  function popularStickers(){
+    const byId = new Map(allStickers.map(s => [s.id, s]));
+    const out = [], seen = new Set();
+    popularSettings.manual.forEach(id => { const s = byId.get(id); if (s && !seen.has(id)) { seen.add(id); out.push(s); } });
+    if (popularSettings.auto_on) popularSettings.auto.forEach(id => { const s = byId.get(id); if (s && !seen.has(id) && s.status !== 'sold_out') { seen.add(id); out.push(s); } });
+    return [...out.filter(s => s.status !== 'sold_out'), ...out.filter(s => s.status === 'sold_out')];
+  }
+  let popularIdSet = new Set();
+  function refreshPopularIds(){ popularIdSet = new Set(popularStickers().map(s => s.id)); }
+  const isPopular = (s) => popularIdSet.has(s.id);
+
   async function loadPromoSettings(){
     if (!client) return;
     try {
-      const { data, error } = await client.from('settings').select('*');
-      if (error || !data) return;
+      const data = await fetchSettingsRows();
+      if (!data) return;
+      applyPopularSettings(data);
       const tumblerRow = data.find(r => r.key === 'tumblers');
       if (tumblerRow) applyTumblerSettings(tumblerRow.value);
       const liveRow = data.find(r => r.key === 'live');
@@ -1633,10 +1959,11 @@
     const bar = document.getElementById('orderBar');
     if (!bar) return;
     const count = [myOrder.tumbler, myOrder.sticker, myOrder.pattern].filter(Boolean).length + myOrder.addons.length + myOrder.extraStickers.length + (myOrder.promo.on ? 1 : 0);
+    const nBottles = orderBottles().length;
     const total = orderTotal();
     document.getElementById('orderBarText').textContent =
-      `🛒 ${count} picked` + (total !== null ? ` · ${fmtRM(total)}${myOrder.delivery ? '' : '+'}` : '');
-    const show = count > 0 && !orderSectionVisible;
+      (nBottles > 1 ? `🛒 ${nBottles} tumblers` : `🛒 ${count} picked`) + (total !== null ? ` · ${fmtRM(total)}${myOrder.delivery ? '' : '+'}` : '');
+    const show = (count > 0 || nBottles > 1) && !orderSectionVisible;
     bar.classList.toggle('show', show);
     bar.setAttribute('aria-hidden', show ? 'false' : 'true');
     document.body.classList.toggle('has-bar', show);
@@ -1648,6 +1975,7 @@
     new IntersectionObserver(entries => {
       orderSectionVisible = entries.some(en => en.isIntersecting);
       updateOrderBar();
+      updateBottleBanner();
     }, { threshold: 0.15 }).observe(document.getElementById('orderSummary'));
   }
 
@@ -1683,11 +2011,8 @@
   }
   function missingOrderBits(){
     const missing = [];
-    if (!myOrder.tumbler) missing.push('a tumbler (step ①)');
-    if (!myOrder.sticker && !stickersUnavailable) missing.push('a sticker (step ②)');
-    if (hasCustomNameAddon() && !cleanCustomName()) missing.push('the name for your Custom Name add-on (step ④)');
-    if (myOrder.extraOn && !myOrder.extraStickers.length && !stickersUnavailable) missing.push('which extra sticker you want (step ④)');
-    if (myOrder.promo.on && !myOrder.promo.sticker && !stickersUnavailable) missing.push(`a sticker for your ${promoSettings.bottle_name} (step ④)`);
+    const list = orderBottles();
+    list.forEach((b, i) => withBottle(b, bottleMissingBits).forEach(m => missing.push(list.length > 1 ? `Bottle ${i + 1}: ${m}` : m)));
     if (!myOrder.delivery) missing.push('West or East Malaysia delivery');
     if (!((document.getElementById('orderName') || {}).value || '').trim()) missing.push('your name');
     if (!((document.getElementById('orderTiktok') || {}).value || '').trim()) missing.push('your TikTok handle');
@@ -1696,16 +2021,25 @@
   let lastLoggedOrder = null; // in-memory fallback when localStorage isn't available
   function logOrder(){
     if (!client) return;
-    const row = {
-      customer_name: (document.getElementById('orderName') || {}).value.trim() || null,
-      tiktok_handle: (document.getElementById('orderTiktok') || {}).value.trim() || null,
-      tumbler: myOrder.tumbler ? tumblerText(myOrder.tumbler) : null,
-      sticker_code: myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : null,
-      pattern: myOrder.pattern ? patternText(myOrder.pattern) : null,
-      addons: addonsTextForOrder(),
-      delivery: myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : null,
-      status: 'pending',
-    };
+    // One row per tumbler. Several tumblers share a tag ("Multi-bottle order: 1 of 2 #K7Q2")
+    // so admin can show them together; shipping is saved on the first one only.
+    const list = orderBottles();
+    const tag = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const rows = list.map((b, i) => withBottle(b, () => {
+      let addons = addonsTextForOrder();
+      if (list.length > 1) addons = [addons, `Multi-bottle order: ${i + 1} of ${list.length} #${tag}`].filter(Boolean).join(', ');
+      return {
+        customer_name: (document.getElementById('orderName') || {}).value.trim() || null,
+        tiktok_handle: (document.getElementById('orderTiktok') || {}).value.trim() || null,
+        tumbler: myOrder.tumbler ? tumblerText(myOrder.tumbler) : null,
+        sticker_code: myOrder.sticker ? (myOrder.sticker.code || myOrder.sticker.name) : null,
+        pattern: myOrder.pattern ? patternText(myOrder.pattern) : null,
+        addons,
+        delivery: i === 0 && myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : null,
+        status: 'pending',
+      };
+    }));
+    const row = rows[0];
 
     // 1) A completely empty order (no tumbler, sticker, name or TikTok) tells Evvyne
     //    nothing — don't log it. WhatsApp still opens as normal.
@@ -1716,8 +2050,7 @@
     //    different (another tumbler, a changed sticker…) is logged as a new order, so a
     //    customer ordering several different tumblers still shows up once per order.
     //    Remembered for 24 hours, so a repeat customer next week is logged normally.
-    const { status, ...contentOnly } = row;
-    const signature = JSON.stringify(contentOnly);
+    const signature = JSON.stringify(rows.map(({ status, addons, ...rest }) => ({ ...rest, addons: String(addons || '').replace(/,?\s*Multi-bottle order: [^,]*$/, '') })));
     const DUP_WINDOW_MS = 24 * 60 * 60 * 1000;
     let last = lastLoggedOrder;
     try { last = JSON.parse(localStorage.getItem('sbe_last_order') || 'null') || last; } catch (e) {}
@@ -1730,15 +2063,14 @@
     const OPTIONAL_COLS = ['delivery'];
     const insert = (payload, triesLeft = OPTIONAL_COLS.length) => client.from('orders').insert(payload).then(({ error }) => {
       if (!error) return;
-      const col = OPTIONAL_COLS.find(c => c in payload && new RegExp(c, 'i').test(error.message || ''));
+      const col = OPTIONAL_COLS.find(c => c in payload[0] && new RegExp(c, 'i').test(error.message || ''));
       if (col && triesLeft > 0) {
-        const { [col]: _dropped, ...rest } = payload;
-        return insert(rest, triesLeft - 1);
+        return insert(payload.map(({ [col]: _dropped, ...rest }) => rest), triesLeft - 1);
       }
       console.error('order log error:', error.message || JSON.stringify(error));
     });
     try {
-      insert(row).catch(err => console.error('order log error:', err && err.message));
+      insert(rows).catch(err => console.error('order log error:', err && err.message));
     } catch (err) {
       console.error('order log error:', err && err.message);
     }
@@ -1831,12 +2163,9 @@
     const showTags = !!pickMode || myOrder.extraStickers.length > 0 || !!(myOrder.promo.on && myOrder.promo.sticker);
     const forTag = !showTags ? '' : (isPromo && (pickMode === 'promo' || !isMain) ? '<span class="for-tag promo">🎁 Promo</span>'
       : (isExtra ? '<span class="for-tag extra">➕ Extra</span>' : (isMain ? '<span class="for-tag">Free</span>' : '')));
-    return { picked, tagHtml: forTag || (isNew(s) ? '<span class="new-ribbon">🆕 New</span>' : '') };
+    return { picked, tagHtml: forTag || (isPopular(s) ? '<span class="new-ribbon hot">🔥 Popular</span>' : (isNew(s) ? '<span class="new-ribbon">🆕 New</span>' : '')) };
   }
 
-  // Remember each picture's shape once it has loaded, so when a view is drawn again the
-  // space is already reserved and the page doesn't shrink and jump while images reload.
-  const imgRatioCache = {};
 
   // After a pick: only update the ✓ / tags on the stickers already on screen — no redraw,
   // so the page stays exactly where the customer is.
@@ -1855,14 +2184,13 @@
     return stickers.map(s => {
       const soldOut = s.status === 'sold_out';
       const m = thumbMarks(s);
-      const ratio = imgRatioCache[s.id];
       const badgeClass = s.status === 'available' ? 'status-available' : (s.status === 'preorder' ? 'status-preorder' : 'status-unavailable');
       return `
         <div class="sticker-thumb ${soldOut ? 'sold-out' : ''} ${m.picked ? 'picked' : ''}" data-id="${s.id}">
           <span class="tag-slot">${m.tagHtml}</span>
           <span class="pick-check">✓</span>
           <button type="button" class="zoom-btn" title="View full size">🔍</button>
-          ${thumbImg(s.image_path, s.code || s.name, ` loading="lazy"${ratio ? ` style="aspect-ratio:${ratio};"` : ''}`)}
+          ${thumbImg(s.image_path, s.code || s.name, ' loading="lazy" width="400" height="400"')}
           <div class="info">
             <span class="code-tag">${s.code ? s.code : s.name}</span>
             <span class="badge ${badgeClass}">${STATUS_LABEL[s.status] || s.status}</span>
@@ -1878,15 +2206,9 @@
       const s = stickers.find(x => x.id === el.dataset.id);
       if (!s) return;
 
-      const img = el.querySelector('img');
-      const rememberRatio = () => {
-        if (img.naturalWidth && img.naturalHeight) imgRatioCache[s.id] = `${img.naturalWidth} / ${img.naturalHeight}`;
-      };
-      if (img.complete) rememberRatio(); else img.addEventListener('load', rememberRatio, { once: true });
-
       el.querySelector('.zoom-btn').addEventListener('click', (e) => {
         e.stopPropagation();
-        openLightbox(s, publicImageUrl(s.image_path));
+        openLightbox(s, fullPhotoUrl(s.image_path));
       });
 
       const notifyBtn = el.querySelector('.notify-btn');
@@ -1949,7 +2271,16 @@
     statusEl.style.display = 'none';
 
     catGrid.className = 'cat-grid';
-    catGrid.innerHTML = list.map(c => {
+    const hot = popularStickers();
+    const hotCard = hot.length ? `
+        <div class="cat-cover-card popular-card" data-popular="1">
+          ${hot[0].image_path ? thumbImg(hot[0].image_path, 'Popular', ' loading="lazy"') : `<div class="no-cover">🔥</div>`}
+          <div class="label">
+            <span class="name">🔥 Popular</span>
+            <span class="count">${hot.length} design${hot.length === 1 ? '' : 's'}</span>
+          </div>
+        </div>` : '';
+    catGrid.innerHTML = hotCard + list.map(c => {
       const count = (byCategory[c.name] || []).length;
       const cover = c.cover_image_path || null;
       return `
@@ -1964,7 +2295,10 @@
     }).join('');
 
     catGrid.querySelectorAll('.cat-cover-card').forEach(el => {
-      el.addEventListener('click', () => renderCategoryDetail(el.dataset.category));
+      el.addEventListener('click', () => {
+        if (el.dataset.popular) renderFilteredList('popular', true);
+        else renderCategoryDetail(el.dataset.category);
+      });
     });
     currentStickerView = renderCategoryGrid;
   }
@@ -2042,22 +2376,27 @@
   // ---- Filter dropdown: flat list across every category, by status or "new" ----
   const FILTER_TITLES = {
     new: `🆕 New Arrivals (added in the last ${NEW_DAYS} days)`,
+    popular: '🔥 Popular right now',
     available: 'Showing: In Stock',
     preorder: 'Showing: Preorder',
     sold_out: 'Showing: Sold Out',
   };
 
-  function renderFilteredList(filterKey){
-    const list = filterKey === 'new' ? allStickers.filter(isNew) : allStickers.filter(s => s.status === filterKey);
+  function renderFilteredList(filterKey, withBack){
+    const list = filterKey === 'new' ? allStickers.filter(isNew)
+      : filterKey === 'popular' ? popularStickers()
+      : allStickers.filter(s => s.status === filterKey);
     catGrid.className = '';
     catGrid.innerHTML = `
+      ${withBack ? '<button class="back-link" id="backToCats">← Back to all categories</button>' : ''}
       <h3 class="active-cat-title">${FILTER_TITLES[filterKey] || ''}</h3>
       <div class="sticker-grid">
         ${list.length ? stickerThumbsHtml(list) : '<p class="gallery-status" style="display:block;">Nothing here right now.</p>'}
       </div>
     `;
+    if (withBack) document.getElementById('backToCats').addEventListener('click', renderCategoryGrid);
     wireStickerThumbs(catGrid, list);
-    currentStickerView = () => renderFilteredList(filterKey);
+    currentStickerView = () => renderFilteredList(filterKey, withBack);
   }
 
   // ---- Quietly note down searches that found nothing, so Evvyne can see what customers
@@ -2118,6 +2457,7 @@
   function clearStickerSearch(){
     document.getElementById('stickerSearchInput').value = '';
     viewBeforeSearch = null;
+    catGrid.style.minHeight = '';
   }
 
   // Search results show right in the sticker area as normal sticker cards:
@@ -2187,12 +2527,21 @@
     currentStickerView = () => renderSearchResults(document.getElementById('stickerSearchInput').value);
   }
 
+  // Wait until typing pauses (¼ second) before redrawing, and keep the area's height while
+  // the customer is typing — so the page doesn't shrink and jump with every letter.
+  let searchTypingTimer = null;
   document.getElementById('stickerSearchInput').addEventListener('input', (e) => {
-    renderSearchResults(e.target.value);
+    clearTimeout(searchTypingTimer);
+    const value = e.target.value;
+    searchTypingTimer = setTimeout(() => {
+      if (value.trim()) catGrid.style.minHeight = Math.max(parseFloat(catGrid.style.minHeight) || 0, Math.min(catGrid.offsetHeight, window.innerHeight)) + 'px';
+      else catGrid.style.minHeight = '';
+      renderSearchResults(value);
+    }, value.trim() ? 250 : 0);
   });
 
   // ---- Filter dropdown wiring ----
-  const FILTER_LABELS = { all: 'All', new: '🆕 New Arrivals', available: 'In Stock', preorder: 'Preorder', sold_out: 'Sold Out' };
+  const FILTER_LABELS = { all: 'All', popular: '🔥 Popular', new: '🆕 New Arrivals', available: 'In Stock', preorder: 'Preorder', sold_out: 'Sold Out' };
   const filterBtn = document.getElementById('filterBtn');
   const filterPanel = document.getElementById('filterPanel');
   const filterDropdown = document.getElementById('filterDropdown');
@@ -2266,6 +2615,7 @@
       // Bring the newly opened stickers in without throwing the customer out of what they're looking at.
       const t = Date.now();
       allStickers = rows.filter(s => isReleased(s, t));
+      refreshPopularIds();
       if (currentStickerView) currentStickerView(); else renderCategoryGrid();
       renderExtraStickerPanel();
       renderPromo();
@@ -2309,7 +2659,19 @@
     openStickerFromLink();
     allCategories = categoriesRes.data || [];
     allSubcategories = subcategoriesRes.data || [];
+    // Wait (briefly) for the popular list so the 🔥 Popular card is there from the first draw
+    // instead of popping in on top a moment later.
+    let settingsArrived = false;
+    await Promise.race([
+      fetchSettingsRows().then(rows => { settingsArrived = true; applyPopularSettings(rows); }),
+      new Promise(r => setTimeout(r, 2500)),
+    ]);
+    refreshPopularIds();
     renderCategoryGrid();
+    if (!settingsArrived) fetchSettingsRows().then(rows => {
+      applyPopularSettings(rows); refreshPopularIds();
+      if (currentStickerView === renderCategoryGrid) renderCategoryGrid(); else refreshStickerMarks();
+    });
   }
 
   // ---- ① ③ ④ ⑤ catalogue photos (falls back to the bundled backup photos next to index.html if not set) ----
@@ -2352,6 +2714,7 @@
       if (!img) return;
       const gh = ghPhotos.main[row.slot];
       if (gh && gh.path === row.image_path && gh.file) {
+        if (gh.w && gh.h) { img.setAttribute('width', gh.w); img.setAttribute('height', gh.h); } // reserve the right shape before it loads
         img.dataset.fb = publicImageUrl(row.image_path); // GitHub copy first, Supabase if it can't load
         img.onerror = () => nextImgSrc(img);
         img.src = gh.file;
@@ -2367,8 +2730,11 @@
   function beforeUpdateReload(){
     try {
       const val = id => ((document.getElementById(id) || {}).value || '');
+      const enc = b => ({ tumbler: b.tumbler && b.tumbler.id, sticker: b.sticker && b.sticker.id, pattern: b.pattern && b.pattern.id,
+        addons: b.addons.map(a => a.id), customName: b.customName, extraOn: b.extraOn, extra: b.extraStickers.map(x => x.id),
+        promoOn: b.promo.on, promoSticker: b.promo.sticker && b.promo.sticker.id, promoPattern: b.promo.pattern && b.promo.pattern.id });
       sessionStorage.setItem('sbe_restore', JSON.stringify({
-        t: Date.now(), y: window.scrollY,
+        t: Date.now(), y: window.scrollY, bottles: allBottles().map(enc), cur,
         tumbler: myOrder.tumbler && myOrder.tumbler.id, sticker: myOrder.sticker && myOrder.sticker.id,
         pattern: myOrder.pattern && myOrder.pattern.id, delivery: myOrder.delivery,
         addons: myOrder.addons.map(a => a.id), customName: myOrder.customName,
@@ -2397,6 +2763,19 @@
     myOrder.extraOn = !!saved.extraOn;
     myOrder.extraStickers = (saved.extra || []).map(st).filter(Boolean);
     myOrder.promo = { on: !!saved.promoOn, sticker: st(saved.promoSticker), pattern: PATTERN_OPTIONS.find(x => x.id === saved.promoPattern) || null };
+    if (Array.isArray(saved.bottles) && saved.bottles.length > 1) {
+      const dec = e => ({
+        tumbler: TUMBLER_OPTIONS.find(x => x.id === e.tumbler && x.status !== 'sold_out') || null, sticker: st(e.sticker),
+        pattern: PATTERN_OPTIONS.find(x => x.id === e.pattern) || null, addons: loadedAddons.filter(a => (e.addons || []).includes(a.id)),
+        customName: e.customName || '', extraOn: !!e.extraOn, extraStickers: (e.extra || []).map(st).filter(Boolean),
+        promo: { on: !!e.promoOn, sticker: st(e.promoSticker), pattern: PATTERN_OPTIONS.find(x => x.id === e.promoPattern) || null },
+      });
+      bottles = saved.bottles.map(dec);
+      cur = Math.min(Math.max(0, saved.cur | 0), bottles.length - 1);
+      loadBottle(bottles[cur]);
+      document.querySelectorAll('#addonsGrid .addon-card').forEach(card => card.classList.toggle('picked', myOrder.addons.some(a => a.id === card.dataset.id)));
+      if (cn) cn.value = myOrder.customName;
+    }
     const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
     setVal('orderName', saved.name); setVal('orderTiktok', saved.tiktok);
     renderTumblerOptions();
@@ -2449,7 +2828,7 @@
     const code = stickerCodeFromLink().toLowerCase();
     if (!code) return;
     const s = allStickers.find(x => (x.code || x.name || '').toLowerCase() === code);
-    if (s) openLightbox(s, publicImageUrl(s.image_path));
+    if (s) openLightbox(s, fullPhotoUrl(s.image_path));
   }
 
   // Quietly log a page view so Evvyne can see roughly how much traffic the catalogue gets.

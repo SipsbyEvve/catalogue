@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-10-31-1">
+<meta name="sbe-build" content="2026-11-01-2">
 <title>Sips by Evve — Sticker Admin</title>
 <style>
   :root{
@@ -241,6 +241,14 @@
   .o-date{ flex:1 1 100%; font-size:0.78rem; color:var(--muted); font-weight:600; }
   .hidden-when{ font-size:0.75rem; font-weight:700; color:#8858c7; margin-top:2px; }
   .also-in-picker{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:4px 0 6px; }
+  .cat-title-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .cat-title-row .active-cat-title{ margin-bottom:8px; }
+  .batch-move-btn{ margin:0 0 8px; padding:6px 12px; font-size:0.82rem; width:auto; }
+  .bm-group{ margin-bottom:12px; }
+  .bm-group-head{ display:flex; align-items:center; gap:6px; font-weight:800; font-size:0.85rem; margin:6px 0; color:var(--brown-dark); }
+  .bm-actions{ position:sticky; bottom:0; background:#fff; border-top:1px solid var(--line); padding:10px 0; display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:0.85rem; }
+  .bm-actions select{ width:auto; flex:1 1 200px; margin:0; }
+  .bm-actions button{ margin:0; }
   .also-in-picker select{ width:auto; max-width:100%; margin:0; padding:6px 8px; font-size:0.8rem; }
   .also-in-picker.small select{ font-size:0.75rem; padding:5px 7px; }
   .also-chip{ display:inline-flex; align-items:center; gap:4px; background:#eef6ff; border:1px solid #b9d6f5; color:#245a8d; border-radius:999px; padding:3px 4px 3px 9px; font-size:0.75rem; font-weight:700; }
@@ -281,6 +289,18 @@
   .sales-list h4{ margin:10px 0 4px; font-size:0.85rem; }
   .sales-list .sl-row{ display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-bottom:1px dashed var(--line); font-size:0.85rem; }
   .sales-list .sl-row:last-child{ border-bottom:none; }
+  /* 🔥 Popular */
+  .hot-btn.on{ background:#fde3c8 !important; border-color:#f08a24 !important; color:#a14d00 !important; }
+  .pop-list{ display:flex; flex-direction:column; gap:6px; margin:6px 0 12px; }
+  .pop-item{ display:flex; align-items:center; gap:10px; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:6px 8px; font-size:0.88rem; }
+  .pop-item img{ width:42px; height:42px; object-fit:contain; border-radius:6px; background:#fff; flex:none; }
+  .pop-item .grow{ flex:1; min-width:0; }
+  .pop-item .sub{ color:var(--muted); font-size:0.75rem; }
+  .pop-item button{ margin:0; padding:5px 9px; font-size:0.78rem; }
+  .pop-add{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .pop-add input{ width:auto; flex:1; min-width:120px; margin:0; }
+  .pop-add button{ margin:0; }
+  .o-group{ flex:1 1 100%; font-size:0.8rem; font-weight:700; color:#6a3fb0; background:#f1eafb; border-radius:8px; padding:4px 8px; }
   .addon-check-label{ display:inline-flex; align-items:center; gap:4px; font-size:0.82rem; color:var(--ink); }
   .addon-legacy-note{ font-size:0.78rem; color:var(--muted); font-style:italic; }
   .o-paid-btn{ white-space:nowrap; }
@@ -528,7 +548,7 @@
 
     <div class="card" id="githubPhotosCard">
       <h2 style="margin-top:0;font-size:1.1rem;">📦 Photos on GitHub</h2>
-      <p class="hint">Puts copies of the small sticker previews, covers, logo and the 4 big catalogue photos on GitHub, so customers browsing your catalogue use (almost) no Supabase traffic — even during lives. Your photos in Supabase stay exactly as they are. Do this after "Make photos lighter", and again every few months when you've added new stickers (new ones still show fine before that — they just come from Supabase).</p>
+      <p class="hint">Puts copies of the sticker photos (small previews and the big 🔍 photos), covers, logo and the 4 big catalogue photos on GitHub, so customers browsing your catalogue use (almost) no Supabase traffic — even during lives. Your photos in Supabase stay exactly as they are. Do this after "Make photos lighter", and again every few months when you've added new stickers (new ones still show fine before that — they just come from Supabase).</p>
       <p class="msg" id="githubPhotosStatus" style="margin-top:0;"></p>
       <button type="button" id="githubPhotosBtn">📦 Download photos for GitHub</button>
       <p class="msg" id="githubPhotosMsg"></p>
@@ -596,6 +616,17 @@
         <option value="all">All time</option>
       </select>
       <div id="salesStats">Loading…</div>
+    </div>
+
+    <div class="card" id="popularCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">🔥 Popular stickers</h2>
+      <p class="hint">Customers see these with a <b>🔥 Popular</b> tag, plus a 🔥 Popular box at the top of the sticker categories.</p>
+      <label class="promo-switch"><input type="checkbox" id="popularAutoOn" checked> <span>Automatic — your best sellers (paid orders, last 30 days)</span></label>
+      <div id="popularAutoList" class="pop-list"></div>
+      <h4 style="margin:12px 0 4px;font-size:0.9rem;">👆 Pushed by you</h4>
+      <p class="hint" style="margin:0 0 6px;">Tap <b>🔥 Push</b> on any sticker in "Existing stickers", or type its code here. These always show, even with Automatic off.</p>
+      <div id="popularManualList" class="pop-list"></div>
+      <div class="pop-add"><input type="text" id="popularAddCode" placeholder="Sticker code, e.g. D012"><button type="button" class="secondary" id="popularAddBtn">🔥 Push</button></div>
     </div>
 
     <div class="card">
@@ -1093,6 +1124,7 @@
     loadPromoAdmin();
     refreshGithubPhotoStatus();
     loadLiveAdmin();
+    loadPopularAdmin();
   }
   function showLogin(){
     loginSection.style.display = 'block';
@@ -1851,6 +1883,7 @@
         <div class="row-actions">
           <button class="secondary save-btn">Save</button>
           <button class="secondary hide-btn" title="${isHiddenNow(s) ? 'Show it on the catalogue now' : 'Hide it from customers for now'}">${isHiddenNow(s) ? '🎉 Open' : '🙈 Hide'}</button>
+          <button class="secondary hot-btn ${isPushedPopular(s.id) ? 'on' : ''}" title="Show it as 🔥 Popular on the catalogue">${isPushedPopular(s.id) ? '🔥 Pushed ✓' : '🔥 Push'}</button>
           <button class="secondary move-btn">Move</button>
           <button class="danger delete-btn">Delete</button>
         </div>
@@ -1929,11 +1962,13 @@
     stickerList.className = '';
     stickerList.innerHTML = `
       <button class="back-link" id="backToStickerCats">← Back to all categories</button>
-      <h3 class="active-cat-title">${categoryName}</h3>
+      <div class="cat-title-row"><h3 class="active-cat-title">${categoryName}</h3>${stickersInCat.length ? `<button type="button" class="secondary batch-move-btn" id="batchMoveBtn">☑️ Select &amp; move</button>` : ''}</div>
       ${subcatGridHtml}
       ${directListHtml}
     `;
     document.getElementById('backToStickerCats').addEventListener('click', renderStickerCategoryGrid);
+    const bmBtn = document.getElementById('batchMoveBtn');
+    if (bmBtn) bmBtn.addEventListener('click', () => renderBatchMove(categoryName, null, () => renderStickerCategoryDetail(categoryName)));
 
     stickerList.querySelectorAll('.cat-cover-card').forEach(el => {
       el.addEventListener('click', () => renderStickerSubcategoryDetail(categoryName, el.dataset.subcategory));
@@ -1947,13 +1982,133 @@
     stickerList.className = '';
     stickerList.innerHTML = `
       <button class="back-link" id="backToStickerCat">← Back to ${categoryName}</button>
-      <h3 class="active-cat-title">${subcategoryName}</h3>
+      <div class="cat-title-row"><h3 class="active-cat-title">${subcategoryName}</h3>${stickers.length ? `<button type="button" class="secondary batch-move-btn" id="batchMoveBtn">☑️ Select &amp; move</button>` : ''}</div>
       <div class="sticker-list">
         ${stickers.length ? stickers.map(stickerRowHtml).join('') : '<p class="hint">No stickers here yet.</p>'}
       </div>
     `;
     document.getElementById('backToStickerCat').addEventListener('click', () => renderStickerCategoryDetail(categoryName));
+    const bmBtn = document.getElementById('batchMoveBtn');
+    if (bmBtn) bmBtn.addEventListener('click', () => renderBatchMove(categoryName, subcategoryName, () => renderStickerSubcategoryDetail(categoryName, subcategoryName)));
     wireStickerRows(stickers, () => renderStickerSubcategoryDetail(categoryName, subcategoryName));
+  }
+
+  // ---- ☑️ Select & move: tick several stickers and move them together ----
+  // From a category: lists the stickers not in a sub-category first, then each sub-category's.
+  // Nothing is re-uploaded — only where they sit changes (photos, codes, stock stay the same).
+  function renderBatchMove(categoryName, subcategoryName, backFn){
+    const inScope = allStickersAdmin.filter(st => st.category === categoryName && (!subcategoryName || st.subcategory === subcategoryName));
+    const groups = [];
+    if (subcategoryName) groups.push({ label: subcategoryName, list: inScope });
+    else {
+      const direct = inScope.filter(st => !st.subcategory);
+      if (direct.length) groups.push({ label: 'Not in a sub-category yet', list: direct });
+      [...new Set(inScope.filter(st => st.subcategory).map(st => st.subcategory))].forEach(sub => groups.push({ label: sub, list: inScope.filter(st => st.subcategory === sub) }));
+    }
+    const here = placeKey({ category: categoryName, subcategory: subcategoryName || null });
+    const places = allPlaces();
+    const sameCat = places.filter(p => p.category === categoryName && placeKey(p) !== here);
+    const others = places.filter(p => p.category !== categoryName);
+    const opt = p => `<option value="${escAttr(placeKey(p))}">${escAttr(placeLabel(p))}</option>`;
+    stickerList.className = '';
+    stickerList.innerHTML = `
+      <button class="back-link" id="batchMoveBack">← Back</button>
+      <h3 class="active-cat-title">☑️ Move stickers from ${escAttr(subcategoryName ? categoryName + ' › ' + subcategoryName : categoryName)}</h3>
+      <p class="hint">Tick the stickers you want to move, pick where they go, then press Move. Their photos, codes, stock and settings stay exactly the same.</p>
+      <div class="restock-toolbar">
+        <label><input type="checkbox" id="bmSelectAll"> Select all</label>
+        <span class="restock-count" id="bmCount">0 selected</span>
+      </div>
+      ${groups.map((g, gi) => `
+        <div class="bm-group">
+          <label class="bm-group-head"><input type="checkbox" class="bm-group-check" data-g="${gi}"> ${escAttr(g.label)} (${g.list.length})</label>
+          <div class="restock-list">
+            ${g.list.slice().sort(naturalCode).map(st => `
+              <label class="restock-row" data-id="${st.id}" data-g="${gi}">
+                <input type="checkbox" class="bm-check">
+                <img ${thumbOrFull(st.image_path)} alt="${escAttr(st.code || st.name)}" onerror="handleImgError(this)">
+                <div class="info">
+                  <div class="code">${escAttr(st.code || st.name)}</div>
+                  <div class="cat">${escAttr(st.subcategory || categoryName)}${hiddenLabel(st) ? ' · ' + hiddenLabel(st) : ''}</div>
+                </div>
+              </label>`).join('')}
+          </div>
+        </div>`).join('')}
+      <div class="bm-actions">
+        <span>Move to</span>
+        <select id="bmTarget">
+          <option value="">— choose where —</option>
+          ${sameCat.length ? `<optgroup label="In ${escAttr(categoryName)}">${sameCat.map(opt).join('')}</optgroup>` : ''}
+          <option value="__new__">➕ New sub-category in ${escAttr(categoryName)}…</option>
+          ${others.length ? `<optgroup label="Other categories">${others.map(opt).join('')}</optgroup>` : ''}
+        </select>
+        <button type="button" id="bmMoveBtn">Move selected (0)</button>
+      </div>
+    `;
+    document.getElementById('batchMoveBack').addEventListener('click', backFn);
+    const checks = () => [...stickerList.querySelectorAll('.bm-check')];
+    const selected = () => checks().filter(c => c.checked).map(c => c.closest('.restock-row').dataset.id);
+    const update = () => {
+      const n = selected().length;
+      document.getElementById('bmCount').textContent = `${n} selected`;
+      document.getElementById('bmMoveBtn').textContent = `Move selected (${n})`;
+      checks().forEach(c => c.closest('.restock-row').classList.toggle('checked', c.checked));
+      stickerList.querySelectorAll('.bm-group-check').forEach(gc => {
+        const rows = checks().filter(c => c.closest('.restock-row').dataset.g === gc.dataset.g);
+        gc.checked = rows.length > 0 && rows.every(c => c.checked);
+      });
+    };
+    checks().forEach(c => c.addEventListener('change', update));
+    document.getElementById('bmSelectAll').addEventListener('change', e => { checks().forEach(c => { c.checked = e.target.checked; }); update(); });
+    stickerList.querySelectorAll('.bm-group-check').forEach(gc => gc.addEventListener('change', () => {
+      checks().filter(c => c.closest('.restock-row').dataset.g === gc.dataset.g).forEach(c => { c.checked = gc.checked; });
+      update();
+    }));
+    document.getElementById('bmTarget').addEventListener('change', async (e) => {
+      if (e.target.value !== '__new__') return;
+      const name = (prompt(`Name of the new sub-category in "${categoryName}":`) || '').trim();
+      if (!name) { e.target.value = ''; return; }
+      if (subcategoriesData.some(sc => sc.category === categoryName && sc.name === name)) {
+        showToast('That sub-category already exists — picked it for you');
+      } else {
+        const maxSort = subcategoriesData.filter(sc => sc.category === categoryName).reduce((m, sc) => Math.max(m, sc.sort_order || 0), 0);
+        const { error } = await client.from('subcategories').insert({ category: categoryName, name, sort_order: maxSort + 1 });
+        if (error) { showToast(error.message, true); e.target.value = ''; return; }
+        await renderSubcategories();
+        showToast(`✅ Sub-category "${name}" created`);
+      }
+      const key = placeKey({ category: categoryName, subcategory: name });
+      let o = [...e.target.options].find(x => x.value === key);
+      if (!o) { o = document.createElement('option'); o.value = key; o.textContent = placeLabel({ category: categoryName, subcategory: name }); e.target.appendChild(o); }
+      e.target.value = key;
+    });
+    document.getElementById('bmMoveBtn').addEventListener('click', async () => {
+      const ids = selected();
+      if (!ids.length) { showToast('Tick at least one sticker first', true); return; }
+      const key = document.getElementById('bmTarget').value;
+      const target = key && key !== '__new__' ? (allPlaces().find(p => placeKey(p) === key) || (() => { const [c, sb] = key.split('||'); return { category: c, subcategory: sb || null }; })()) : null;
+      if (!target) { showToast('Choose where to move them first', true); return; }
+      if (!confirm(`Move ${ids.length} sticker${ids.length === 1 ? '' : 's'} to "${placeLabel(target)}"?`)) return;
+      const btn = document.getElementById('bmMoveBtn');
+      btn.disabled = true; btn.textContent = 'Moving…';
+      // New arrivals go to the end of the target list, in code order.
+      let nextOrder = allStickersAdmin.filter(st => st.category === target.category && (st.subcategory || null) === (target.subcategory || null)).reduce((m, st) => Math.max(m, st.sort_order || 0), 0);
+      const moving = ids.map(id => allStickersAdmin.find(st => st.id === id)).filter(Boolean).sort(naturalCode);
+      let moved = 0; const failed = [];
+      for (const st of moving) {
+        nextOrder++;
+        const patch = { category: target.category, subcategory: target.subcategory || null, sort_order: nextOrder };
+        const also = normAlsoIn(st.also_in);
+        if (also.length) { const cleaned = cleanAlsoIn(also, target.category, target.subcategory); if (cleaned.length !== also.length) patch.also_in = cleaned.length ? cleaned : null; }
+        const { error } = await client.from('stickers').update(patch).eq('id', st.id);
+        if (error) { failed.push(st.code || st.name); continue; }
+        Object.assign(st, patch);
+        moved++;
+      }
+      showToast(failed.length ? `Moved ${moved}; couldn't move: ${failed.join(', ')}` : `✅ Moved ${moved} sticker${moved === 1 ? '' : 's'} to ${placeLabel(target)}`, !!failed.length);
+      await refreshList();
+      if (target.category === categoryName) renderStickerCategoryDetail(categoryName);
+    });
   }
 
   function wireStickerRows(stickers, onDeleteRerender, onSaved){
@@ -1971,6 +2126,13 @@
         showToast(v.length ? `✅ ${sticker.code || sticker.name} also shows in: ${v.map(placeLabel).join(', ')}` : `✅ ${sticker.code || sticker.name} now only in its own category`);
         return true;
       }, () => ({ category: sticker.category, subcategory: sticker.subcategory || null }), true);
+
+      const hotBtn = row.querySelector('.hot-btn');
+      if (hotBtn) hotBtn.addEventListener('click', async () => {
+        hotBtn.disabled = true;
+        await togglePushedPopular(sticker);
+        hotBtn.disabled = false;
+      });
 
       const hideBtn = row.querySelector('.hide-btn');
       if (hideBtn) hideBtn.addEventListener('click', async () => {
@@ -2235,14 +2397,17 @@
   async function moveCategoryOrSubcat(list, idx, direction, tableName, rerenderFn){
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= list.length) return;
-    const a = list[idx], b = list[swapIdx];
-    const aOrder = a.sort_order || 0;
-    const bOrder = b.sort_order || 0;
-    const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      client.from(tableName).update({ sort_order: bOrder }).eq('id', a.id),
-      client.from(tableName).update({ sort_order: aOrder }).eq('id', b.id),
-    ]);
-    if (e1 || e2) { alert((e1 || e2).message); return; }
+    // Categories are identified by their name (that table has no id column); sub-categories by id.
+    const keyCol = tableName === 'categories' ? 'name' : 'id';
+    // Swap the two, then number the whole list 1, 2, 3… — this also fixes rows that had the
+    // same sort number (where swapping the two numbers would change nothing).
+    const order = list.slice();
+    [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
+    const changes = order.map((row, i) => ({ row, n: i + 1 })).filter(({ row, n }) => row.sort_order !== n);
+    const results = await Promise.all(changes.map(({ row, n }) => client.from(tableName).update({ sort_order: n }).eq(keyCol, row[keyCol])));
+    const failed = results.find(r => r && r.error);
+    if (failed) { alert(failed.error.message); return; }
+    changes.forEach(({ row, n }) => { row.sort_order = n; });
     rerenderFn();
   }
 
@@ -2856,6 +3021,24 @@
       .find(p => p.toLowerCase().startsWith(PROMO_STICKER_PREFIX.toLowerCase()));
     return seg ? seg.slice(PROMO_STICKER_PREFIX.length).trim() : '';
   }
+  // Several tumblers sent together are saved as one order row each, tagged
+  // "Multi-bottle order: 1 of 2 #K7Q2" (the catalogue adds this).
+  const MULTI_RE = /^Multi-bottle order:\s*(\d+)\s*of\s*(\d+)\s*#(\w+)/i;
+  function orderGroup(o){
+    const seg = String(o.addons || '').split(',').map(x => x.trim()).find(x => MULTI_RE.test(x));
+    if (!seg) return null;
+    const m = seg.match(MULTI_RE);
+    return { n: +m[1], of: +m[2], tag: m[3].toUpperCase() };
+  }
+  const groupSiblings = (o) => { const g = orderGroup(o); return g ? allOrdersAdmin.filter(x => x.id !== o.id && (orderGroup(x) || {}).tag === g.tag) : []; };
+  function orderGroupBadge(o){
+    const g = orderGroup(o);
+    if (!g) return '';
+    const all = [o, ...groupSiblings(o)];
+    const sum = all.reduce((a, x) => a + (orderDataTotal(x) || 0), 0);
+    return `<span class="o-group">🥤 Bottle ${g.n} of ${g.of} · same customer, order #${g.tag}${all.length === g.of ? ` · whole order ${fmtRMAdmin(sum)}` : ''}</span>`;
+  }
+
   function splitCustomName(parts){
     const nameSeg = parts.find(p => p.toLowerCase().startsWith(CUSTOM_NAME_PREFIX.toLowerCase()));
     const extraSegs = parts.filter(p => p.toLowerCase().startsWith(EXTRA_STICKER_PREFIX.toLowerCase()));
@@ -2879,8 +3062,9 @@
       const checked = parts.includes(label) ? 'checked' : '';
       return `<label class="addon-check-label"><input type="checkbox" class="o-addon-check" data-label="${label}" ${checked}> ${label}</label>`;
     }).join('');
+    const shownLeftover = leftover.filter(p => !MULTI_RE.test(p));
     const leftoverNote = leftover.length
-      ? `<span class="addon-legacy-note" data-leftover="${leftover.join('|||')}">+ ${leftover.join(', ')} (not in current add-on list)</span>`
+      ? `<span class="addon-legacy-note" data-leftover="${leftover.join('|||')}">${shownLeftover.length ? `+ ${shownLeftover.join(', ')} (not in current add-on list)` : ''}</span>`
       : `<span class="addon-legacy-note" data-leftover=""></span>`;
     const nameBox = `<label class="custom-name-label">✏️ Name on tumbler <input type="text" class="o-custom-name" value="${customName.replace(/"/g, '&quot;')}" placeholder="—" disabled></label>`;
     // One sticker dropdown per extra sticker on the order (plus an empty one, shown in
@@ -2953,7 +3137,10 @@
     const total = orderRowTotal(row);
     const delivery = row.querySelector('.o-delivery');
     const noDelivery = delivery && !delivery.value;
-    el.textContent = total === null ? 'Total: —' : `Total: RM${Number.isInteger(total) ? total : total.toFixed(2)}${noDelivery ? ' + shipping' : ''}`;
+    const o = allOrdersAdmin.find(x => x.id === row.dataset.id);
+    const g = o && orderGroup(o);
+    const shipNote = noDelivery ? (g && g.n > 1 ? ' (shipping is on Bottle 1)' : ' + shipping') : '';
+    el.textContent = total === null ? 'Total: —' : `Total: RM${Number.isInteger(total) ? total : total.toFixed(2)}${shipNote}`;
   }
 
   // An order with nothing useful in it (no customer, no tumbler/sticker/pattern/add-ons)
@@ -2981,11 +3168,32 @@
     renderOrders();
   });
 
+  // Mark one order row paid / unpaid and move its stickers' stock (used for "mark all").
+  // Returns a warning string, or null.
+  async function setOrderPaidStatus(o, newStatus){
+    const previousStatus = o.status;
+    if (previousStatus === newStatus) return null;
+    const { error } = await client.from('orders').update({ status: newStatus }).eq('id', o.id);
+    if (error) return `⚠️ ${error.message}`;
+    const delta = newStatus === 'paid' ? -1 : (previousStatus === 'paid' ? +1 : 0);
+    const warnings = [];
+    if (delta) {
+      for (const code of [o.sticker_code, ...extraStickerCodes(o.addons), promoStickerCode(o.addons)].filter(Boolean)) {
+        const w = await adjustStickerStock(code, delta);
+        if (w) warnings.push(w);
+      }
+    }
+    o.status = newStatus;
+    return warnings.length ? warnings.join(' ') : null;
+  }
+
   async function renderOrders(){
     const el = document.getElementById('ordersList');
     const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
     if (error) { el.textContent = error.message; return; }
     allOrdersAdmin = data || [];
+    ordersLoadedOnce = true;
+    syncAutoPopular();
     emptyOrderIds = allOrdersAdmin.filter(isEmptyOrder).map(o => o.id);
     updateClearEmptyButton();
     renderSalesStats();
@@ -2994,6 +3202,7 @@
       const isPaid = o.status === 'paid';
       return `
       <div class="addon-row order-row" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
+        ${orderGroupBadge(o)}
         <span class="o-date">📅 ${fmtOrderDate(o.created_at)}</span>
         <input type="text" class="o-name" value="${o.customer_name || ''}" placeholder="Name" disabled style="flex:1;min-width:90px;">
         <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" disabled style="flex:1;min-width:90px;">
@@ -3065,6 +3274,27 @@
         const btn = e.currentTarget;
         const previousStatus = order.status;
         const newStatus = previousStatus === 'paid' ? 'pending' : 'paid';
+        // Several tumblers from one customer: offer to mark the whole order in one go.
+        const sibs = groupSiblings(order).filter(x => x.status !== newStatus && (newStatus === 'paid' || x.status === 'paid'));
+        const doAll = sibs.length > 0 && confirm(newStatus === 'paid'
+          ? `This customer ordered ${sibs.length + 1} tumblers together (order #${orderGroup(order).tag}).\n\nOK = mark ALL ${sibs.length + 1} as paid\nCancel = only this one`
+          : `Un-mark all ${sibs.length + 1} tumblers of order #${orderGroup(order).tag}?\n\nOK = all of them\nCancel = only this one`);
+        if (doAll) {
+          btn.disabled = true;
+          const warnings = [];
+          for (const o2 of [order, ...sibs]) {
+            const w = await setOrderPaidStatus(o2, newStatus);
+            if (w) warnings.push(w);
+            const b2 = document.querySelector(`#ordersList .order-row[data-id="${o2.id}"] .o-paid-btn`);
+            if (b2) { b2.classList.toggle('is-paid', o2.status === 'paid'); b2.textContent = o2.status === 'paid' ? '✓ Paid' : 'Mark Paid'; }
+          }
+          btn.disabled = false;
+          renderSalesStats();
+          applyOrderFilters();
+          syncAutoPopular();
+          showToast(warnings.length ? warnings.join(' ') : (newStatus === 'paid' ? `✅ All ${sibs.length + 1} tumblers marked paid!` : '↩️ Un-marked'), !!warnings.length);
+          return;
+        }
         // Every sticker on the order moves stock: the free one plus any extra sticker.
         const stickerCodes = [order.sticker_code, ...extraStickerCodes(order.addons), promoStickerCode(order.addons)].filter(Boolean);
 
@@ -3094,6 +3324,7 @@
           order.status = newStatus;
           renderSalesStats();
           applyOrderFilters();
+          syncAutoPopular();
           btn.classList.toggle('is-paid', newStatus === 'paid');
           btn.textContent = newStatus === 'paid' ? '✓ Paid' : 'Mark Paid';
           showToast(stockWarning || (newStatus === 'paid' ? '✅ Marked paid!' : '↩️ Un-marked'), !!stockWarning);
@@ -3229,7 +3460,7 @@
         if (extra) { count(stickers, extra[1]); count(addons, 'Extra sticker'); return; }
         const promoSticker = seg.match(/^Promo sticker:\s*([^\s(]+)/i);
         if (promoSticker) { count(stickers, promoSticker[1]); return; }
-        if (/^(Promo pattern|Name on tumbler):/i.test(seg)) return;
+        if (/^(Promo pattern|Name on tumbler|Multi-bottle order):/i.test(seg)) return;
         count(addons, seg.replace(/\s*\(\+?RM[^)]*\)/i, '').trim());
       });
     });
@@ -3253,6 +3484,117 @@
     `;
   }
   document.getElementById('salesPeriod').addEventListener('change', renderSalesStats);
+
+  // ==================================================================
+  // 🔥 Popular stickers — saved in "settings" (key "popular"):
+  //   auto    = best sellers worked out here from PAID orders (last 30 days, top 8, sold 2+),
+  //             refreshed whenever admin opens / an order is marked paid
+  //   manual  = stickers Evvyne pushes herself (🔥 Push) — always shown
+  //   auto_on = automatic list on/off
+  // ==================================================================
+  const POPULAR_DAYS = 30, POPULAR_TOP = 8, POPULAR_MIN_SOLD = 2;
+  let popularAdmin = { auto_on: true, auto: [], manual: [] };
+  let popularLoaded = false, ordersLoadedOnce = false;
+  const isPushedPopular = (id) => popularAdmin.manual.includes(id);
+
+  function popularSalesCounts(){
+    const since = Date.now() - POPULAR_DAYS * 86400e3;
+    const counts = new Map(); // sticker id -> sold
+    allOrdersAdmin.filter(o => o.status === 'paid' && new Date(o.created_at).getTime() >= since).forEach(o => {
+      [o.sticker_code, ...extraStickerCodes(o.addons), promoStickerCode(o.addons)].filter(Boolean).forEach(code => {
+        const st = findStickerByCode(code);
+        if (st) counts.set(st.id, (counts.get(st.id) || 0) + 1);
+      });
+    });
+    return counts;
+  }
+  function computeAutoPopular(){
+    return [...popularSalesCounts().entries()]
+      .filter(([id, n]) => n >= POPULAR_MIN_SOLD)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, POPULAR_TOP)
+      .map(([id]) => id);
+  }
+  async function savePopular(next, okMsg){
+    const value = { auto_on: next.auto_on !== false, auto: next.auto || [], manual: next.manual || [], updated_at: new Date().toISOString() };
+    const { error } = await client.from('settings').upsert({ key: 'popular', value, updated_at: value.updated_at });
+    if (error) { showToast(error.message, true); return false; }
+    popularAdmin = value;
+    if (okMsg) showToast(okMsg);
+    renderPopularCard();
+    return true;
+  }
+  // Keep the saved best-seller list in step with the orders (only writes when it changed).
+  async function syncAutoPopular(){
+    if (!popularLoaded || !ordersLoadedOnce) return;
+    const auto = computeAutoPopular();
+    if (JSON.stringify(auto) !== JSON.stringify(popularAdmin.auto)) await savePopular({ ...popularAdmin, auto });
+    else renderPopularCard();
+  }
+  async function loadPopularAdmin(){
+    try {
+      const { data } = await client.from('settings').select('*');
+      const row = (data || []).find(r => r.key === 'popular');
+      const v = row && row.value;
+      if (v) popularAdmin = {
+        auto_on: v.auto_on !== false,
+        auto: Array.isArray(v.auto) ? v.auto : [],
+        manual: Array.isArray(v.manual) ? v.manual : [],
+      };
+    } catch (e) { console.error('popular settings load error', e); }
+    popularLoaded = true;
+    renderPopularCard();
+    syncAutoPopular();
+  }
+  function popItemHtml(st, sub, btn){
+    return `<div class="pop-item" data-id="${st.id}">
+      <img ${thumbOrFull(st.image_path)} alt="" onerror="handleImgError(this)">
+      <div class="grow"><b>${st.code || st.name}</b><div class="sub">${sub}</div></div>
+      ${btn || ''}
+    </div>`;
+  }
+  function renderPopularCard(){
+    const autoEl = document.getElementById('popularAutoList');
+    const manEl = document.getElementById('popularManualList');
+    if (!autoEl || !manEl) return;
+    document.getElementById('popularAutoOn').checked = popularAdmin.auto_on !== false;
+    const byId = new Map(allStickersAdmin.map(st => [st.id, st]));
+    const counts = popularSalesCounts();
+    const where = (st) => st.category + (st.subcategory ? ' · ' + st.subcategory : '');
+    const autoList = popularAdmin.auto.map(id => byId.get(id)).filter(Boolean);
+    autoEl.style.opacity = popularAdmin.auto_on === false ? '0.45' : '1';
+    autoEl.innerHTML = autoList.length
+      ? autoList.map((st, i) => popItemHtml(st, `#${i + 1} · sold ${counts.get(st.id) || 0} · ${where(st)}${st.status === 'sold_out' ? ' · <b>Sold Out — not shown</b>' : ''}`)).join('')
+      : `<p class="hint" style="margin:0;">No best sellers yet — a sticker needs ${POPULAR_MIN_SOLD}+ paid orders in the last ${POPULAR_DAYS} days.</p>`;
+    const manList = popularAdmin.manual.map(id => byId.get(id)).filter(Boolean);
+    manEl.innerHTML = manList.length
+      ? manList.map(st => popItemHtml(st, where(st) + (st.status === 'sold_out' ? ' · Sold Out' : ''), '<button type="button" class="secondary pop-remove">✕ Remove</button>')).join('')
+      : '<p class="hint" style="margin:0;">Nothing pushed yet.</p>';
+    manEl.querySelectorAll('.pop-remove').forEach(b => b.addEventListener('click', () => {
+      const st = byId.get(b.closest('.pop-item').dataset.id);
+      if (st) togglePushedPopular(st);
+    }));
+  }
+  async function togglePushedPopular(st){
+    const on = isPushedPopular(st.id);
+    const manual = on ? popularAdmin.manual.filter(id => id !== st.id) : [...popularAdmin.manual, st.id];
+    const ok = await savePopular({ ...popularAdmin, manual }, on ? `${st.code || st.name} removed from 🔥 Popular` : `🔥 ${st.code || st.name} is now Popular`);
+    if (ok) document.querySelectorAll(`.sticker-row[data-id="${st.id}"] .hot-btn`).forEach(b => {
+      b.classList.toggle('on', !on);
+      b.textContent = !on ? '🔥 Pushed ✓' : '🔥 Push';
+    });
+  }
+  document.getElementById('popularAutoOn').addEventListener('change', (e) => {
+    savePopular({ ...popularAdmin, auto_on: e.target.checked }, e.target.checked ? '✅ Automatic best sellers ON' : 'Automatic best sellers OFF — only your pushed stickers show');
+  });
+  document.getElementById('popularAddBtn').addEventListener('click', () => {
+    const inp = document.getElementById('popularAddCode');
+    const st = findStickerByCode(inp.value);
+    if (!st) { showToast(`No sticker with code "${inp.value.trim()}"`, true); return; }
+    if (isPushedPopular(st.id)) { showToast(`${st.code} is already pushed`); return; }
+    inp.value = '';
+    togglePushedPopular(st);
+  });
 
 
 
@@ -3331,7 +3673,12 @@
       const missing = rows.filter(r => r.thumbDim && !onGh.has(r.path)).length;
       const mainMissing = rows.filter(r => !r.thumbDim && r.label.startsWith('Catalogue photo') && !Object.values(manifest.main || {}).some(m => m.path === r.path)).length;
       el.className = (missing || mainMissing) ? 'msg' : 'msg ok';
-      el.textContent = `On GitHub: ${onGh.size} previews + ${Object.keys(manifest.main || {}).length} catalogue photos (made ${fmtOrderDate(manifest.made_at)}).`
+      const fullN = Object.keys(manifest.full || {}).length;
+      const stickerRows = rows.filter(r => r.thumbDim === THUMB_DIM.sticker && !/^Cover:/.test(r.label));
+      const fullMissing = stickerRows.filter(r => !(manifest.full || {})[r.path]).length;
+      el.className = (missing || mainMissing || fullMissing) ? 'msg' : 'msg ok';
+      if (fullMissing && !missing && !mainMissing) { el.textContent = `On GitHub: ${onGh.size} previews + ${fullN} big photos + ${Object.keys(manifest.main || {}).length} catalogue photos (made ${fmtOrderDate(manifest.made_at)}). ${fullMissing} big sticker photo${fullMissing === 1 ? '' : 's'} (for 🔍) not on GitHub yet — press the button below and upload again.`; return; }
+      el.textContent = `On GitHub: ${onGh.size} previews + ${fullN} big photos + ${Object.keys(manifest.main || {}).length} catalogue photos (made ${fmtOrderDate(manifest.made_at)}).`
         + ((missing || mainMissing) ? ` ${missing + mainMissing} newer photo${missing + mainMissing === 1 ? '' : 's'} not on GitHub yet — they still show fine (from Supabase).` : ' ✅ Everything is on GitHub.');
     } catch (e) {
       el.textContent = '';
@@ -3347,7 +3694,8 @@
       const rows = await collectPhotoRows();
       const thumbRows = rows.filter(r => r.thumbDim);
       const mainRows = rows.filter(r => !r.thumbDim && r.label.startsWith('Catalogue photo'));
-      const manifest = { app: 'Sips by Evve catalogue', made_at: new Date().toISOString(), thumbs: {}, main: {} };
+      const manifest = { app: 'Sips by Evve catalogue', made_at: new Date().toISOString(), thumbs: {}, main: {}, full: {} };
+      const fullRows = rows.filter(r => r.thumbDim === THUMB_DIM.sticker && !/^Cover:/.test(r.label)); // stickers' big photos (what 🔍 shows)
       const files = []; // [{ name, blob }]
       const usedNames = new Set();
       const uniqueName = (base, ext) => { let n = `${base}.${ext}`, i = 2; while (usedNames.has(n)) n = `${base}-${i++}.${ext}`; usedNames.add(n); return n; };
@@ -3355,7 +3703,7 @@
       let i = 0;
       for (const r of thumbRows) {
         i++;
-        msg.textContent = `Collecting photos… ${i} of ${thumbRows.length + mainRows.length}`;
+        msg.textContent = `Collecting photos… ${i} of ${thumbRows.length + fullRows.length + mainRows.length}`;
         try {
           let { data: blob, error } = await client.storage.from('stickers').download('thumbs/' + r.path);
           if (error || !blob) { // no preview made yet — make one from the photo
@@ -3368,9 +3716,21 @@
           manifest.thumbs[r.path] = name;
         } catch (e) { failed.push(r.label); }
       }
+      for (const r of fullRows) {
+        i++;
+        msg.textContent = `Collecting photos… ${i} of ${thumbRows.length + fullRows.length + mainRows.length}`;
+        try {
+          const { data, error } = await client.storage.from('stickers').download(r.path);
+          if (error) throw error;
+          const blob = data.size > 400 * 1024 ? await compressImageBlob(data, 1000, 0.8) : data;
+          const name = uniqueName('f-' + shortHash(r.path), extFor(blob.type));
+          files.push({ name, blob });
+          manifest.full[r.path] = name;
+        } catch (e) { failed.push(r.label + ' (big photo)'); }
+      }
       for (const r of mainRows) {
         i++;
-        msg.textContent = `Collecting photos… ${i} of ${thumbRows.length + mainRows.length}`;
+        msg.textContent = `Collecting photos… ${i} of ${thumbRows.length + fullRows.length + mainRows.length}`;
         try {
           const { data, error } = await client.storage.from('stickers').download(r.path);
           if (error) throw error;
@@ -3379,6 +3739,7 @@
           const name = uniqueName(`m-${slot}-${shortHash(r.path)}`, extFor(blob.type));
           files.push({ name, blob });
           manifest.main[slot] = { path: r.path, file: name };
+          try { const bmp = await createImageBitmap(blob); manifest.main[slot].w = bmp.width; manifest.main[slot].h = bmp.height; bmp.close && bmp.close(); } catch (e) { /* size is optional */ }
         } catch (e) { failed.push(r.label); }
       }
       if (!files.length) throw new Error('No photos found');
