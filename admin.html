@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-10-29-1">
+<meta name="sbe-build" content="2026-10-31-1">
 <title>Sips by Evve — Sticker Admin</title>
 <style>
   :root{
@@ -240,6 +240,26 @@
   .o-total{ flex:1 1 100%; font-weight:800; color:var(--brown-dark); font-size:0.9rem; }
   .o-date{ flex:1 1 100%; font-size:0.78rem; color:var(--muted); font-weight:600; }
   .hidden-when{ font-size:0.75rem; font-weight:700; color:#8858c7; margin-top:2px; }
+  .also-in-picker{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:4px 0 6px; }
+  .also-in-picker select{ width:auto; max-width:100%; margin:0; padding:6px 8px; font-size:0.8rem; }
+  .also-in-picker.small select{ font-size:0.75rem; padding:5px 7px; }
+  .also-chip{ display:inline-flex; align-items:center; gap:4px; background:#eef6ff; border:1px solid #b9d6f5; color:#245a8d; border-radius:999px; padding:3px 4px 3px 9px; font-size:0.75rem; font-weight:700; }
+  .also-chip button{ margin:0; padding:0 6px; border:none; background:none; color:#245a8d; font-size:0.8rem; cursor:pointer; }
+  .also-in-row{ margin-top:4px; }
+  .also-in-row .also-in-picker{ margin:0; }
+  .also-in-row select{ font-size:0.72rem; padding:3px 6px; }
+  .group-helper:empty{ display:none; }
+  .gh-box{ margin:10px 0 4px; background:#fbf7f1; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:0.85rem; }
+  .gh-line{ margin-top:6px; }
+  .gh-line button{ margin:0 0 0 4px; padding:4px 10px; font-size:0.78rem; width:auto; }
+  .gh-warn{ color:#b0452f; font-weight:600; }
+  .gh-muted{ color:var(--muted); font-size:0.75rem; }
+  .gh-grid{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; max-height:220px; overflow:auto; }
+  .gh-st{ display:flex; flex-direction:column; align-items:center; width:54px; font-size:0.66rem; font-weight:700; color:var(--brown-dark); }
+  .gh-st img{ width:46px; height:46px; object-fit:cover; border-radius:7px; background:#fff; border:1px solid var(--line); }
+  .subcat-move-panel{ flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0; padding:8px; background:#f6f0fd; border:1px dashed #c9b2ea; border-radius:10px; font-size:0.85rem; }
+  .subcat-move-panel select{ width:auto; margin:0; padding:6px 8px; }
+  .subcat-move-panel button{ margin:0; padding:6px 12px; font-size:0.8rem; }
   .hide-toggle-row{ margin-top:12px; background:#f6f0fd; border:1px dashed #c9b2ea; border-radius:10px; padding:8px 10px; }
   .hidden-actions{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
   .hidden-actions button{ margin:0; }
@@ -382,14 +402,17 @@
           <input type="checkbox" id="watermarkToggle">
           <label for="watermarkToggle">Add watermark (tiled "SIPS BY EVVE", protects photo from being copied)</label>
         </div>
-        <label for="stickerCode">Code (shown to customers — e.g. from your supplier's sticker sheet)</label>
-        <input type="text" id="stickerCode" placeholder="e.g. K001">
-        <label for="stickerKeyword">Search keyword (optional — only needed for a generic category like "Cartoons" or "Cute Stuff", so customers can search the character name)</label>
-        <input type="text" id="stickerKeyword" placeholder="e.g. Doraemon — leave blank if not needed">
         <label for="stickerCategory">Category</label>
         <input type="text" id="stickerCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
         <label for="stickerSubcategory">Sub-category (optional — only if this category has smaller groups, e.g. "Stitch" inside Disney)</label>
         <input type="text" id="stickerSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
+        <div class="group-helper" id="stickerGroupHelper"></div>
+        <label for="stickerCode">Code (shown to customers — e.g. from your supplier's sticker sheet)</label>
+        <input type="text" id="stickerCode" placeholder="e.g. K001">
+        <label for="stickerKeyword">Search keyword (optional — only needed for a generic category like "Cartoons" or "Cute Stuff", so customers can search the character name)</label>
+        <input type="text" id="stickerKeyword" placeholder="e.g. Doraemon — leave blank if not needed">
+        <label>➕ Also show in (optional — the same sticker also appears in another category / sub-category; still one code and one stock)</label>
+        <div class="also-in-picker" id="stickerAlsoIn"></div>
         <label for="stickerStatus">Stock status</label>
         <select id="stickerStatus">
           <option value="available">In Stock</option>
@@ -418,6 +441,9 @@
         <input type="text" id="bulkCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
         <label for="bulkSubcategory">Default sub-category (optional)</label>
         <input type="text" id="bulkSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
+        <div class="group-helper" id="bulkGroupHelper"></div>
+        <label>➕ Also show in — whole batch (optional; each photo can add more below)</label>
+        <div class="also-in-picker" id="bulkAlsoIn"></div>
         <p class="hint">Mixing categories in one batch? Each photo below has its own Category/Sub-category boxes — fill those in to override the default just for that photo.</p>
         <label for="bulkStatus">Stock status (applies to this whole batch)</label>
         <select id="bulkStatus">
@@ -429,6 +455,7 @@
           <input type="checkbox" id="bulkHideToggle">
           <label for="bulkHideToggle">🙈 Hide this whole batch for now — open them later (all at once, a few at a time, or at a set time) in "🙈 Hidden stickers" below</label>
         </div>
+        <button type="button" class="secondary" id="bulkAutoNumberBtn" style="display:none;">🔢 Auto-number the photos below</button>
         <div class="batch-grid" id="bulkBatchGrid"></div>
         <button id="bulkUploadBtn" style="display:none;">Upload all (0)</button>
         <p class="msg" id="bulkUploadMsg"></p>
@@ -763,6 +790,176 @@
     if (hiddenMode) { hiddenMode = false; updateHiddenCount(); }
   });
 
+  // ---- ➕ "Also show in": one sticker (one code, one stock) shown in extra categories / sub-categories ----
+  const placeKey = p => `${p.category}||${p.subcategory || ''}`;
+  const placeLabel = p => p.subcategory ? `${p.category} › ${p.subcategory}` : p.category;
+  function normAlsoIn(v){
+    return Array.isArray(v) ? v.filter(p => p && p.category).map(p => ({ category: String(p.category), subcategory: p.subcategory ? String(p.subcategory) : null })) : [];
+  }
+  // Drops duplicates and the sticker's own place.
+  function cleanAlsoIn(list, category, subcategory){
+    const own = placeKey({ category, subcategory: subcategory || null });
+    const seen = new Set([own]);
+    return normAlsoIn(list).filter(p => { const k = placeKey(p); if (seen.has(k)) return false; seen.add(k); return true; });
+  }
+  function allPlaces(){
+    const map = new Map();
+    const add = (category, subcategory) => { if (category) map.set(placeKey({ category, subcategory }), { category, subcategory: subcategory || null }); };
+    categoriesData.forEach(c => add(c.name, null));
+    subcategoriesData.forEach(sc => add(sc.category, sc.name));
+    allStickersAdmin.forEach(st => { add(st.category, null); if (st.subcategory) add(st.category, st.subcategory); });
+    return [...map.values()].sort((a, b) => placeLabel(a).localeCompare(placeLabel(b)));
+  }
+  // Chips of the chosen places (✕ to remove) + a dropdown to add one.
+  // setList may return false (e.g. a failed save) to keep the old list.
+  function mountAlsoInPicker(el, getList, setList, getPrimary, compact = false){
+    if (!el) return;
+    const draw = () => {
+      const list = normAlsoIn(getList());
+      const primary = getPrimary ? getPrimary() : null;
+      const taken = new Set(list.map(placeKey));
+      if (primary && primary.category) taken.add(placeKey(primary));
+      const options = allPlaces().filter(p => !taken.has(placeKey(p)));
+      el.innerHTML = `
+        ${list.map((p, i) => `<span class="also-chip">➕ ${placeLabel(p)} <button type="button" data-i="${i}" title="Remove">✕</button></span>`).join('')}
+        <select class="also-add"><option value="">${compact ? (list.length ? '➕ more…' : '➕ Also show in…') : '➕ Add a place…'}</option>${options.map(p => `<option value="${placeKey(p).replace(/"/g, '&quot;')}">${placeLabel(p)}</option>`).join('')}</select>`;
+      el.querySelectorAll('.also-chip button').forEach(b => b.addEventListener('click', async () => {
+        const next = list.filter((_, i) => i !== Number(b.dataset.i));
+        if ((await setList(next)) !== false) draw();
+      }));
+      el.querySelector('.also-add').addEventListener('change', async (e) => {
+        const p = allPlaces().find(x => placeKey(x) === e.target.value);
+        if (!p) return;
+        if ((await setList([...list, p])) !== false) draw(); else e.target.value = '';
+      });
+    };
+    draw();
+  }
+  // When a sub-category is renamed or moved, stickers that "also show" there follow it.
+  async function updateAlsoInRefs(from, to){
+    const fromKey = placeKey(from);
+    for (const st of allStickersAdmin) {
+      const list = normAlsoIn(st.also_in);
+      if (!list.some(p => placeKey(p) === fromKey)) continue;
+      const next = cleanAlsoIn(list.map(p => placeKey(p) === fromKey ? to : p), st.category, st.subcategory);
+      const { error } = await client.from('stickers').update({ also_in: next.length ? next : null }).eq('id', st.id);
+      if (!error) st.also_in = next.length ? next : null;
+    }
+  }
+  let singleAlsoIn = [];
+  let bulkAlsoIn = [];
+  const singlePrimaryPlace = () => ({ category: document.getElementById('stickerCategory').value.trim(), subcategory: document.getElementById('stickerSubcategory').value.trim() || null });
+
+  // ---- 🔢 Codes: what's already in a category, the last code, the next one, and gaps ----
+  const CODE_RE = /^([A-Za-z]+)(\d+)$/;
+  const chosenPrefix = {}; // per group, when a category uses more than one letter prefix
+  function groupStickers(category, subcategory){
+    return allStickersAdmin.filter(st => st.category === category && (!subcategory || (st.subcategory || '') === subcategory));
+  }
+  function codeParts(code){ const m = CODE_RE.exec(String(code || '').trim()); return m ? { prefix: m[1].toUpperCase(), num: parseInt(m[2], 10), width: m[2].length } : null; }
+  // Returns { prefix, code, last, gaps } or { choose: [prefixes] } or { empty: true }
+  function nextCodeInfo(category, subcategory, extraTaken = new Set()){
+    const group = groupStickers(category, subcategory);
+    const counts = new Map();
+    group.forEach(st => { const c = codeParts(st.code); if (c) counts.set(c.prefix, (counts.get(c.prefix) || 0) + 1); });
+    if (!counts.size) return { empty: true, group };
+    const key = placeKey({ category, subcategory });
+    let prefix = chosenPrefix[key];
+    if (!prefix || !counts.has(prefix)) {
+      if (counts.size === 1) prefix = [...counts.keys()][0];
+      else return { choose: [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([p]) => p), group };
+    }
+    const inGroup = group.map(st => codeParts(st.code)).filter(c => c && c.prefix === prefix);
+    const width = Math.max(...inGroup.map(c => c.width), 3);
+    const groupMax = Math.max(...inGroup.map(c => c.num));
+    const lastSticker = group.find(st => { const c = codeParts(st.code); return c && c.prefix === prefix && c.num === groupMax; });
+    // Never suggest a code another sticker (anywhere) already uses.
+    const usedNums = new Set(allStickersAdmin.map(st => codeParts(st.code)).filter(c => c && c.prefix === prefix).map(c => c.num));
+    extraTaken.forEach(n => usedNums.add(n));
+    let next = Math.max(...usedNums, 0) + 1;
+    const fmt = n => prefix + String(n).padStart(width, '0');
+    const groupNums = new Set(inGroup.map(c => c.num));
+    const minN = Math.min(...groupNums);
+    const gaps = [];
+    for (let n = minN; n < groupMax && gaps.length < 12; n++) if (!usedNums.has(n) && !groupNums.has(n)) gaps.push(fmt(n));
+    return { prefix, next, code: fmt(next), last: lastSticker ? lastSticker.code : fmt(groupMax), gaps, group, fmt, prefixes: [...counts.keys()] };
+  }
+  function naturalCode(a, b){ const x = codeParts(a.code), y = codeParts(b.code); if (x && y && x.prefix === y.prefix) return x.num - y.num; return String(a.code || '').localeCompare(String(b.code || '')); }
+  function renderGroupHelper(el, category, subcategory, onUse){
+    if (!el) return;
+    if (!category) { el.innerHTML = ''; return; }
+    const known = allStickersAdmin.some(st => st.category === category) || categoriesData.some(c => c.name === category);
+    if (!known) { el.innerHTML = `<div class="gh-box"><b>📂 New category "${escAttr(category)}"</b><div class="gh-line">No stickers here yet — type the first code yourself (e.g. P001); after that the next code is suggested for you.</div></div>`; return; }
+    const info = nextCodeInfo(category, subcategory);
+    const title = `📂 ${escAttr(category)}${subcategory ? ' › ' + escAttr(subcategory) : ''} — ${info.group.length} sticker${info.group.length === 1 ? '' : 's'}`;
+    let codeLine = '';
+    if (info.empty) codeLine = `<div class="gh-line">No codes here yet — type the first one yourself (e.g. P001).</div>`;
+    else if (info.choose) codeLine = `<div class="gh-line">This category uses more than one code letter — which one is this sticker? ${info.choose.map(p => `<button type="button" class="gh-prefix" data-p="${p}">${p}…</button>`).join(' ')}<br><span class="gh-muted">(or pick a sub-category above)</span></div>`;
+    else codeLine = `<div class="gh-line">Last code: <b>${escAttr(info.last)}</b> → next: <b>${info.code}</b> ${onUse ? `<button type="button" class="gh-use">Use ${info.code}</button>` : ''}${info.prefixes.length > 1 ? ` <button type="button" class="gh-switch">change letter</button>` : ''}</div>`
+      + (info.gaps.length ? `<div class="gh-line gh-warn">⚠️ Skipped number${info.gaps.length === 1 ? '' : 's'}: ${info.gaps.join(', ')} — forgot to upload?</div>` : '');
+    const sorted = info.group.slice().sort(naturalCode);
+    el.innerHTML = `<div class="gh-box">
+      <b>${title}</b>${codeLine}
+      ${sorted.length ? `<div class="gh-grid">${sorted.map(st => `<span class="gh-st" title="${escAttr(st.code || st.name)}"><img ${thumbOrFull(st.image_path)} alt="" loading="lazy" onerror="handleImgError(this)"><span>${escAttr(st.code || st.name)}${isHiddenNow(st) ? ' 🙈' : ''}</span></span>`).join('')}</div>` : ''}
+    </div>`;
+    const key = placeKey({ category, subcategory });
+    el.querySelectorAll('.gh-prefix').forEach(b => b.addEventListener('click', () => { chosenPrefix[key] = b.dataset.p; renderGroupHelper(el, category, subcategory, onUse); }));
+    const sw = el.querySelector('.gh-switch'); if (sw) sw.addEventListener('click', () => { delete chosenPrefix[key]; const i = nextCodeInfo(category, subcategory); if (!i.choose) { const ps = i.prefixes; chosenPrefix[key] = ps[(ps.indexOf(i.prefix) + 1) % ps.length]; } renderGroupHelper(el, category, subcategory, onUse); });
+    const use = el.querySelector('.gh-use'); if (use && onUse) use.addEventListener('click', () => onUse(info.code));
+  }
+  const escAttr = (t) => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function renderSingleGroupHelper(){
+    const p = singlePrimaryPlace();
+    renderGroupHelper(document.getElementById('stickerGroupHelper'), p.category, p.subcategory, (code) => {
+      document.getElementById('stickerCode').value = code;
+      showToast(`Code ${code} filled in`);
+    });
+  }
+  function renderBulkGroupHelper(){
+    renderGroupHelper(document.getElementById('bulkGroupHelper'), document.getElementById('bulkCategory').value.trim(), document.getElementById('bulkSubcategory').value.trim() || null, null);
+  }
+  let lastSingleGroup = null, lastBulkGroup = null;
+  ['stickerCategory', 'stickerSubcategory'].forEach(id => ['input', 'change'].forEach(ev => document.getElementById(id).addEventListener(ev, () => {
+    const k = placeKey(singlePrimaryPlace());
+    if (k === lastSingleGroup) return; // only redraw when the category / sub-category actually changed
+    lastSingleGroup = k;
+    renderSingleGroupHelper();
+    mountAlsoInPicker(document.getElementById('stickerAlsoIn'), () => singleAlsoIn, v => { singleAlsoIn = v; }, () => singlePrimaryPlace());
+  })));
+  ['bulkCategory', 'bulkSubcategory'].forEach(id => ['input', 'change'].forEach(ev => document.getElementById(id).addEventListener(ev, () => {
+    const k = document.getElementById('bulkCategory').value.trim() + '||' + document.getElementById('bulkSubcategory').value.trim();
+    if (k === lastBulkGroup) return;
+    lastBulkGroup = k;
+    renderBulkGroupHelper();
+  })));
+  // Fill in codes for the batch, following each photo's own category (or the batch default).
+  document.getElementById('bulkAutoNumberBtn').addEventListener('click', () => {
+    const defCat = document.getElementById('bulkCategory').value.trim();
+    const defSub = document.getElementById('bulkSubcategory').value.trim();
+    if (bulkBatch.some(it => !(it.category.trim() || defCat))) { showToast('Pick the default category above first (or a category on each photo)', true); return; }
+    let targets = bulkBatch.filter(it => !it.code.trim());
+    if (!targets.length) {
+      if (!confirm('Every photo already has a code. Number them all again from the next free code?')) return;
+      targets = bulkBatch.slice();
+    }
+    const takenByPrefix = {}; // codes handed out in this batch, so two groups sharing a letter don't clash
+    bulkBatch.filter(it => !targets.includes(it)).forEach(it => { const c = codeParts(it.code); if (c) (takenByPrefix[c.prefix] = takenByPrefix[c.prefix] || new Set()).add(c.num); });
+    const problems = new Set();
+    for (const it of targets) {
+      const cat = it.category.trim() || defCat;
+      const sub = it.category.trim() ? it.subcategory.trim() : (it.subcategory.trim() || defSub);
+      const peek = nextCodeInfo(cat, sub || null);
+      if (peek.empty || peek.choose) { problems.add(placeLabel({ category: cat, subcategory: sub || null }) + (peek.choose ? ' (more than one code letter — pick a sub-category, or choose the letter in the box above)' : ' (no codes yet — type the first one)')); continue; }
+      const taken = takenByPrefix[peek.prefix] || (takenByPrefix[peek.prefix] = new Set());
+      const info = nextCodeInfo(cat, sub || null, taken);
+      it.code = info.code;
+      taken.add(info.next);
+    }
+    renderBulkBatch();
+    if (problems.size) showToast('Couldn\'t number: ' + [...problems].join('; '), true);
+    else showToast('🔢 Codes filled in — check them before uploading');
+  });
+
   // ---- 🙈 Hidden stickers: uploaded but not shown to customers yet ----
   // release_at empty = shown as normal; a future time = hidden until then (HIDDEN_UNTIL = until opened by hand).
   // Opening sets release_at to the opening time, so 🆕 New Arrivals counts from then.
@@ -886,6 +1083,10 @@
     renderCatalogueSlots();
     await renderAddons(); // needs to finish (populates allAddonsAdmin) before renderOrders builds its add-ons checkboxes
     await loadTumblersAdmin(); // the orders tumbler dropdown + promo tumbler picker use this list
+    mountAlsoInPicker(document.getElementById('stickerAlsoIn'), () => singleAlsoIn, v => { singleAlsoIn = v; }, () => singlePrimaryPlace());
+    mountAlsoInPicker(document.getElementById('bulkAlsoIn'), () => bulkAlsoIn, v => { bulkAlsoIn = v; }, null);
+    renderSingleGroupHelper();
+    renderBulkGroupHelper();
     renderSearchMisses();
     renderVisitStats();
     renderOrders();
@@ -1154,13 +1355,16 @@
       .reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
 
     const hideNew = document.getElementById('stickerHideToggle').checked;
+    const alsoIn = cleanAlsoIn(singleAlsoIn, category, subcategory);
     const { error: insertError } = await client.from('stickers').insert({
       name, code: code || null, keyword: keyword || null, category, subcategory: subcategory || null, status, image_path: path,
       sort_order: siblingMax + 1, stock_qty: stockQty,
       ...(hideNew ? { release_at: HIDDEN_UNTIL } : {}),
+      ...(alsoIn.length ? { also_in: alsoIn } : {}),
     });
     if (insertError) {
-      uploadMsg.textContent = hideNew && /release_at/i.test(insertError.message || '') ? 'To hide stickers, run supabase-setup-hidden-stickers.sql in Supabase first (then try again).' : insertError.message;
+      uploadMsg.textContent = hideNew && /release_at/i.test(insertError.message || '') ? 'To hide stickers, run supabase-setup-hidden-stickers.sql in Supabase first (then try again).'
+        : (/also_in/i.test(insertError.message || '') ? 'To use "Also show in", run supabase-setup-also-show-in.sql in Supabase first (then try again).' : insertError.message);
       uploadMsg.className = 'msg error';
       uploadBtn.disabled = false;
       return;
@@ -1172,12 +1376,15 @@
     watermarkToggle.checked = false;
     document.getElementById('stickerCode').value = '';
     document.getElementById('stickerKeyword').value = '';
-    document.getElementById('stickerCategory').value = '';
-    document.getElementById('stickerSubcategory').value = '';
+    // Category / sub-category stay filled, so the next sticker in the same group is quick
+    // (the helper above the Code box shows the next code to use).
     document.getElementById('stickerStockQty').value = '';
     document.getElementById('stickerStatus').value = 'available';
+    singleAlsoIn = [];
+    mountAlsoInPicker(document.getElementById('stickerAlsoIn'), () => singleAlsoIn, v => { singleAlsoIn = v; }, () => singlePrimaryPlace());
     uploadBtn.disabled = false;
-    refreshList();
+    await refreshList();
+    renderSingleGroupHelper();
   });
 
   // ---- Add sticker: single vs bulk tabs ----
@@ -1210,7 +1417,7 @@
   const bulkPasteZone = document.getElementById('bulkPasteZone');
 
   function addToBulkBatch(file){
-    bulkBatch.push({ file, id: 'b' + (bulkBatchSeq++), code: '', keyword: '', stockQty: '', category: '', subcategory: '' });
+    bulkBatch.push({ file, id: 'b' + (bulkBatchSeq++), code: '', keyword: '', stockQty: '', category: '', subcategory: '', alsoIn: [] });
     renderBulkBatch();
   }
 
@@ -1234,6 +1441,7 @@
           <input class="stock-field" type="number" min="0" placeholder="Stock (optional)" value="${item.stockQty}">
           <input class="category-field" list="categoryList" placeholder="Category (optional, overrides default)" value="${item.category}">
           <input class="subcategory-field" list="subcategoryList" placeholder="Sub-category (optional)" value="${item.subcategory}">
+          <div class="also-in-picker small" data-role="also-in"></div>
         </div>
         <button type="button" class="remove-btn" title="Remove">✕</button>
       </div>
@@ -1248,6 +1456,8 @@
       el.querySelector('.stock-field').addEventListener('input', (e) => { item.stockQty = e.target.value; });
       el.querySelector('.category-field').addEventListener('input', (e) => { item.category = e.target.value; });
       el.querySelector('.subcategory-field').addEventListener('input', (e) => { item.subcategory = e.target.value; });
+      mountAlsoInPicker(el.querySelector('[data-role="also-in"]'), () => item.alsoIn, v => { item.alsoIn = v; },
+        () => ({ category: item.category.trim() || document.getElementById('bulkCategory').value.trim(), subcategory: (item.category.trim() ? item.subcategory.trim() : (item.subcategory.trim() || document.getElementById('bulkSubcategory').value.trim())) || null }), true);
       const removeBtn = el.querySelector('.remove-btn');
       if (removeBtn) removeBtn.addEventListener('click', () => {
         bulkBatch = bulkBatch.filter(b => b.id !== id);
@@ -1257,6 +1467,7 @@
 
     bulkUploadBtn.style.display = bulkBatch.length ? '' : 'none';
     bulkUploadBtn.textContent = `Upload all (${bulkBatch.length})`;
+    document.getElementById('bulkAutoNumberBtn').style.display = bulkBatch.length ? '' : 'none';
   }
 
   bulkFilesInput.addEventListener('change', () => {
@@ -1373,15 +1584,18 @@
       const itemStockQty = parseStockQtyInput(item.stockQty);
       const itemStatus = deriveStatusFromStock(status, itemStockQty, null); // brand-new sticker, no previous status
       const hideBatch = document.getElementById('bulkHideToggle').checked;
+      const itemAlsoIn = cleanAlsoIn([...bulkAlsoIn, ...(item.alsoIn || [])], category, subcategory);
       const { error: insertError } = await client.from('stickers').insert({
         name: code, code: code || null, keyword: item.keyword.trim() || null,
         category, subcategory: subcategory || null, status: itemStatus, image_path: path,
         sort_order: nextSortOrder(category, subcategory), stock_qty: itemStockQty,
         ...(hideBatch ? { release_at: HIDDEN_UNTIL } : {}),
+        ...(itemAlsoIn.length ? { also_in: itemAlsoIn } : {}),
       });
       if (insertError) {
         failCount++;
-        markBulkItemResult(item.id, false, hideBatch && /release_at/i.test(insertError.message || '') ? 'Run supabase-setup-hidden-stickers.sql in Supabase first' : insertError.message);
+        markBulkItemResult(item.id, false, hideBatch && /release_at/i.test(insertError.message || '') ? 'Run supabase-setup-hidden-stickers.sql in Supabase first'
+          : (/also_in/i.test(insertError.message || '') ? 'Run supabase-setup-also-show-in.sql in Supabase first' : insertError.message));
       } else {
         markBulkItemResult(item.id, true);
       }
@@ -1624,6 +1838,7 @@
           <div class="n">${s.name}</div>
           <div class="c">${s.category}</div>
           ${hiddenLabel(s) ? `<div class="hidden-when">${hiddenLabel(s)}</div>` : ''}
+          <div class="also-in-row" data-role="row-also-in"></div>
         </div>
         <input type="text" class="code-input" value="${s.code || ''}" placeholder="Code">
         <input type="text" class="keyword-input" value="${s.keyword || ''}" placeholder="Keyword (optional)">
@@ -1746,6 +1961,16 @@
       const id = row.dataset.id;
       const sticker = stickers.find(s => s.id === id);
       if (!sticker) return;
+
+      const alsoEl = row.querySelector('[data-role="row-also-in"]');
+      if (alsoEl) mountAlsoInPicker(alsoEl, () => normAlsoIn(sticker.also_in), async (v) => {
+        const value = v.length ? v : null;
+        const { error } = await client.from('stickers').update({ also_in: value }).eq('id', id);
+        if (error) { showToast(/also_in/i.test(error.message || '') ? 'Run supabase-setup-also-show-in.sql in Supabase first' : error.message, true); return false; }
+        sticker.also_in = value;
+        showToast(v.length ? `✅ ${sticker.code || sticker.name} also shows in: ${v.map(placeLabel).join(', ')}` : `✅ ${sticker.code || sticker.name} now only in its own category`);
+        return true;
+      }, () => ({ category: sticker.category, subcategory: sticker.subcategory || null }), true);
 
       const hideBtn = row.querySelector('.hide-btn');
       if (hideBtn) hideBtn.addEventListener('click', async () => {
@@ -2246,7 +2471,14 @@
               <button class="secondary subcat-move-up" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▲</button>
               <button class="secondary subcat-move-down" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▼</button>
               <button class="secondary subcat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
+              <button class="secondary subcat-move-cat-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">📦 Move to another category</button>
             </span>
+          </div>
+          <div class="subcat-move-panel" style="display:none;">
+            <span>Move "${sc.name}" and all its stickers to:</span>
+            <select class="subcat-move-target">${categoriesData.filter(c => c.name !== sc.category).map(c => `<option value="${c.name.replace(/"/g, '&quot;')}">${c.name}</option>`).join('')}</select>
+            <button type="button" class="subcat-move-confirm">Move</button>
+            <button type="button" class="secondary subcat-move-cancel">Cancel</button>
           </div>
           ${coverUrl
             ? `<img class="slot-preview" id="subcatPreview-${idx}" src="${coverUrl}" alt="${sc.name}">`
@@ -2321,11 +2553,46 @@
       rowEl.querySelector('.subcat-move-up').addEventListener('click', () => moveCategoryOrSubcat(list, idx, 'up', 'subcategories', renderSubcategories));
       rowEl.querySelector('.subcat-move-down').addEventListener('click', () => moveCategoryOrSubcat(list, idx, 'down', 'subcategories', renderSubcategories));
 
+      const movePanel = rowEl.querySelector('.subcat-move-panel');
+      rowEl.querySelector('.subcat-move-cat-btn').addEventListener('click', () => {
+        if (!categoriesData.some(c => c.name !== sc.category)) { showToast('Add another category first', true); return; }
+        movePanel.style.display = movePanel.style.display === 'none' ? 'flex' : 'none';
+      });
+      rowEl.querySelector('.subcat-move-cancel').addEventListener('click', () => { movePanel.style.display = 'none'; });
+      rowEl.querySelector('.subcat-move-confirm').addEventListener('click', async () => {
+        const target = movePanel.querySelector('.subcat-move-target').value;
+        if (!target) return;
+        const fromPlace = { category: sc.category, subcategory: sc.name }; // remember before anything is updated
+        const count = allStickersAdmin.filter(x => x.category === sc.category && x.subcategory === sc.name).length;
+        const twin = subcategoriesData.find(x => x.category === target && x.name === sc.name && x.id !== sc.id);
+        const question = twin
+          ? `"${target}" already has a sub-category called "${sc.name}".\n\nMerge them? All ${count} sticker${count === 1 ? '' : 's'} move into the one in "${target}" (its cover photo is kept), and this one is removed. No stickers or photos are deleted.`
+          : `Move "${sc.name}" (${count} sticker${count === 1 ? '' : 's'}) from "${sc.category}" to "${target}"?\n\nThe stickers keep their photos, codes, stock and order — nothing is re-uploaded.`;
+        if (!confirm(question)) return;
+        msgEl.textContent = 'Moving…'; msgEl.className = 'msg subcat-msg';
+        const { error: stkErr } = await client.from('stickers').update({ category: target }).eq('category', sc.category).eq('subcategory', sc.name);
+        if (stkErr) { msgEl.textContent = stkErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        if (twin) {
+          const { error: delErr } = await client.from('subcategories').delete().eq('id', sc.id);
+          if (delErr) { msgEl.textContent = delErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        } else {
+          const nextOrder = subcategoriesData.filter(x => x.category === target).reduce((m, x) => Math.max(m, x.sort_order || 0), 0) + 1;
+          const { error: scErr } = await client.from('subcategories').update({ category: target, sort_order: nextOrder }).eq('id', sc.id);
+          if (scErr) { msgEl.textContent = scErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        }
+        await updateAlsoInRefs(fromPlace, { category: target, subcategory: sc.name });
+        showToast(twin ? `✅ Merged into "${target} › ${sc.name}"` : `✅ "${sc.name}" moved to "${target}"`);
+        document.getElementById('subcatCategoryPicker').value = target;
+        await renderSubcategories();
+        refreshList();
+      });
+
       rowEl.querySelector('.subcat-rename-btn').addEventListener('click', async () => {
         const newName = prompt('New sub-category name:', sc.name);
         if (!newName || !newName.trim() || newName.trim() === sc.name) return;
         const trimmed = newName.trim();
         if (!confirm(`Rename "${sc.name}" to "${trimmed}"? This also updates every sticker already in this sub-category.`)) return;
+        const fromPlace = { category: sc.category, subcategory: sc.name };
         msgEl.textContent = 'Renaming…';
         msgEl.className = 'msg subcat-msg';
         const { error: stkErr } = await client.from('stickers')
@@ -2333,6 +2600,7 @@
         if (stkErr) { msgEl.textContent = stkErr.message; msgEl.className = 'msg subcat-msg error'; return; }
         const { error: scErr } = await client.from('subcategories').update({ name: trimmed }).eq('id', sc.id);
         if (scErr) { msgEl.textContent = scErr.message; msgEl.className = 'msg subcat-msg error'; return; }
+        await updateAlsoInRefs(fromPlace, { category: fromPlace.category, subcategory: trimmed });
         showToast('✅ Renamed!');
         renderSubcategories();
         refreshList();

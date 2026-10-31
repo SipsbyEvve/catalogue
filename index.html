@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-10-29-1">
+<meta name="sbe-build" content="2026-10-31-1">
 <title>Sips by Evve — Custom Snowglobe Tumblers Catalogue</title>
 <meta property="og:title" content="Sips by Evve — Custom Snowglobe Tumblers Catalogue">
 <meta property="og:description" content="Pick your tumbler, sticker &amp; pattern, then send your order on WhatsApp 🎀 Free shipping West Malaysia.">
@@ -1921,9 +1921,18 @@
     });
   }
 
+  // Every place a sticker shows up: its own category / sub-category, plus any "also show in"
+  // places set in admin. It's still one sticker (one code, one stock) wherever it appears.
+  function stickerPlaces(s){
+    const list = [{ category: s.category, subcategory: s.subcategory || null }];
+    if (Array.isArray(s.also_in)) s.also_in.forEach(p => { if (p && p.category) list.push({ category: p.category, subcategory: p.subcategory || null }); });
+    return list;
+  }
+  const inCategory = (s, cat) => stickerPlaces(s).some(p => p.category === cat);
+
   function renderCategoryGrid(){
     const byCategory = {};
-    allStickers.forEach(s => { (byCategory[s.category] = byCategory[s.category] || []).push(s); });
+    allStickers.forEach(s => { [...new Set(stickerPlaces(s).map(p => p.category))].forEach(c => { (byCategory[c] = byCategory[c] || []).push(s); }); });
 
     // categories table first (keeps sort_order + shows empty categories too), then
     // any category that only exists on a sticker row (in case it's not in the table yet)
@@ -1963,10 +1972,13 @@
   // Category detail: shows this category's sub-categories (if any) as cover cards,
   // plus any stickers filed directly under the category with no sub-category.
   function renderCategoryDetail(categoryName){
-    const stickersInCat = allStickers.filter(s => s.category === categoryName);
-    const directStickers = stickersInCat.filter(s => !s.subcategory);
+    const stickersInCat = allStickers.filter(s => inCategory(s, categoryName));
+    const directStickers = stickersInCat.filter(s => stickerPlaces(s).some(p => p.category === categoryName && !p.subcategory));
     const bySubcat = {};
-    stickersInCat.forEach(s => { if (s.subcategory) (bySubcat[s.subcategory] = bySubcat[s.subcategory] || []).push(s); });
+    stickersInCat.forEach(s => {
+      [...new Set(stickerPlaces(s).filter(p => p.category === categoryName && p.subcategory).map(p => p.subcategory))]
+        .forEach(sub => { (bySubcat[sub] = bySubcat[sub] || []).push(s); });
+    });
 
     const knownSubcats = allSubcategories.filter(sc => sc.category === categoryName);
     const knownNames = new Set(knownSubcats.map(sc => sc.name));
@@ -2013,7 +2025,7 @@
 
   // Sub-category detail: this sub-category's stickers, with a back button to its parent category.
   function renderSubcategoryDetail(categoryName, subcategoryName){
-    const stickers = allStickers.filter(s => s.category === categoryName && s.subcategory === subcategoryName);
+    const stickers = allStickers.filter(s => stickerPlaces(s).some(p => p.category === categoryName && p.subcategory === subcategoryName));
     catGrid.className = '';
     catGrid.innerHTML = `
       <button class="back-link" id="backToCat">← Back to ${categoryName}</button>
@@ -2083,7 +2095,7 @@
 
     const subMap = new Map();
     allSubcategories.forEach(sc => subMap.set(sc.category + '||' + sc.name, sc));
-    allStickers.forEach(s => { if (s.subcategory) subMap.set(s.category + '||' + s.subcategory, { category: s.category, name: s.subcategory }); });
+    allStickers.forEach(s => stickerPlaces(s).forEach(p => { if (p.subcategory) subMap.set(p.category + '||' + p.subcategory, { category: p.category, name: p.subcategory }); }));
     const subs = [...subMap.values()].filter(sc => hasAll(sc.name + ' ' + sc.category));
 
     // Stickers that match on their own code / keywords come first, then ones that match
@@ -2092,7 +2104,7 @@
     const direct = [], viaGroup = [];
     allStickers.forEach(s => {
       if (hasAll(`${s.code || ''} ${s.name || ''} ${s.keyword || ''}`)) direct.push(s);
-      else if (hasAll(`${s.code || ''} ${s.keyword || ''} ${s.category || ''} ${s.subcategory || ''}`)) viaGroup.push(s);
+      else if (hasAll(`${s.code || ''} ${s.keyword || ''} ${stickerPlaces(s).map(p => `${p.category} ${p.subcategory || ''}`).join(' ')}`)) viaGroup.push(s);
     });
     const soldLast = (list) => [...list.filter(s => s.status !== 'sold_out'), ...list.filter(s => s.status === 'sold_out')];
     const stickers = [...soldLast(direct), ...soldLast(viaGroup)];
