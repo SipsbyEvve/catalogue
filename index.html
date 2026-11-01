@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-11-01-3">
+<meta name="sbe-build" content="2026-11-02-1">
 <title>Sips by Evve — Custom Snowglobe Tumblers Catalogue</title>
 <meta property="og:title" content="Sips by Evve — Custom Snowglobe Tumblers Catalogue">
 <meta property="og:description" content="Pick your tumbler, sticker &amp; pattern, then send your order on WhatsApp 🎀 Free shipping West Malaysia.">
@@ -799,7 +799,7 @@
     <p class="note">(you can also decide during your live date)</p>
     <img id="img-step3_patterns" class="zoomable" src="patterns.jpg" width="700" height="746" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
     <p class="note" style="margin-top:14px;">Tap to pick a pattern (optional):</p>
-    <p class="glitter-note">✨ Full Glitter is +RM10 for the 600ml Fat Bottle only — all other bottles remain +RM5. Not available for the 1200ml Glow in the Dark bottle.</p>
+    <p class="glitter-note" id="glitterNote">✨ Full Glitter is +RM10 for the 600ml Fat Bottle, not available for the 1200ml Glow bottle — all other bottles +RM5.</p>
     <div class="option-grid" id="patternOptions"></div>
     <p class="glitter-removed-note" id="glitterRemovedNote" style="display:none;"></p>
   </section>
@@ -1132,45 +1132,102 @@
     if (!t) return '';
     return `${t.label} (RM${t.price})${t.status === 'preorder' ? ' · Preorder' : ''}`;
   }
-  const PATTERN_OPTIONS = [
-    { id: 'p1', label: 'Normal Cateye', extra: 0 },
-    { id: 'p2', label: 'Swirl Flow Cateye', extra: 0 },
-    { id: 'p3', label: 'Lava', extra: 0 },
-    { id: 'p4', label: 'Full Glitter', extra: 5 },
+  // Patterns. Evvyne manages them in admin (🎨 Patterns → settings "patterns"): name, extra price,
+  // In Stock / Sold Out / Hidden, and special prices per bottle ({ tumblerId: number | 'no' }).
+  // Until that's saved once, this built-in list is used, with Full Glitter's per-bottle price
+  // coming from the Tumblers settings (glitter_price / no_glitter).
+  let PATTERN_OPTIONS = [
+    { id: 'p1', label: 'Normal Cateye', extra: 0, status: 'available' },
+    { id: 'p2', label: 'Swirl Flow Cateye', extra: 0, status: 'available' },
+    { id: 'p3', label: 'Lava', extra: 0, status: 'available' },
+    { id: 'p4', label: 'Full Glitter', extra: 5, status: 'available' },
   ];
-  // Full Glitter costs more on some tumblers (the 03 fat bottle uses much more glitter
-  // and solution) — set per style in admin (🥤 Tumblers → "Glitter +RM"). Styles without
-  // their own price use the usual +RM5.
+  let patternsFromSettings = false;
+  let patternsVersion = 0;
   const GLITTER_ID = 'p4';
   const GLITTER_FALLBACK_BY_TUMBLER = { t3: 10 };
-  const GLITTER_NOTE_NAME = { t3: '600ml Fat Bottle', t9: '1200ml Glow bottle' }; // how a style is named in the small line under Full Glitter's price // used if admin hasn't saved a glitter price yet
+  // Short names for bottles in the small lines under a pattern's price.
+  const GLITTER_NOTE_NAME = { t3: '600ml Fat Bottle', t9: '1200ml Glow bottle' };
+  const tumblerShort = (t) => GLITTER_NOTE_NAME[t.id] || String(t.label || '').replace(/^\s*\d+\s*·\s*/, '');
   function glitterPriceFor(t){
-    const base = PATTERN_OPTIONS.find(p => p.id === GLITTER_ID).extra;
+    const g = PATTERN_OPTIONS.find(p => p.id === GLITTER_ID);
+    const base = g ? g.extra : 5;
     if (!t) return base;
     if (t.glitter_price !== undefined && t.glitter_price !== null && t.glitter_price !== '' && Number.isFinite(Number(t.glitter_price))) return Number(t.glitter_price);
     return GLITTER_FALLBACK_BY_TUMBLER[t.id] ?? base;
   }
-  // Some styles can't take Full Glitter at all (set in admin: "No Full Glitter", e.g. the glow bottle).
-  const tumblerNoGlitter = () => !!(myOrder.tumbler && myOrder.tumbler.no_glitter);
+  // What pattern p costs on bottle t (null = this bottle can't have it).
+  function patternPriceOn(p, t){
+    if (!p) return 0;
+    if (!t) return p.extra || 0;
+    if (patternsFromSettings) {
+      const v = p.per ? p.per[t.id] : undefined;
+      if (v === 'no') return null;
+      if (v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v))) return Number(v);
+      return p.extra || 0;
+    }
+    if (p.id === GLITTER_ID) return t.no_glitter ? null : glitterPriceFor(t);
+    return p.extra || 0;
+  }
+  const patternUnavailable = (p) => !!(p && myOrder.tumbler && patternPriceOn(p, myOrder.tumbler) === null);
+  const visiblePatterns = () => PATTERN_OPTIONS.filter(p => p.status !== 'hidden');
+  function applyPatternSettings(v){
+    const list = v && Array.isArray(v.list) ? v.list : null;
+    if (!list || !list.length) return;
+    const clean = list.filter(p => p && p.id && p.label).map(p => ({
+      id: String(p.id), label: String(p.label), extra: Number.isFinite(Number(p.extra)) ? Number(p.extra) : 0,
+      status: ['available', 'sold_out', 'hidden'].includes(p.status) ? p.status : 'available',
+      per: p.per && typeof p.per === 'object' ? p.per : {},
+    }));
+    if (!clean.length) return;
+    PATTERN_OPTIONS = clean;
+    patternsFromSettings = true;
+    patternsVersion++;
+    if (myOrder.pattern) {
+      const fresh = PATTERN_OPTIONS.find(p => p.id === myOrder.pattern.id);
+      myOrder.pattern = fresh && fresh.status === 'available' ? fresh : null;
+    }
+  }
   // The extra a pattern costs on the customer's picked tumbler.
   function patternExtra(p){
     if (!p) return 0;
-    return p.id === GLITTER_ID ? glitterPriceFor(myOrder.tumbler) : (p.extra || 0);
+    return patternPriceOn(p, myOrder.tumbler) ?? 0;
   }
   // "Full Glitter (+RM10)" / "Lava"
   function patternText(p){
     const x = patternExtra(p);
     return p ? `${p.label}${x ? ' (+RM' + x + ')' : ''}` : '';
   }
-  // Price shown on a pattern card. Before a tumbler is picked, Full Glitter shows the
-  // usual price, with any style that costs differently on a smaller line below, e.g. "600ml Fat Bottle: +RM10".
+  // Price shown on a pattern card. Before a tumbler is picked: the usual price, with any bottle
+  // that costs differently (or can't have it) on a smaller line below, e.g. "600ml Fat Bottle: +RM10".
   function patternCardPrice(o){
-    if (o.id !== GLITTER_ID || myOrder.tumbler) { const x = patternExtra(o); return x ? '+RM' + x : 'included'; }
-    const others = TUMBLER_OPTIONS.filter(t => t.status !== 'sold_out' && !t.no_glitter && glitterPriceFor(t) !== o.extra)
-      .map(t => `<span class="oprice-sub">${GLITTER_NOTE_NAME[t.id] || t.label}: +RM${glitterPriceFor(t)}</span>`);
-    TUMBLER_OPTIONS.filter(t => t.status !== 'sold_out' && t.no_glitter)
-      .forEach(t => others.push(`<span class="oprice-sub">Not for the ${GLITTER_NOTE_NAME[t.id] || t.label}</span>`));
-    return '+RM' + o.extra + others.join('');
+    if (myOrder.tumbler) { const x = patternExtra(o); return x ? '+RM' + x : 'included'; }
+    const subs = [];
+    TUMBLER_OPTIONS.filter(t => t.status !== 'sold_out').forEach(t => {
+      const v = patternPriceOn(o, t);
+      if (v === null) subs.push(`<span class="oprice-sub">Not for the ${tumblerShort(t)}</span>`);
+      else if (v !== (o.extra || 0)) subs.push(`<span class="oprice-sub">${tumblerShort(t)}: +RM${v}</span>`);
+    });
+    return (o.extra ? '+RM' + o.extra : 'included') + subs.join('');
+  }
+  // The small line under the patterns photo, e.g. "✨ Full Glitter is +RM10 for the 600ml Fat Bottle,
+  // not available for the 1200ml Glow bottle — all other bottles +RM5."
+  function renderPatternNote(){
+    const el = document.getElementById('glitterNote');
+    if (!el) return;
+    const lines = visiblePatterns().map(p => {
+      const diff = [], none = [];
+      TUMBLER_OPTIONS.filter(t => t.status !== 'sold_out').forEach(t => {
+        const v = patternPriceOn(p, t);
+        if (v === null) none.push(tumblerShort(t));
+        else if (v !== (p.extra || 0)) diff.push(`+RM${v} for the ${tumblerShort(t)}`);
+      });
+      if (!diff.length && !none.length) return '';
+      const parts = [...diff, ...(none.length ? [`not available for the ${none.join(' / ')}`] : [])];
+      return `✨ ${p.label} is ${parts.join(', ')} — all other bottles ${p.extra ? '+RM' + p.extra : 'included'}.`;
+    }).filter(Boolean);
+    el.innerHTML = lines.join('<br>');
+    el.style.display = lines.length ? '' : 'none';
   }
 
   // Shipping: West Malaysia free, East Malaysia RM13 (per Evvyne).
@@ -1222,7 +1279,7 @@
   // Supabase "settings" table). Off by default, and stays off if that table isn't set up.
   // Which tumbler unlocks the promo is chosen in admin (default: 03).
   const PROMO_EXCLUDED_PATTERNS = ['p4']; // Full Glitter isn't available for the promo bottle (per Evvyne)
-  const promoPatternOptions = () => PATTERN_OPTIONS.filter(p => !PROMO_EXCLUDED_PATTERNS.includes(p.id));
+  const promoPatternOptions = () => PATTERN_OPTIONS.filter(p => p.status === 'available' && !PROMO_EXCLUDED_PATTERNS.includes(p.id));
   const promoSettings = { enabled: false, price: 29, usual_price: 55, bottle_name: '300ml Kids Bottle', tumbler_id: 't3' };
   function promoTumbler(){ return TUMBLER_OPTIONS.find(t => t.id === promoSettings.tumbler_id) || null; }
   function promoTumblerName(){ const t = promoTumbler(); return t ? t.label : 'the promo tumbler'; }
@@ -1327,9 +1384,11 @@
     if (!el) return;
     // With the promo bottle added, the patterns excluded from the promo (Full Glitter)
     // are locked for the 03 as well.
-    const lockedByPromo = id => (myOrder.promo.on && PROMO_EXCLUDED_PATTERNS.includes(id)) || (id === GLITTER_ID && tumblerNoGlitter());
-    const lockText = id => (id === GLITTER_ID && tumblerNoGlitter()) ? `Not available for the ${GLITTER_NOTE_NAME[myOrder.tumbler.id] || myOrder.tumbler.label}` : 'Not available with the promo';
-    el.innerHTML = PATTERN_OPTIONS.map(o => `
+    const byId = id => PATTERN_OPTIONS.find(x => x.id === id);
+    const lockedByPromo = id => (myOrder.promo.on && PROMO_EXCLUDED_PATTERNS.includes(id)) || patternUnavailable(byId(id)) || (byId(id) || {}).status === 'sold_out';
+    const lockText = id => (byId(id) || {}).status === 'sold_out' ? 'Sold out' : patternUnavailable(byId(id)) ? `Not available for the ${tumblerShort(myOrder.tumbler)}` : 'Not available with the promo';
+    renderPatternNote();
+    el.innerHTML = visiblePatterns().map(o => `
       <div class="option-card ${myOrder.pattern && myOrder.pattern.id === o.id ? 'picked' : ''} ${lockedByPromo(o.id) ? 'locked' : ''}" data-id="${o.id}">
         <span class="oname">${o.label}</span>
         <span class="oprice">${lockedByPromo(o.id) ? lockText(o.id) : patternCardPrice(o)}</span>
@@ -1418,17 +1477,18 @@
       myOrder.pattern = null; // Full Glitter isn't allowed on either bottle with the promo
       promoClearedPattern = true;
     }
-    let tumblerClearedGlitter = false;
-    if (tumblerNoGlitter() && myOrder.pattern && myOrder.pattern.id === GLITTER_ID) {
-      myOrder.pattern = null; // this style can't take Full Glitter
+    let tumblerClearedGlitter = false, clearedLabel = '';
+    if (myOrder.pattern && patternUnavailable(myOrder.pattern)) {
+      clearedLabel = myOrder.pattern.label;
+      myOrder.pattern = null; // this bottle can't have that pattern
       tumblerClearedGlitter = true;
     }
     const gNote = document.getElementById('glitterRemovedNote');
     if (gNote) {
-      if (tumblerClearedGlitter) { gNote.textContent = `Full Glitter was removed — it isn't available for the ${GLITTER_NOTE_NAME[myOrder.tumbler.id] || myOrder.tumbler.label}. Please pick another pattern (or decide on your live date).`; gNote.style.display = ''; }
-      else if (!tumblerNoGlitter() || myOrder.pattern) gNote.style.display = 'none';
+      if (tumblerClearedGlitter) { gNote.textContent = `${clearedLabel} was removed — it isn't available for the ${tumblerShort(myOrder.tumbler)}. Please pick another pattern (or decide on your live date).`; gNote.style.display = ''; }
+      else if (myOrder.pattern || !myOrder.tumbler) gNote.style.display = 'none';
     }
-    const lockKey = (myOrder.promo.on ? 'promo' : 'none') + '|' + (myOrder.tumbler ? myOrder.tumbler.id + ':' + glitterPriceFor(myOrder.tumbler) + ':' + !!myOrder.tumbler.no_glitter : '') + '|' + TUMBLER_OPTIONS.map(t => t.id + glitterPriceFor(t) + t.status + !!t.no_glitter).join();
+    const lockKey = patternsVersion + '|' + (myOrder.promo.on ? 'promo' : 'none') + '|' + (myOrder.tumbler ? myOrder.tumbler.id + ':' + glitterPriceFor(myOrder.tumbler) + ':' + !!myOrder.tumbler.no_glitter : '') + '|' + TUMBLER_OPTIONS.map(t => t.id + glitterPriceFor(t) + t.status + !!t.no_glitter).join();
     if (tumblerClearedGlitter) set('pickPattern', 'Decide on live date', 'soft');
     if (promoClearedPattern || tumblerClearedGlitter || renderPatternOptions.lastLock !== lockKey) {
       renderPatternOptions.lastLock = lockKey;
@@ -1951,6 +2011,8 @@
       const data = await fetchSettingsRows();
       if (!data) return;
       applyPopularSettings(data);
+      const patternRow = data.find(r => r.key === 'patterns');
+      if (patternRow) { applyPatternSettings(patternRow.value); renderPatternOptions.lastLock = null; renderPatternOptions(); }
       const tumblerRow = data.find(r => r.key === 'tumblers');
       if (tumblerRow) applyTumblerSettings(tumblerRow.value);
       const liveRow = data.find(r => r.key === 'live');

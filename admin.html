@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-11-01-3">
+<meta name="sbe-build" content="2026-11-02-1">
 <title>Sips by Evve — Sticker Admin</title>
 <style>
   :root{
@@ -52,7 +52,21 @@
   .msg.error{ color:var(--danger-dark); }
   .msg.ok{ color:#2f7a4f; }
 
-  .top-bar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .top-bar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px; }
+  /* ---- tabs: one area at a time ---- */
+  .admin-tabs{ position:sticky; top:0; z-index:30; display:flex; gap:6px; overflow-x:auto; padding:8px 2px; margin:0 -2px 6px; background:var(--bg); scrollbar-width:none; }
+  .admin-tabs::-webkit-scrollbar{ display:none; }
+  .admin-tabs button{ margin:0; flex:none; background:#fff; color:var(--brown-dark); border:1.5px solid var(--line); border-radius:999px; padding:9px 14px; font-size:0.88rem; white-space:nowrap; }
+  .admin-tabs button.active{ background:var(--brown); color:#fff; border-color:var(--brown); }
+  .tab-badge{ display:inline-block; min-width:18px; padding:0 6px; border-radius:999px; background:#e0524f; color:#fff; font-size:0.72rem; line-height:18px; text-align:center; margin-left:2px; }
+  .tab-badge:empty{ display:none; }
+  .tab-intro{ color:var(--muted); font-size:0.82rem; margin:0 0 14px; }
+  #appSection .card.tab-off{ display:none; }
+  .live-pill{ margin:0; padding:7px 12px; font-size:0.8rem; border-radius:999px; background:#fff; color:var(--brown-dark); border:1.5px solid var(--line); }
+  .live-pill.on{ background:#e0245e; color:#fff; border-color:#e0245e; }
+  .batch-defaults{ margin:14px 0 4px; border:1px solid var(--line); border-radius:12px; padding:8px 12px; background:#fbf7f1; }
+  .batch-defaults summary{ cursor:pointer; font-weight:700; font-size:0.88rem; color:var(--brown-dark); }
+  .batch-defaults summary small{ font-weight:400; color:var(--muted); }
   .top-bar span{ font-size:0.85rem; color:var(--muted); }
 
   .preview-row{
@@ -155,6 +169,26 @@
     border-radius:10px; padding:8px 10px; background:#fff; cursor:pointer;
   }
   .restock-row.checked{ border-color:var(--brown); background:var(--bg); }
+  .sticker-row.checked{ border-color:var(--brown); background:var(--bg); }
+  /* 🎨 patterns */
+  .pattern-row{ border:1px solid var(--line); border-radius:10px; padding:8px; margin-bottom:8px; background:#fff; }
+  .pattern-row.is-hidden{ background:#f5f0fa; }
+  .pattern-row.is-sold_out{ background:#f3eee7; }
+  .pattern-row .pr-top{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .pattern-row input, .pattern-row select{ margin:0; padding:7px 9px; font-size:0.85rem; }
+  .pattern-row .p-label{ flex:2 1 170px; }
+  .pattern-row .p-extra-wrap{ display:flex; align-items:center; gap:4px; font-size:0.8rem; font-weight:600; white-space:nowrap; margin:0; }
+  .pattern-row .p-extra{ width:70px; }
+  .pattern-row .p-status{ width:auto; }
+  .pattern-row .row-actions{ display:flex; gap:4px; margin-left:auto; }
+  .pattern-row .row-actions button{ margin:0; padding:6px 9px; font-size:0.8rem; }
+  .pattern-row .pr-special{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:6px; font-size:0.8rem; }
+  .pattern-row .sp-chip{ background:#fbf3e6; border:1px solid var(--line); border-radius:999px; padding:3px 4px 3px 10px; display:inline-flex; align-items:center; gap:4px; }
+  .pattern-row .sp-chip.no{ background:#fdf1ec; color:#8a3a22; }
+  .pattern-row .sp-chip button{ margin:0; padding:0 6px; font-size:0.75rem; background:none; border:none; color:inherit; cursor:pointer; }
+  .pattern-row .sp-add select, .pattern-row .sp-add input{ padding:5px 7px; font-size:0.8rem; width:auto; }
+  .pattern-row .sp-add input{ width:64px; }
+  .pattern-row .sp-add button{ margin:0; padding:5px 9px; font-size:0.78rem; width:auto; }
   .restock-row input[type="checkbox"]{ width:18px; height:18px; accent-color:var(--brown); cursor:pointer; flex:none; }
   .restock-row img{ width:44px; height:44px; object-fit:cover; border-radius:8px; flex:none; background:var(--bg); }
   .restock-row .info{ flex:1; }
@@ -179,7 +213,12 @@
   .sticker-row .code-input{ width:64px; padding:6px 8px; font-size:0.8rem; text-align:center; }
   .sticker-row .keyword-input{ width:100px; padding:6px 8px; font-size:0.8rem; }
   .sticker-row .stock-input{ width:64px; padding:6px 8px; font-size:0.8rem; text-align:center; }
-  .sticker-row .row-actions{ display:flex; gap:6px; align-items:center; }
+  .sticker-row .row-actions{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .sticker-row .row-actions.more{ flex-basis:100%; justify-content:flex-end; padding-top:6px; border-top:1px dashed var(--line); }
+  .sticker-row .row-actions.more button{ padding:5px 9px; font-size:0.76rem; }
+  .sticker-row .hidden-check{ width:20px; height:20px; flex:none; margin:0; }
+  .hidden-list .reorder-btns{ display:none; }
+  .wm-tag{ display:inline-block; font-size:0.7rem; font-weight:700; color:#2f6a8a; background:#e6f2f9; border-radius:999px; padding:1px 7px; margin-left:4px; }
   .sticker-row button{ margin-top:0; padding:7px 10px; font-size:0.8rem; }
 
   .hint{ color:var(--muted); font-size:0.85rem; margin:0 0 16px; }
@@ -410,8 +449,19 @@
   <div id="appSection">
     <div class="top-bar">
       <span id="whoami"></span>
-      <button class="secondary" id="logoutBtn">Log out</button>
+      <span style="display:flex;gap:8px;align-items:center;">
+        <button type="button" class="live-pill" id="livePill" title="Turn the LIVE bar on your catalogue on / off">⚪ Live off</button>
+        <button class="secondary" id="logoutBtn">Log out</button>
+      </span>
     </div>
+    <nav class="admin-tabs" id="adminTabs">
+      <button type="button" data-tab="orders">🛒 Orders <span class="tab-badge" id="ordersTabBadge"></span></button>
+      <button type="button" data-tab="stickers">🎀 Stickers</button>
+      <button type="button" data-tab="products">🥤 Bottles &amp; prices</button>
+      <button type="button" data-tab="shop">📱 Shop page</button>
+      <button type="button" data-tab="tools">🧰 Tools</button>
+    </nav>
+    <p class="tab-intro" id="tabIntro"></p>
 
     <div class="card live-card" id="liveCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🔴 Live on TikTok</h2>
@@ -422,7 +472,7 @@
       <button type="button" class="live-toggle" id="liveToggleBtn">🔴 I'm going live — show the bar</button>
     </div>
 
-    <div class="card">
+    <div class="card" id="addCard">
       <h2 style="margin-top:0;font-size:1.1rem;">Add stickers</h2>
       <details class="letters-box" id="codeLettersBox"><summary>🔤 Code letters — which letter is which</summary><div id="codeLettersBody">Loading…</div></details>
       <div class="add-tabs">
@@ -478,14 +528,16 @@
           <input type="checkbox" id="bulkWatermarkToggle">
           <label for="bulkWatermarkToggle">Add watermark to all of these (tiled "SIPS BY EVVE")</label>
         </div>
-        <label for="bulkCategory">Default category (used for any photo below that doesn't set its own — leave empty if every photo has its own)</label>
+        <details class="batch-defaults" id="batchDefaults">
+        <summary>📂 Same category for the whole batch? <small>(optional — fill it once here instead of on every photo)</small></summary>
+        <label for="bulkCategory">Category for every photo (a photo's own box wins)</label>
         <input type="text" id="bulkCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
-        <label for="bulkSubcategory">Default sub-category (optional)</label>
+        <label for="bulkSubcategory">Sub-category for every photo (optional)</label>
         <input type="text" id="bulkSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
         <div class="group-helper" id="bulkGroupHelper"></div>
-        <label>➕ Also show in — whole batch (optional; each photo can add more below)</label>
+        <label>➕ Also show in — every photo (optional)</label>
         <div class="also-in-picker" id="bulkAlsoIn"></div>
-        <p class="hint">Mixing categories in one batch? Each photo below has its own Category/Sub-category boxes — fill those in to override the default just for that photo.</p>
+        </details>
         <label for="bulkStatus">Stock status (applies to this whole batch)</label>
         <select id="bulkStatus">
           <option value="available">In Stock</option>
@@ -515,7 +567,7 @@
       <datalist id="subcategoryList"></datalist>
     </div>
 
-    <div class="card">
+    <div class="card" id="categoriesCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🗂️ Sticker Categories</h2>
       <p class="hint">Add a cover photo for each category — customers see this on the main gallery page before they click in. You can also rename a category or add a brand-new one.</p>
       <div id="categoriesList">Loading…</div>
@@ -527,7 +579,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="subcategoriesCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🗂️ Sticker Sub-categories</h2>
       <p class="hint">Some categories have smaller groups inside them — like "Stitch", "Winnie the Pooh", "Marie Cat" inside "Disney / Pixar" — each with its own cover photo. This is optional; only add it for categories that need the extra layer.</p>
       <label for="subcatCategoryPicker">Category</label>
@@ -541,7 +593,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="existingCard">
       <div class="section-header-row">
         <h2 style="margin-top:0;font-size:1.1rem;">Existing stickers</h2>
         <button class="secondary" id="restockModeBtn" type="button">📦 Restock: Preorder → In Stock</button>
@@ -555,7 +607,7 @@
       <div id="stickerList"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="cataloguePhotosCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🖼️ Catalogue photos</h2>
       <p class="hint">The big photos on steps ① ③ ④ ⑤ of your public page. Replace or remove them here — changes go live right away, no GitHub needed.</p>
       <div id="catalogueSlots">Loading…</div>
@@ -584,21 +636,21 @@
       <button type="button" id="optimizeRunBtn" style="display:none;margin-top:8px;"></button>
     </div>
 
-    <div class="card">
+    <div class="card" id="addonsCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🧊 Add-Ons</h2>
       <p class="hint">Shown at the bottom of your catalogue. Edit the name/price and press Save on that row.</p>
       <div id="addonsList">Loading…</div>
       <button class="add-new-btn" id="addAddonBtn">+ Add new add-on</button>
     </div>
 
-    <div class="card">
+    <div class="card" id="searchesCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🔍 Searches with no results</h2>
       <p class="hint">What customers typed into the search box but found nothing for — a hint at what to stock or upload next.</p>
       <div id="searchMissesList">Loading…</div>
       <button class="secondary" id="clearSearchMissesBtn" style="margin-top:10px;">Clear list</button>
     </div>
 
-    <div class="card">
+    <div class="card" id="visitsCard">
       <h2 style="margin-top:0;font-size:1.1rem;">📊 Site visits</h2>
       <p class="hint">A simple count of how many times your catalogue page has loaded.</p>
       <div id="visitStats">Loading…</div>
@@ -612,7 +664,18 @@
       <button class="add-new-btn" id="addTumblerBtn" type="button">+ Add tumbler style</button>
       <button id="saveTumblersBtn" type="button" style="margin-top:10px;">Save tumblers</button>
       <p class="hint" id="tumblerStatusMsg" style="margin-top:8px;"></p>
+      <p class="hint" style="margin-top:4px;">Pattern prices for each bottle (e.g. Full Glitter +RM10 on the 03, not on the glow bottle) are in <b>🎨 Patterns</b> below.</p>
       <p class="hint" style="margin-top:4px;">Tip: the tumbler photo in step ① is a separate picture — if you add a new style, also update "① Tumbler options photo" in the catalogue photos section.</p>
+    </div>
+
+    <div class="card" id="patternsCard">
+      <h2 style="margin-top:0;font-size:1.1rem;">🎨 Patterns</h2>
+      <p class="hint">The patterns customers can pick in step ③. Set the extra price, or <b>Hidden</b> to keep a new one out of sight until you're ready. <b>Special prices</b> = a different price (or "not available") for one bottle, e.g. Full Glitter +RM10 on the 03. Press <b>Save patterns</b> when done.</p>
+      <div id="patternRows"></div>
+      <button class="add-new-btn" id="addPatternBtn" type="button">+ Add pattern</button>
+      <button id="savePatternsBtn" type="button" style="margin-top:10px;">Save patterns</button>
+      <p class="hint" id="patternStatusMsg" style="margin-top:8px;"></p>
+      <p class="hint" style="margin-top:4px;">Tip: also update "③ Patterns photo" in Catalogue photos when you add a new pattern.</p>
     </div>
 
     <div class="card" id="promoCard">
@@ -652,7 +715,7 @@
       <div class="pop-add"><input type="text" id="popularAddCode" placeholder="Sticker code, e.g. D012"><button type="button" class="secondary" id="popularAddBtn">🔥 Push</button></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="ordersCard">
       <h2 style="margin-top:0;font-size:1.1rem;">📦 Orders</h2>
       <p class="hint">Orders sent from the catalogue show up here automatically. Check them against your WhatsApp chats, then press Mark Paid.</p>
       <div class="orders-toolbar">
@@ -1230,22 +1293,13 @@
     const pad = n => String(n).padStart(2, '0');
     const defDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     stickerList.innerHTML = `
-      <p class="hint">Customers can't see these yet. Tick the ones you want, then open them now or pick a time — they'll appear by themselves at that time and stay in 🆕 New Arrivals for a week from then.</p>
+      <p class="hint">Customers can't see these yet. Tick the ones you want, then open them now or pick a time — they'll appear by themselves at that time and stay in 🆕 New Arrivals for a week from then. You can also change each one here (code, keyword, stock, photo, watermark, move, delete) — press Save on that sticker after editing.</p>
       <div class="restock-toolbar">
         <label><input type="checkbox" id="hiddenSelectAll"> Select all</label>
         <span class="restock-count" id="hiddenCount">0 selected</span>
       </div>
-      <div class="restock-list">
-        ${hidden.map(st => `
-          <label class="restock-row" data-id="${st.id}">
-            <input type="checkbox" class="hidden-check">
-            <img ${thumbOrFull(st.image_path)} alt="${st.code || st.name}" onerror="handleImgError(this)">
-            <div class="info">
-              <div class="code">${st.code || st.name}</div>
-              <div class="cat">${st.category}${st.subcategory ? ' · ' + st.subcategory : ''}</div>
-              <div class="hidden-when">${hiddenLabel(st)}</div>
-            </div>
-          </label>`).join('')}
+      <div class="sticker-list hidden-list">
+        ${hidden.map(st => stickerRowHtml(st, { check: true })).join('')}
       </div>
       <div class="hidden-actions">
         <button type="button" id="hiddenOpenNowBtn">🎉 Open selected now (0)</button>
@@ -1256,17 +1310,28 @@
           <button type="button" class="secondary" id="hiddenScheduleBtn">⏰ Set time</button>
         </div>
         <button type="button" class="secondary" id="hiddenKeepBtn">🙈 Keep selected hidden (cancel the time)</button>
+        <button type="button" class="secondary" id="hiddenWmBtn">💧 Watermark selected</button>
       </div>
     `;
+    wireStickerRows(hidden, () => { updateHiddenCount(); renderHiddenList(); });
     const checks = () => Array.from(stickerList.querySelectorAll('.hidden-check'));
-    const selectedIds = () => checks().filter(c => c.checked).map(c => c.closest('.restock-row').dataset.id);
+    const selectedIds = () => checks().filter(c => c.checked).map(c => c.closest('.sticker-row').dataset.id);
     const updateCount = () => {
       const n = selectedIds().length;
       document.getElementById('hiddenCount').textContent = `${n} selected`;
       document.getElementById('hiddenOpenNowBtn').textContent = `🎉 Open selected now (${n})`;
-      checks().forEach(c => c.closest('.restock-row').classList.toggle('checked', c.checked));
+      checks().forEach(c => c.closest('.sticker-row').classList.toggle('checked', c.checked));
     };
     checks().forEach(c => c.addEventListener('change', updateCount));
+    document.getElementById('hiddenWmBtn').addEventListener('click', async () => {
+      const ids = need(); if (!ids.length) return;
+      const list = ids.map(id => allStickersAdmin.find(x => x.id === id)).filter(st => st && !isWatermarked(st.id));
+      if (!list.length) { showToast('Those already have a watermark'); return; }
+      if (!confirm(`Add the SIPS BY EVVE watermark to ${list.length} sticker${list.length === 1 ? '' : 's'}? Originals are kept.`)) return;
+      const b = document.getElementById('hiddenWmBtn'); b.disabled = true;
+      await addWatermarks(list, (i, n) => { b.textContent = `💧 ${i} of ${n}…`; });
+      renderHiddenList();
+    });
     document.getElementById('hiddenSelectAll').addEventListener('change', (e) => { checks().forEach(c => { c.checked = e.target.checked; }); updateCount(); });
     const need = () => { const ids = selectedIds(); if (!ids.length) showToast('Tick at least one sticker first', true); return ids; };
     document.getElementById('hiddenOpenNowBtn').addEventListener('click', async () => {
@@ -1289,16 +1354,46 @@
   }
   hiddenModeBtn.addEventListener('click', () => setHiddenMode(!hiddenMode));
 
+  // ---- Tabs: Orders · Stickers · Bottles & prices · Shop page · Tools ----
+  const TABS = {
+    orders: { cards: ['ordersCard', 'salesCard'], intro: 'Orders sent from the catalogue. Check them against WhatsApp, then Mark Paid (this takes the stickers off your stock).' },
+    stickers: { cards: ['addCard', 'existingCard', 'popularCard', 'categoriesCard', 'subcategoriesCard'], intro: 'Add new stickers, change existing ones (code, keyword, stock, photo, watermark, hide), and arrange categories.' },
+    products: { cards: ['tumblersCard', 'patternsCard', 'addonsCard', 'promoCard'], intro: 'Bottles, patterns, add-ons and the promotion — prices and what customers can pick.' },
+    shop: { cards: ['liveCard', 'cataloguePhotosCard', 'searchesCard', 'visitsCard'], intro: 'Your live link, the photos on your catalogue page, what customers search for, and visits.' },
+    tools: { cards: ['backupCard', 'githubPhotosCard', 'optimizeCard'], intro: 'Backups and photo tools — you only need these now and then.' },
+  };
+  function showTab(name){
+    if (!TABS[name]) name = 'stickers';
+    const app = document.getElementById('appSection');
+    Object.entries(TABS).forEach(([t, cfg]) => cfg.cards.forEach(id => { const c = document.getElementById(id); if (c) c.classList.toggle('tab-off', t !== name); }));
+    // put this tab's cards in its own order
+    TABS[name].cards.forEach(id => { const c = document.getElementById(id); if (c) app.appendChild(c); });
+    document.querySelectorAll('#adminTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    document.getElementById('tabIntro').textContent = TABS[name].intro;
+    try { localStorage.setItem('sbe_admin_tab', name); } catch (e) {}
+  }
+  document.querySelectorAll('#adminTabs button').forEach(b => b.addEventListener('click', () => { showTab(b.dataset.tab); window.scrollTo({ top: 0 }); }));
+  (() => { let t = 'stickers'; try { t = localStorage.getItem('sbe_admin_tab') || t; } catch (e) {} showTab(t); })();
+  document.getElementById('livePill').addEventListener('click', () => document.getElementById('liveToggleBtn').click());
+  function updateOrdersTabBadge(){
+    const n = allOrdersAdmin.filter(o => !isEmptyOrder(o) && o.status !== 'paid').length;
+    const el = document.getElementById('ordersTabBadge');
+    if (el) { el.textContent = n ? String(n) : ''; el.title = n ? `${n} unpaid` : ''; }
+  }
+
   async function showApp(session){
     loginSection.style.display = 'none';
     appSection.style.display = 'block';
+    document.querySelectorAll('.setup-note').forEach(el => { el.style.display = 'none'; }); // setup tip only matters before logging in
     document.getElementById('whoami').textContent = `Logged in as ${session.user.email}`;
     await renderCategories(); // load categories first so the sticker gallery below can show cover photos + counts
     await renderSubcategories(); // needs categoriesData for the category picker
+    await loadWatermarkMap(); // which stickers got a watermark added later (so rows show 💧)
     await refreshList(); // needs to finish (populates allStickersAdmin) before renderOrders builds its sticker dropdown
     renderCatalogueSlots();
     await renderAddons(); // needs to finish (populates allAddonsAdmin) before renderOrders builds its add-ons checkboxes
     await loadTumblersAdmin(); // the orders tumbler dropdown + promo tumbler picker use this list
+    await loadPatternsAdmin(); // pattern dropdowns in orders use this
     mountAlsoInPicker(document.getElementById('stickerAlsoIn'), () => singleAlsoIn, v => { singleAlsoIn = v; }, () => singlePrimaryPlace());
     mountAlsoInPicker(document.getElementById('bulkAlsoIn'), () => bulkAlsoIn, v => { bulkAlsoIn = v; }, null);
     renderSingleGroupHelper();
@@ -1382,6 +1477,11 @@
     }
     ctx.restore();
 
+    // Stickers with a see-through background stay see-through (JPEG would turn it black).
+    if (canvasHasTransparency(ctx, canvas.width, canvas.height)) {
+      const webp = await canvasToBlob(canvas, 'image/webp', 0.9);
+      return (webp && webp.type === 'image/webp') ? webp : canvasToBlob(canvas, 'image/png');
+    }
     return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
   }
 
@@ -2045,16 +2145,19 @@
     });
   }
 
-  function stickerRowHtml(s){
+  function stickerRowHtml(s, opts){
+    const withCheck = opts && typeof opts === 'object' && opts.check;
+    const wm = isWatermarked(s.id);
     return `
       <div class="sticker-row" data-id="${s.id}">
+        ${withCheck ? '<input type="checkbox" class="hidden-check" title="Select">' : ''}
         <div class="reorder-btns">
           <button type="button" class="reorder-btn move-up" title="Move up">▲</button>
           <button type="button" class="reorder-btn move-down" title="Move down">▼</button>
         </div>
         <img ${thumbOrFull(s.image_path)} alt="${s.name}" onerror="handleImgError(this)">
         <div class="info">
-          <div class="n">${s.name}</div>
+          <div class="n">${s.name}${wm ? '<span class="wm-tag">💧 watermark</span>' : ''}</div>
           <div class="c">${s.category}</div>
           ${hiddenLabel(s) ? `<div class="hidden-when">${hiddenLabel(s)}</div>` : ''}
           <div class="also-in-row" data-role="row-also-in"></div>
@@ -2068,9 +2171,13 @@
           <option value="sold_out" ${s.status === 'sold_out' ? 'selected' : ''}>Sold Out</option>
         </select>
         <div class="row-actions">
-          <button class="secondary save-btn">Save</button>
+          <button class="save-btn">Save</button>
+        </div>
+        <div class="row-actions more">
           <button class="secondary hide-btn" title="${isHiddenNow(s) ? 'Show it on the catalogue now' : 'Hide it from customers for now'}">${isHiddenNow(s) ? '🎉 Open' : '🙈 Hide'}</button>
           <button class="secondary hot-btn ${isPushedPopular(s.id) ? 'on' : ''}" title="Show it as 🔥 Popular on the catalogue">${isPushedPopular(s.id) ? '🔥 Pushed ✓' : '🔥 Push'}</button>
+          <button class="secondary photo-btn" title="Replace this sticker's photo (the old file is kept)">📷 Change photo</button>
+          <button class="secondary wm-btn" title="${wm ? 'Go back to the photo without the watermark' : 'Add the SIPS BY EVVE watermark'}">${wm ? '💧 Remove watermark' : '💧 Watermark'}</button>
           <button class="secondary move-btn">Move</button>
           <button class="danger delete-btn">Delete</button>
         </div>
@@ -2149,7 +2256,7 @@
     stickerList.className = '';
     stickerList.innerHTML = `
       <button class="back-link" id="backToStickerCats">← Back to all categories</button>
-      <div class="cat-title-row"><h3 class="active-cat-title">${categoryName}</h3>${stickersInCat.length ? `<button type="button" class="secondary batch-move-btn" id="batchMoveBtn">☑️ Select &amp; move</button>` : ''}</div>
+      <div class="cat-title-row"><h3 class="active-cat-title">${categoryName}</h3>${stickersInCat.length ? `<button type="button" class="secondary batch-move-btn" id="batchMoveBtn">☑️ Select (move / watermark)</button>` : ''}</div>
       ${subcatGridHtml}
       ${directListHtml}
     `;
@@ -2169,7 +2276,7 @@
     stickerList.className = '';
     stickerList.innerHTML = `
       <button class="back-link" id="backToStickerCat">← Back to ${categoryName}</button>
-      <div class="cat-title-row"><h3 class="active-cat-title">${subcategoryName}</h3>${stickers.length ? `<button type="button" class="secondary batch-move-btn" id="batchMoveBtn">☑️ Select &amp; move</button>` : ''}</div>
+      <div class="cat-title-row"><h3 class="active-cat-title">${subcategoryName}</h3>${stickers.length ? `<button type="button" class="secondary batch-move-btn" id="batchMoveBtn">☑️ Select (move / watermark)</button>` : ''}</div>
       <div class="sticker-list">
         ${stickers.length ? stickers.map(stickerRowHtml).join('') : '<p class="hint">No stickers here yet.</p>'}
       </div>
@@ -2200,8 +2307,8 @@
     stickerList.className = '';
     stickerList.innerHTML = `
       <button class="back-link" id="batchMoveBack">← Back</button>
-      <h3 class="active-cat-title">☑️ Move stickers from ${escAttr(subcategoryName ? categoryName + ' › ' + subcategoryName : categoryName)}</h3>
-      <p class="hint">Tick the stickers you want to move, pick where they go, then press Move. Their photos, codes, stock and settings stay exactly the same.</p>
+      <h3 class="active-cat-title">☑️ Select stickers in ${escAttr(subcategoryName ? categoryName + ' › ' + subcategoryName : categoryName)}</h3>
+      <p class="hint">Tick stickers, then move them somewhere else or add the watermark. Moving keeps their photos, codes, stock and settings exactly the same.</p>
       <div class="restock-toolbar">
         <label><input type="checkbox" id="bmSelectAll"> Select all</label>
         <span class="restock-count" id="bmCount">0 selected</span>
@@ -2215,7 +2322,7 @@
                 <input type="checkbox" class="bm-check">
                 <img ${thumbOrFull(st.image_path)} alt="${escAttr(st.code || st.name)}" onerror="handleImgError(this)">
                 <div class="info">
-                  <div class="code">${escAttr(st.code || st.name)}</div>
+                  <div class="code">${escAttr(st.code || st.name)}${isWatermarked(st.id) ? ' <span class="wm-tag">💧</span>' : ''}</div>
                   <div class="cat">${escAttr(st.subcategory || categoryName)}${hiddenLabel(st) ? ' · ' + hiddenLabel(st) : ''}</div>
                 </div>
               </label>`).join('')}
@@ -2231,6 +2338,11 @@
         </select>
         <button type="button" id="bmMoveBtn">Move selected (0)</button>
       </div>
+      <div class="bm-actions">
+        <span>or</span>
+        <button type="button" class="secondary" id="bmWmBtn">💧 Watermark selected (0)</button>
+        <button type="button" class="secondary" id="bmWmOffBtn">↩️ Remove watermark</button>
+      </div>
     `;
     document.getElementById('batchMoveBack').addEventListener('click', backFn);
     const checks = () => [...stickerList.querySelectorAll('.bm-check')];
@@ -2239,6 +2351,7 @@
       const n = selected().length;
       document.getElementById('bmCount').textContent = `${n} selected`;
       document.getElementById('bmMoveBtn').textContent = `Move selected (${n})`;
+      document.getElementById('bmWmBtn').textContent = `💧 Watermark selected (${n})`;
       checks().forEach(c => c.closest('.restock-row').classList.toggle('checked', c.checked));
       stickerList.querySelectorAll('.bm-group-check').forEach(gc => {
         const rows = checks().filter(c => c.closest('.restock-row').dataset.g === gc.dataset.g);
@@ -2269,6 +2382,22 @@
       if (!o) { o = document.createElement('option'); o.value = key; o.textContent = placeLabel({ category: categoryName, subcategory: name }); e.target.appendChild(o); }
       e.target.value = key;
     });
+    document.getElementById('bmWmBtn').addEventListener('click', async () => {
+      const list = selected().map(id => allStickersAdmin.find(x => x.id === id)).filter(st => st && !isWatermarked(st.id));
+      if (!selected().length) { showToast('Tick at least one sticker first', true); return; }
+      if (!list.length) { showToast('Those already have a watermark'); return; }
+      if (!confirm(`Add the SIPS BY EVVE watermark to ${list.length} sticker${list.length === 1 ? '' : 's'}?\n\nOriginals are kept — you can remove it later. (Skip any that already got a watermark when you uploaded them.)`)) return;
+      const b = document.getElementById('bmWmBtn'); b.disabled = true;
+      await addWatermarks(list, (i, n) => { b.textContent = `💧 ${i} of ${n}…`; });
+      renderBatchMove(categoryName, subcategoryName, backFn);
+    });
+    document.getElementById('bmWmOffBtn').addEventListener('click', async () => {
+      const list = selected().map(id => allStickersAdmin.find(x => x.id === id)).filter(st => st && isWatermarked(st.id));
+      if (!list.length) { showToast('None of the ticked ones has a watermark added here', true); return; }
+      if (!confirm(`Remove the watermark from ${list.length} sticker${list.length === 1 ? '' : 's'}?`)) return;
+      await removeWatermarks(list);
+      renderBatchMove(categoryName, subcategoryName, backFn);
+    });
     document.getElementById('bmMoveBtn').addEventListener('click', async () => {
       const ids = selected();
       if (!ids.length) { showToast('Tick at least one sticker first', true); return; }
@@ -2298,6 +2427,106 @@
     });
   }
 
+  // ==================================================================
+  // 💧 Watermark after upload + 📷 change photo
+  // The original photo file is never deleted: a watermarked copy is saved as a new file and the
+  // sticker points to it. settings "watermarks" remembers { stickerId: original photo path },
+  // so "Remove watermark" can switch back.
+  // ==================================================================
+  let watermarkMap = {};
+  const isWatermarked = (id) => !!watermarkMap[id];
+  async function loadWatermarkMap(){
+    try {
+      const { data } = await client.from('settings').select('*');
+      const row = (data || []).find(r => r.key === 'watermarks');
+      watermarkMap = (row && row.value && typeof row.value.map === 'object' && row.value.map) || {};
+    } catch (e) { watermarkMap = {}; }
+  }
+  async function saveWatermarkMap(){
+    const { error } = await client.from('settings').upsert({ key: 'watermarks', value: { map: watermarkMap }, updated_at: new Date().toISOString() });
+    if (error) showToast(error.message, true);
+    return !error;
+  }
+  const photoDir = (path) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : '');
+  const photoBase = (path) => path.slice(path.lastIndexOf('/') + 1).replace(/^(wm-|opt-)?\d+-(\d+-)?/, '').replace(/\.[a-z0-9]+$/i, '') || 'sticker';
+  const extForBlob = (b) => (b.type === 'image/webp' ? 'webp' : b.type === 'image/png' ? 'png' : 'jpg');
+  async function setStickerPhoto(sticker, newPath){
+    const { error } = await client.from('stickers').update({ image_path: newPath }).eq('id', sticker.id);
+    if (error) throw error;
+    sticker.image_path = newPath;
+  }
+  // Returns how many worked.
+  async function addWatermarks(list, onProgress){
+    let ok = 0; const failed = [];
+    for (let i = 0; i < list.length; i++) {
+      const st = list[i];
+      if (onProgress) onProgress(i + 1, list.length);
+      if (isWatermarked(st.id)) { ok++; continue; }
+      try {
+        const { data, error } = await client.storage.from('stickers').download(st.image_path);
+        if (error || !data) throw error || new Error('download failed');
+        let blob = await makeWatermarkedBlob(data);
+        blob = await compressImageBlob(blob);
+        const path = `${photoDir(st.image_path)}wm-${Date.now()}-${photoBase(st.image_path)}.${extForBlob(blob)}`;
+        const up = await client.storage.from('stickers').upload(path, blob, { cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: blob.type || 'image/jpeg' });
+        if (up.error) throw up.error;
+        await uploadThumb(path, blob, THUMB_DIM.sticker);
+        const original = st.image_path;
+        await setStickerPhoto(st, path);
+        watermarkMap[st.id] = original;
+        ok++;
+      } catch (e) { console.error('watermark failed', e); failed.push(st.code || st.name); }
+    }
+    await saveWatermarkMap();
+    showToast(failed.length ? `💧 ${ok} done · couldn't do: ${failed.join(', ')}` : `💧 Watermark added to ${ok} sticker${ok === 1 ? '' : 's'}`, !!failed.length);
+    return ok;
+  }
+  async function removeWatermarks(list){
+    let ok = 0;
+    for (const st of list) {
+      const original = watermarkMap[st.id];
+      if (!original) continue;
+      try { await setStickerPhoto(st, original); delete watermarkMap[st.id]; ok++; } catch (e) { showToast(e.message || 'Could not switch back', true); }
+    }
+    await saveWatermarkMap();
+    if (ok) showToast(`↩️ Watermark removed from ${ok} sticker${ok === 1 ? '' : 's'}`);
+    return ok;
+  }
+  function updateStickerRowPhoto(row, st){
+    const img = row.querySelector('img');
+    if (img) { const m = thumbOrFull(st.image_path).match(/src="([^"]+)"\s+data-full="([^"]+)"/); if (m) { img.dataset.full = m[2]; img.src = m[1] + (m[1].includes('?') ? '&' : '?') + 't=' + Date.now(); } }
+    const n = row.querySelector('.info .n');
+    if (n) n.innerHTML = `${escAttr(st.name)}${isWatermarked(st.id) ? '<span class="wm-tag">💧 watermark</span>' : ''}`;
+    const b = row.querySelector('.wm-btn');
+    if (b) { b.disabled = false; b.textContent = isWatermarked(st.id) ? '💧 Remove watermark' : '💧 Watermark'; }
+  }
+  function changeStickerPhoto(st, row){
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const addWm = confirm(`New photo for ${st.code || st.name}.\n\nAdd the SIPS BY EVVE watermark to it?\nOK = with watermark · Cancel = without`);
+      const btn = row.querySelector('.photo-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
+      try {
+        let blob = addWm ? await makeWatermarkedBlob(file) : file;
+        blob = await compressImageBlob(blob);
+        const safe = (file.name || 'sticker.jpg').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const path = `${st.category.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}-${safe}`;
+        const up = await client.storage.from('stickers').upload(path, blob, { cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: blob.type || 'image/jpeg' });
+        if (up.error) throw up.error;
+        await uploadThumb(path, blob, THUMB_DIM.sticker);
+        await setStickerPhoto(st, path);
+        if (watermarkMap[st.id]) { delete watermarkMap[st.id]; await saveWatermarkMap(); }
+        showToast(`📷 New photo saved for ${st.code || st.name}${addWm ? ' (with watermark)' : ''}`);
+      } catch (e) { showToast((e && e.message) || 'Upload failed', true); }
+      if (btn) { btn.disabled = false; btn.textContent = '📷 Change photo'; }
+      updateStickerRowPhoto(row, st);
+    });
+    input.click();
+  }
+
   function wireStickerRows(stickers, onDeleteRerender, onSaved){
     stickerList.querySelectorAll('.sticker-row').forEach(row => {
       const id = row.dataset.id;
@@ -2321,12 +2550,29 @@
         hotBtn.disabled = false;
       });
 
+      const photoBtn = row.querySelector('.photo-btn');
+      if (photoBtn) photoBtn.addEventListener('click', () => changeStickerPhoto(sticker, row));
+      const wmBtn = row.querySelector('.wm-btn');
+      if (wmBtn) wmBtn.addEventListener('click', async () => {
+        if (isWatermarked(sticker.id)) {
+          if (!confirm(`Remove the watermark from ${sticker.code || sticker.name}? (Goes back to the photo you uploaded.)`)) return;
+          wmBtn.disabled = true; wmBtn.textContent = '…';
+          await removeWatermarks([sticker]);
+        } else {
+          if (!confirm(`Add the SIPS BY EVVE watermark to ${sticker.code || sticker.name}?\n\nYour original photo is kept — you can remove the watermark later.`)) return;
+          wmBtn.disabled = true; wmBtn.textContent = 'Adding…';
+          await addWatermarks([sticker]);
+        }
+        updateStickerRowPhoto(row, sticker);
+      });
+
       const hideBtn = row.querySelector('.hide-btn');
       if (hideBtn) hideBtn.addEventListener('click', async () => {
         const opening = isHiddenNow(sticker);
         if (!opening && !confirm(`Hide ${sticker.code || sticker.name} from customers? You can open it again any time (🙈 Hidden stickers).`)) return;
         const ok = await setReleaseAt([id], opening ? new Date().toISOString() : HIDDEN_UNTIL, opening ? `🎉 ${sticker.code || sticker.name} is on your catalogue` : `🙈 ${sticker.code || sticker.name} hidden`);
         if (!ok) return;
+        if (hiddenMode) { updateHiddenCount(); renderHiddenList(); return; }
         const label = hiddenLabel(sticker);
         let tag = row.querySelector('.hidden-when');
         if (label) { if (!tag) { tag = document.createElement('div'); tag.className = 'hidden-when'; row.querySelector('.info').appendChild(tag); } tag.textContent = label; }
@@ -2629,6 +2875,7 @@
               <button class="secondary cat-move-up" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▲</button>
               <button class="secondary cat-move-down" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▼</button>
               <button class="secondary cat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
+              <button class="danger cat-delete-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;${count ? 'opacity:0.45;' : ''}" title="${count ? 'Move its stickers out first' : 'Delete this empty category'}">🗑 Delete</button>
             </span>
           </div>
           ${coverUrl
@@ -2703,6 +2950,30 @@
 
       rowEl.querySelector('.cat-move-up').addEventListener('click', () => moveCategoryOrSubcat(categoriesData, idx, 'up', 'categories', renderCategories));
       rowEl.querySelector('.cat-move-down').addEventListener('click', () => moveCategoryOrSubcat(categoriesData, idx, 'down', 'categories', renderCategories));
+
+      rowEl.querySelector('.cat-delete-btn').addEventListener('click', async () => {
+        const own = allStickersAdmin.filter(st => st.category === cat.name).length || (counts[cat.name] || 0);
+        if (own) { showToast(`"${cat.name}" still has ${own} sticker${own === 1 ? '' : 's'} — move them to another category first (☑️ Select → Move).`, true); return; }
+        const subs = subcategoriesData.filter(sc => sc.category === cat.name);
+        const alsoHere = allStickersAdmin.filter(st => normAlsoIn(st.also_in).some(p => p.category === cat.name));
+        if (!confirm(`Delete the empty category "${cat.name}"?` + (subs.length ? `\n\nIts empty sub-categories go too: ${subs.map(x => x.name).join(', ')}` : '') + (alsoHere.length ? `\n\n${alsoHere.length} sticker${alsoHere.length === 1 ? '' : 's'} "also show" here — they stay in their own category.` : '') + '\n\nNo stickers or photos are deleted.')) return;
+        for (const st of alsoHere) {
+          const next = normAlsoIn(st.also_in).filter(p => p.category !== cat.name);
+          const { error } = await client.from('stickers').update({ also_in: next.length ? next : null }).eq('id', st.id);
+          if (!error) st.also_in = next.length ? next : null;
+        }
+        if (subs.length) {
+          const { error: subErr } = await client.from('subcategories').delete().eq('category', cat.name);
+          if (subErr) { showToast(subErr.message, true); return; }
+        }
+        const { error } = await client.from('categories').delete().eq('name', cat.name);
+        if (error) { showToast(error.message, true); return; }
+        showToast(`🗑 "${cat.name}" deleted`);
+        await renderCategories();
+        await renderSubcategories();
+        if (allStickersAdmin.length) renderStickerCategoryGrid();
+        renderCodeLetters();
+      });
 
       rowEl.querySelector('.cat-rename-btn').addEventListener('click', async () => {
         const newName = prompt('New category name:', cat.name);
@@ -2825,6 +3096,7 @@
               <button class="secondary subcat-move-down" style="margin-top:0;padding:4px 9px;font-size:0.75rem;">▼</button>
               <button class="secondary subcat-rename-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">✏️ Rename</button>
               <button class="secondary subcat-move-cat-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;">📦 Move to another category</button>
+              <button class="danger subcat-delete-btn" style="margin-top:0;padding:4px 10px;font-size:0.75rem;${allStickersAdmin.some(st => st.category === sc.category && st.subcategory === sc.name) ? 'opacity:0.45;' : ''}">🗑 Delete</button>
             </span>
           </div>
           <div class="subcat-move-panel" style="display:none;">
@@ -2905,6 +3177,24 @@
 
       rowEl.querySelector('.subcat-move-up').addEventListener('click', () => moveCategoryOrSubcat(list, idx, 'up', 'subcategories', renderSubcategories));
       rowEl.querySelector('.subcat-move-down').addEventListener('click', () => moveCategoryOrSubcat(list, idx, 'down', 'subcategories', renderSubcategories));
+
+      rowEl.querySelector('.subcat-delete-btn').addEventListener('click', async () => {
+        const n = allStickersAdmin.filter(st => st.category === sc.category && st.subcategory === sc.name).length;
+        if (n) { showToast(`"${sc.name}" still has ${n} sticker${n === 1 ? '' : 's'} — move them out first (☑️ Select → Move).`, true); return; }
+        const place = { category: sc.category, subcategory: sc.name };
+        const alsoHere = allStickersAdmin.filter(st => normAlsoIn(st.also_in).some(p => placeKey(p) === placeKey(place)));
+        if (!confirm(`Delete the empty sub-category "${sc.name}" (in ${sc.category})?` + (alsoHere.length ? `\n\n${alsoHere.length} sticker${alsoHere.length === 1 ? '' : 's'} "also show" here — they stay in their own place.` : '') + '\n\nNo stickers or photos are deleted.')) return;
+        for (const st of alsoHere) {
+          const next = normAlsoIn(st.also_in).filter(p => placeKey(p) !== placeKey(place));
+          const { error } = await client.from('stickers').update({ also_in: next.length ? next : null }).eq('id', st.id);
+          if (!error) st.also_in = next.length ? next : null;
+        }
+        const { error } = await client.from('subcategories').delete().eq('id', sc.id);
+        if (error) { showToast(error.message, true); return; }
+        showToast(`🗑 "${sc.name}" deleted`);
+        await renderSubcategories();
+        if (allStickersAdmin.length) renderStickerCategoryGrid();
+      });
 
       const movePanel = rowEl.querySelector('.subcat-move-panel');
       rowEl.querySelector('.subcat-move-cat-btn').addEventListener('click', () => {
@@ -3163,14 +3453,141 @@
   }
   // Every Full Glitter price in use gets its own choice, e.g. "Full Glitter (+RM5)" and "Full Glitter (+RM10)".
   function patternOptionsAdmin(){
-    const glitter = [...new Set([GLITTER_DEFAULT_PRICE, ...tumblerListAdmin.map(glitterPriceOf)])].sort((a, b) => a - b);
-    return [
-      { label: 'Normal Cateye', extra: 0 },
-      { label: 'Swirl Flow Cateye', extra: 0 },
-      { label: 'Lava', extra: 0 },
-      ...glitter.map(x => ({ label: 'Full Glitter', extra: x })),
-    ].map(o => `${o.label}${o.extra ? ' (+RM' + o.extra + ')' : ''}`);
+    const out = [];
+    (patternListAdmin && patternListAdmin.length ? patternListAdmin : buildDefaultPatterns()).forEach(p => {
+      const prices = [...new Set([Number(p.extra) || 0, ...Object.values(p.per || {}).filter(v => v !== 'no' && v !== '' && Number.isFinite(Number(v))).map(Number)])].sort((a, b) => a - b);
+      prices.forEach(x => out.push(`${p.label}${x ? ' (+RM' + x + ')' : ''}`));
+    });
+    return out;
   }
+
+  // ==================================================================
+  // 🎨 Patterns — saved in "settings" (key "patterns"):
+  //   { list: [{ id, label, extra, status: available|sold_out|hidden, per: { tumblerId: number | 'no' } }] }
+  // Until it's saved once, the catalogue uses the old built-in list (+ glitter prices from Tumblers).
+  // ==================================================================
+  const DEFAULT_PATTERNS = [
+    { id: 'p1', label: 'Normal Cateye', extra: 0, status: 'available' },
+    { id: 'p2', label: 'Swirl Flow Cateye', extra: 0, status: 'available' },
+    { id: 'p3', label: 'Lava', extra: 0, status: 'available' },
+    { id: 'p4', label: 'Full Glitter', extra: 5, status: 'available' },
+    { id: 'p5', label: 'UV Colour Changing', extra: 0, status: 'hidden' },
+    { id: 'p6', label: 'Milkshake', extra: 0, status: 'hidden' },
+  ];
+  let patternListAdmin = null;
+  let patternsSavedOnce = false;
+  const tumblerShortName = (t) => (t ? String(t.label || '').replace(/^\s*\d+\s*·\s*/, '') : '');
+  // First time: Full Glitter's special prices come from the old Tumblers settings.
+  function buildDefaultPatterns(){
+    return DEFAULT_PATTERNS.map(p => {
+      const out = { ...p, per: {} };
+      if (p.id === 'p4') tumblerListAdmin.forEach(t => {
+        if (t.no_glitter) out.per[t.id] = 'no';
+        else if (glitterPriceOf(t) !== p.extra) out.per[t.id] = glitterPriceOf(t);
+      });
+      return out;
+    });
+  }
+  async function loadPatternsAdmin(){
+    const msg = document.getElementById('patternStatusMsg');
+    try {
+      const { data } = await client.from('settings').select('*');
+      const row = (data || []).find(r => r.key === 'patterns');
+      const list = row && row.value && Array.isArray(row.value.list) ? row.value.list : null;
+      if (list && list.length) {
+        patternListAdmin = list.map(p => ({ ...p, per: { ...(p.per || {}) } }));
+        patternsSavedOnce = true;
+        msg.textContent = row.updated_at ? `Last saved ${new Date(row.updated_at).toLocaleString()}` : '';
+      } else {
+        patternListAdmin = buildDefaultPatterns();
+        msg.textContent = 'Showing your current patterns plus UV Colour Changing and Milkshake (Hidden). Press Save patterns once to start managing them here.';
+      }
+    } catch (e) { patternListAdmin = buildDefaultPatterns(); }
+    renderPatternRows();
+  }
+  function renderPatternRows(){
+    const wrap = document.getElementById('patternRows');
+    if (!wrap || !patternListAdmin) return;
+    const tName = (id) => { const t = tumblerListAdmin.find(x => x.id === id); return t ? t.label : id; };
+    wrap.innerHTML = patternListAdmin.map((p, i) => {
+      const per = Object.entries(p.per || {});
+      return `
+      <div class="pattern-row is-${p.status || 'available'}" data-index="${i}">
+        <div class="pr-top">
+          <input type="text" class="p-label" value="${escAttr(p.label || '')}" placeholder="e.g. UV Colour Changing">
+          <label class="p-extra-wrap">+RM <input type="number" class="p-extra" value="${p.extra ?? 0}" min="0" step="1"></label>
+          <select class="p-status">
+            <option value="available" ${p.status === 'available' ? 'selected' : ''}>In Stock</option>
+            <option value="sold_out" ${p.status === 'sold_out' ? 'selected' : ''}>Sold Out</option>
+            <option value="hidden" ${p.status === 'hidden' ? 'selected' : ''}>Hidden — customers can't see it</option>
+          </select>
+          <div class="row-actions">
+            <button type="button" class="secondary p-up" ${i === 0 ? 'disabled' : ''}>↑</button>
+            <button type="button" class="secondary p-down" ${i === patternListAdmin.length - 1 ? 'disabled' : ''}>↓</button>
+            <button type="button" class="danger p-remove">✕</button>
+          </div>
+        </div>
+        <div class="pr-special">
+          <span>Special prices:</span>
+          ${per.length ? per.map(([tid, v]) => `<span class="sp-chip ${v === 'no' ? 'no' : ''}">${escAttr(tName(tid))}: ${v === 'no' ? 'not available' : '+RM' + v}<button type="button" class="sp-del" data-t="${escAttr(tid)}" title="Remove">✕</button></span>`).join('') : '<span class="hint" style="margin:0;">none — same price on every bottle</span>'}
+          <span class="sp-add">
+            <select class="sp-t"><option value="">+ bottle…</option>${tumblerListAdmin.filter(t => !(t.id in (p.per || {}))).map(t => `<option value="${escAttr(t.id)}">${escAttr(t.label)}</option>`).join('')}</select>
+            <select class="sp-mode"><option value="price">costs +RM</option><option value="no">not available</option></select>
+            <input type="number" class="sp-v" min="0" step="1" placeholder="RM">
+            <button type="button" class="secondary sp-addbtn">Add</button>
+          </span>
+        </div>
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('.pattern-row').forEach(row => {
+      const i = Number(row.dataset.index);
+      const p = patternListAdmin[i];
+      row.querySelector('.p-label').addEventListener('input', e => { p.label = e.target.value; });
+      row.querySelector('.p-extra').addEventListener('input', e => { p.extra = e.target.value === '' ? '' : Number(e.target.value); });
+      row.querySelector('.p-status').addEventListener('change', e => { p.status = e.target.value; row.className = `pattern-row is-${p.status}`; });
+      row.querySelector('.p-up').addEventListener('click', () => { [patternListAdmin[i - 1], patternListAdmin[i]] = [patternListAdmin[i], patternListAdmin[i - 1]]; renderPatternRows(); });
+      row.querySelector('.p-down').addEventListener('click', () => { [patternListAdmin[i + 1], patternListAdmin[i]] = [patternListAdmin[i], patternListAdmin[i + 1]]; renderPatternRows(); });
+      row.querySelector('.p-remove').addEventListener('click', () => {
+        if (!confirm(`Remove "${p.label || 'this pattern'}"? (Past orders keep their details.) Tip: choose "Hidden" instead if you might bring it back. Press Save patterns to apply.`)) return;
+        patternListAdmin.splice(i, 1); renderPatternRows();
+      });
+      row.querySelectorAll('.sp-del').forEach(b => b.addEventListener('click', () => { delete p.per[b.dataset.t]; renderPatternRows(); }));
+      const modeSel = row.querySelector('.sp-mode'), vIn = row.querySelector('.sp-v');
+      modeSel.addEventListener('change', () => { vIn.style.display = modeSel.value === 'no' ? 'none' : ''; });
+      row.querySelector('.sp-addbtn').addEventListener('click', () => {
+        const tid = row.querySelector('.sp-t').value;
+        if (!tid) { showToast('Choose a bottle first', true); return; }
+        if (modeSel.value === 'no') p.per[tid] = 'no';
+        else {
+          const v = Number(vIn.value);
+          if (vIn.value === '' || !Number.isFinite(v) || v < 0) { showToast('Type the price for that bottle', true); return; }
+          p.per[tid] = v;
+        }
+        renderPatternRows();
+      });
+    });
+  }
+  document.getElementById('addPatternBtn').addEventListener('click', () => {
+    patternListAdmin.push({ id: 'p' + Date.now().toString(36), label: '', extra: 0, status: 'hidden', per: {} });
+    renderPatternRows();
+    const rows = document.querySelectorAll('#patternRows .pattern-row');
+    rows[rows.length - 1].querySelector('.p-label').focus();
+  });
+  document.getElementById('savePatternsBtn').addEventListener('click', async () => {
+    const list = patternListAdmin.map(p => ({ id: p.id, label: String(p.label || '').trim(), extra: p.extra === '' ? NaN : Number(p.extra), status: p.status || 'available', per: { ...(p.per || {}) } }));
+    if (!list.length) { showToast('Keep at least one pattern', true); return; }
+    if (list.some(p => !p.label)) { showToast('Every pattern needs a name', true); return; }
+    if (list.some(p => !Number.isFinite(p.extra) || p.extra < 0)) { showToast('+RM must be a number (0 if it\'s included)', true); return; }
+    // drop special prices for bottles that no longer exist
+    list.forEach(p => Object.keys(p.per).forEach(tid => { if (!tumblerListAdmin.some(t => t.id === tid)) delete p.per[tid]; }));
+    const { error } = await client.from('settings').upsert({ key: 'patterns', value: { list }, updated_at: new Date().toISOString() });
+    if (error) { showToast(error.message, true); return; }
+    patternListAdmin = list; patternsSavedOnce = true;
+    showToast('✅ Patterns saved — customers see the change now');
+    document.getElementById('patternStatusMsg').textContent = `Last saved ${new Date().toLocaleString()}`;
+    renderPatternRows();
+    renderOrders();
+  });
 
   function patternOptionsHtml(selected){
     const value = selected || '';
@@ -3389,6 +3806,7 @@
     emptyOrderIds = allOrdersAdmin.filter(isEmptyOrder).map(o => o.id);
     updateClearEmptyButton();
     renderSalesStats();
+    updateOrdersTabBadge();
     if (!data || data.length === 0) { el.innerHTML = '<p class="hint">No orders logged yet.</p>'; applyOrderFilters(); return; }
     el.innerHTML = data.map(o => {
       const isPaid = o.status === 'paid';
@@ -3484,6 +3902,7 @@
           renderSalesStats();
           applyOrderFilters();
           syncAutoPopular();
+          updateOrdersTabBadge();
           showToast(warnings.length ? warnings.join(' ') : (newStatus === 'paid' ? `✅ All ${sibs.length + 1} tumblers marked paid!` : '↩️ Un-marked'), !!warnings.length);
           return;
         }
@@ -3517,6 +3936,7 @@
           renderSalesStats();
           applyOrderFilters();
           syncAutoPopular();
+          updateOrdersTabBadge();
           btn.classList.toggle('is-paid', newStatus === 'paid');
           btn.textContent = newStatus === 'paid' ? '✓ Paid' : 'Mark Paid';
           showToast(stockWarning || (newStatus === 'paid' ? '✅ Marked paid!' : '↩️ Un-marked'), !!stockWarning);
@@ -3807,6 +4227,8 @@
     st.textContent = on ? `🔴 LIVE bar is showing on your catalogue (since ${new Date(liveSettings.started_at).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit' })})` : '⚪ Off — customers don\'t see a live bar';
     btn.classList.toggle('on', on);
     btn.textContent = on ? '⏹ Live finished — hide the bar' : '🔴 I\'m going live — show the bar';
+    const pill = document.getElementById('livePill');
+    if (pill) { pill.classList.toggle('on', on); pill.textContent = on ? '🔴 LIVE — tap to end' : '⚪ Live off — tap to go live'; }
   }
   async function loadLiveAdmin(){
     const { data } = await client.from('settings').select('*');
@@ -4179,8 +4601,6 @@
         <input type="text" class="t-label" value="${(t.label || '').replace(/"/g, '&quot;')}" placeholder="e.g. 05 · 500ml Glass">
         <input type="text" class="t-detail" value="${(t.detail || '').replace(/"/g, '&quot;')}" placeholder="Detail (optional)">
         <input type="number" class="t-price" value="${t.price ?? ''}" min="0" step="1" placeholder="RM">
-        <label class="t-glitter-wrap" title="Extra charge for the Full Glitter pattern on this style">✨ Glitter +RM <input type="number" class="t-glitter" value="${glitterPriceOf(t)}" min="0" step="1"></label>
-        <label class="t-noglitter-wrap" title="Customers can't pick Full Glitter for this style"><input type="checkbox" class="t-noglitter" ${t.no_glitter ? 'checked' : ''}> No Full Glitter</label>
         <select class="t-status">
           <option value="available" ${t.status === 'available' ? 'selected' : ''}>In Stock</option>
           <option value="preorder" ${t.status === 'preorder' ? 'selected' : ''}>Preorder</option>
@@ -4198,9 +4618,8 @@
       row.querySelector('.t-label').addEventListener('input', e => { t.label = e.target.value; });
       row.querySelector('.t-detail').addEventListener('input', e => { t.detail = e.target.value; });
       row.querySelector('.t-price').addEventListener('input', e => { t.price = e.target.value === '' ? '' : Number(e.target.value); });
-      row.querySelector('.t-glitter').addEventListener('input', e => { t.glitter_price = e.target.value === '' ? '' : Number(e.target.value); });
       row.querySelector('.t-status').addEventListener('change', e => { t.status = e.target.value; row.classList.remove('is-available', 'is-preorder', 'is-sold_out'); row.classList.add(`is-${t.status}`); });
-      row.querySelector('.t-noglitter').addEventListener('change', e => { t.no_glitter = e.target.checked; row.classList.toggle('no-glitter', t.no_glitter); });
+
       row.querySelector('.t-up').addEventListener('click', () => { [tumblerListAdmin[i - 1], tumblerListAdmin[i]] = [tumblerListAdmin[i], tumblerListAdmin[i - 1]]; renderTumblerRows(); });
       row.querySelector('.t-down').addEventListener('click', () => { [tumblerListAdmin[i + 1], tumblerListAdmin[i]] = [tumblerListAdmin[i], tumblerListAdmin[i + 1]]; renderTumblerRows(); });
       row.querySelector('.t-remove').addEventListener('click', () => {
@@ -4236,6 +4655,7 @@
       return { ...d, status: old ? old.status : d.status };
     });
     renderTumblerRows();
+    if (!patternsSavedOnce) { patternListAdmin = buildDefaultPatterns(); renderPatternRows(); }
     showToast('📥 New lineup filled in — check it, then press Save tumblers');
   });
   document.getElementById('addTumblerBtn').addEventListener('click', () => {
@@ -4260,6 +4680,8 @@
     document.getElementById('tumblerStatusMsg').textContent = `Last saved ${new Date().toLocaleString()}`;
     renderTumblerRows();
     fillPromoTumblerSelect(document.getElementById('promoTumblerId').value);
+    if (!patternsSavedOnce) patternListAdmin = buildDefaultPatterns();
+    renderPatternRows();
     renderOrders(); // refresh the orders tumbler dropdown
   });
 
