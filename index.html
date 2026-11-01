@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-11-01-2">
+<meta name="sbe-build" content="2026-11-01-3">
 <title>Sips by Evve — Custom Snowglobe Tumblers Catalogue</title>
 <meta property="og:title" content="Sips by Evve — Custom Snowglobe Tumblers Catalogue">
 <meta property="og:description" content="Pick your tumbler, sticker &amp; pattern, then send your order on WhatsApp 🎀 Free shipping West Malaysia.">
@@ -641,6 +641,7 @@
   .order-summary .group-lbl{ margin:10px 0 2px; font-size:0.72rem; font-weight:800; letter-spacing:0.3px; color:var(--brown-dark); text-transform:uppercase; }
   .order-summary .group-lbl.promo{ color:#e0524f; }
   /* ---- several tumblers in one order ---- */
+  .glitter-removed-note{ margin:10px 0 0; font-size:0.85rem; font-weight:600; color:#b0452f; }
   .bottle-card{ border:2px solid var(--line); border-radius:14px; padding:10px 12px; margin:0 0 10px; background:#fff; }
   .bottle-card.done{ border-color:#bfe8cf; background:#f3fbf6; }
   .order-summary.multi #curBottle{ border:2px solid var(--wa-dark); border-radius:14px; padding:10px 12px; margin:0 0 10px; box-shadow:0 0 0 3px rgba(37,211,102,0.20); }
@@ -760,7 +761,7 @@
 
   <section class="step">
     <h2>① Choose your tumbler ❄️</h2>
-    <img id="img-step1_tumbler" class="zoomable" src="tumbler-options.png" width="1024" height="576" alt="Sips by Evve tumbler styles — 01 300ml Acrylic Leak-Proof RM55, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 600ml Stainless Steel Leak-Proof RM85">
+    <img id="img-step1_tumbler" class="zoomable" src="tumbler-lineup.jpg" width="1920" height="1080" alt="Sips by Evve tumbler styles — 01 470ml Acrylic RM65, 02 700ml Acrylic RM70, 03 600ml Acrylic With Handle RM75, 04 500ml Cap Bottle Acrylic Leak-Proof RM79, 05 700ml Boba Acrylic Leak-Proof RM83, 06 600ml Stainless Steel Leak-Proof RM85, 07 600ml Stainless Steel With Handle Leak-Proof RM95, 08 1200ml Glow in the Dark Acrylic RM109">
     <p class="note" style="margin-top:14px;" id="tumblerPickNote">Tap to pick your tumbler:</p>
     <div class="option-grid" id="tumblerOptions"></div>
   </section>
@@ -798,8 +799,9 @@
     <p class="note">(you can also decide during your live date)</p>
     <img id="img-step3_patterns" class="zoomable" src="patterns.jpg" width="700" height="746" alt="Sips by Evve tumbler patterns — Normal Cateye, Swirl Flow Cateye, Lava, Full Glitter (+RM5)" loading="lazy">
     <p class="note" style="margin-top:14px;">Tap to pick a pattern (optional):</p>
-    <p class="glitter-note">✨ Full Glitter is +RM10 for the 600ml Fat Bottle only — all other bottles remain +RM5.</p>
+    <p class="glitter-note">✨ Full Glitter is +RM10 for the 600ml Fat Bottle only — all other bottles remain +RM5. Not available for the 1200ml Glow in the Dark bottle.</p>
     <div class="option-grid" id="patternOptions"></div>
+    <p class="glitter-removed-note" id="glitterRemovedNote" style="display:none;"></p>
   </section>
 
   <section class="step">
@@ -1115,10 +1117,14 @@
   // In Stock / Preorder / Sold Out). This list is only the fallback used until the admin
   // list loads (or if the "settings" table isn't set up).
   let TUMBLER_OPTIONS = [
-    { id: 't1', label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55, status: 'available' },
+    { id: 't5', label: '01 · 470ml Acrylic', detail: '', price: 65, status: 'available' },
     { id: 't2', label: '02 · 700ml Acrylic', detail: '', price: 70, status: 'available' },
     { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75, status: 'available', glitter_price: 10 },
-    { id: 't4', label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85, status: 'available' },
+    { id: 't6', label: '04 · 500ml Cap Bottle Acrylic', detail: 'Leak-Proof', price: 79, status: 'available' },
+    { id: 't7', label: '05 · 700ml Boba Acrylic', detail: 'Leak-Proof', price: 83, status: 'available' },
+    { id: 't4', label: '06 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85, status: 'available' },
+    { id: 't8', label: '07 · 600ml Stainless Steel', detail: 'With Handle · Leak-Proof', price: 95, status: 'available' },
+    { id: 't9', label: '08 · 1200ml Glow in the Dark Acrylic', detail: '', price: 109, status: 'available', no_glitter: true },
   ];
   // How a tumbler is written in the order message / saved order, e.g.
   // "04 · 600ml Stainless Steel (RM85)" — plus " · Preorder" when it's a preorder style.
@@ -1137,13 +1143,15 @@
   // their own price use the usual +RM5.
   const GLITTER_ID = 'p4';
   const GLITTER_FALLBACK_BY_TUMBLER = { t3: 10 };
-  const GLITTER_NOTE_NAME = { t3: '600ml Fat Bottle' }; // how a style is named in the small line under Full Glitter's price // used if admin hasn't saved a glitter price yet
+  const GLITTER_NOTE_NAME = { t3: '600ml Fat Bottle', t9: '1200ml Glow bottle' }; // how a style is named in the small line under Full Glitter's price // used if admin hasn't saved a glitter price yet
   function glitterPriceFor(t){
     const base = PATTERN_OPTIONS.find(p => p.id === GLITTER_ID).extra;
     if (!t) return base;
     if (t.glitter_price !== undefined && t.glitter_price !== null && t.glitter_price !== '' && Number.isFinite(Number(t.glitter_price))) return Number(t.glitter_price);
     return GLITTER_FALLBACK_BY_TUMBLER[t.id] ?? base;
   }
+  // Some styles can't take Full Glitter at all (set in admin: "No Full Glitter", e.g. the glow bottle).
+  const tumblerNoGlitter = () => !!(myOrder.tumbler && myOrder.tumbler.no_glitter);
   // The extra a pattern costs on the customer's picked tumbler.
   function patternExtra(p){
     if (!p) return 0;
@@ -1158,8 +1166,10 @@
   // usual price, with any style that costs differently on a smaller line below, e.g. "600ml Fat Bottle: +RM10".
   function patternCardPrice(o){
     if (o.id !== GLITTER_ID || myOrder.tumbler) { const x = patternExtra(o); return x ? '+RM' + x : 'included'; }
-    const others = TUMBLER_OPTIONS.filter(t => t.status !== 'sold_out' && glitterPriceFor(t) !== o.extra)
+    const others = TUMBLER_OPTIONS.filter(t => t.status !== 'sold_out' && !t.no_glitter && glitterPriceFor(t) !== o.extra)
       .map(t => `<span class="oprice-sub">${GLITTER_NOTE_NAME[t.id] || t.label}: +RM${glitterPriceFor(t)}</span>`);
+    TUMBLER_OPTIONS.filter(t => t.status !== 'sold_out' && t.no_glitter)
+      .forEach(t => others.push(`<span class="oprice-sub">Not for the ${GLITTER_NOTE_NAME[t.id] || t.label}</span>`));
     return '+RM' + o.extra + others.join('');
   }
 
@@ -1317,11 +1327,12 @@
     if (!el) return;
     // With the promo bottle added, the patterns excluded from the promo (Full Glitter)
     // are locked for the 03 as well.
-    const lockedByPromo = id => myOrder.promo.on && PROMO_EXCLUDED_PATTERNS.includes(id);
+    const lockedByPromo = id => (myOrder.promo.on && PROMO_EXCLUDED_PATTERNS.includes(id)) || (id === GLITTER_ID && tumblerNoGlitter());
+    const lockText = id => (id === GLITTER_ID && tumblerNoGlitter()) ? `Not available for the ${GLITTER_NOTE_NAME[myOrder.tumbler.id] || myOrder.tumbler.label}` : 'Not available with the promo';
     el.innerHTML = PATTERN_OPTIONS.map(o => `
       <div class="option-card ${myOrder.pattern && myOrder.pattern.id === o.id ? 'picked' : ''} ${lockedByPromo(o.id) ? 'locked' : ''}" data-id="${o.id}">
         <span class="oname">${o.label}</span>
-        <span class="oprice">${lockedByPromo(o.id) ? 'Not available with the promo' : patternCardPrice(o)}</span>
+        <span class="oprice">${lockedByPromo(o.id) ? lockText(o.id) : patternCardPrice(o)}</span>
       </div>
     `).join('');
     el.querySelectorAll('.option-card').forEach(card => {
@@ -1407,8 +1418,19 @@
       myOrder.pattern = null; // Full Glitter isn't allowed on either bottle with the promo
       promoClearedPattern = true;
     }
-    const lockKey = (myOrder.promo.on ? 'promo' : 'none') + '|' + (myOrder.tumbler ? myOrder.tumbler.id + ':' + glitterPriceFor(myOrder.tumbler) : '') + '|' + TUMBLER_OPTIONS.map(t => t.id + glitterPriceFor(t) + t.status).join();
-    if (promoClearedPattern || renderPatternOptions.lastLock !== lockKey) {
+    let tumblerClearedGlitter = false;
+    if (tumblerNoGlitter() && myOrder.pattern && myOrder.pattern.id === GLITTER_ID) {
+      myOrder.pattern = null; // this style can't take Full Glitter
+      tumblerClearedGlitter = true;
+    }
+    const gNote = document.getElementById('glitterRemovedNote');
+    if (gNote) {
+      if (tumblerClearedGlitter) { gNote.textContent = `Full Glitter was removed — it isn't available for the ${GLITTER_NOTE_NAME[myOrder.tumbler.id] || myOrder.tumbler.label}. Please pick another pattern (or decide on your live date).`; gNote.style.display = ''; }
+      else if (!tumblerNoGlitter() || myOrder.pattern) gNote.style.display = 'none';
+    }
+    const lockKey = (myOrder.promo.on ? 'promo' : 'none') + '|' + (myOrder.tumbler ? myOrder.tumbler.id + ':' + glitterPriceFor(myOrder.tumbler) + ':' + !!myOrder.tumbler.no_glitter : '') + '|' + TUMBLER_OPTIONS.map(t => t.id + glitterPriceFor(t) + t.status + !!t.no_glitter).join();
+    if (tumblerClearedGlitter) set('pickPattern', 'Decide on live date', 'soft');
+    if (promoClearedPattern || tumblerClearedGlitter || renderPatternOptions.lastLock !== lockKey) {
       renderPatternOptions.lastLock = lockKey;
       renderPatternOptions();
     }
@@ -1857,6 +1879,7 @@
       price: Number.isFinite(Number(t.price)) ? Number(t.price) : 0,
       status: ['available', 'preorder', 'sold_out'].includes(t.status) ? t.status : 'available',
       ...(t.glitter_price !== undefined && t.glitter_price !== null && t.glitter_price !== '' && Number.isFinite(Number(t.glitter_price)) ? { glitter_price: Number(t.glitter_price) } : {}),
+      ...(t.no_glitter === true ? { no_glitter: true } : {}),
     }));
     if (!clean.length) return;
     TUMBLER_OPTIONS = clean;

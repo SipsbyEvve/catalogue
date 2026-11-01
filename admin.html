@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-11-01-2">
+<meta name="sbe-build" content="2026-11-01-3">
 <title>Sips by Evve — Sticker Admin</title>
 <style>
   :root{
@@ -224,6 +224,11 @@
   .tumbler-row .t-status{ width:auto; flex:none; }
   .tumbler-row .t-glitter-wrap{ display:flex; align-items:center; gap:4px; flex:none; font-size:0.78rem; font-weight:600; color:#8a6d3b; margin:0; white-space:nowrap; }
   .tumbler-row .t-glitter{ width:62px; }
+  .tumbler-row .t-noglitter-wrap{ display:flex; align-items:center; gap:4px; flex:none; font-size:0.78rem; font-weight:600; color:#8a3a22; margin:0; white-space:nowrap; }
+  .tumbler-row .t-noglitter-wrap input{ width:auto; margin:0; }
+  .tumbler-row.no-glitter .t-glitter-wrap{ opacity:0.35; }
+  .lineup-box{ background:#f3fbf6; border:1px solid #bfe8cf; border-radius:12px; padding:10px 12px; margin:0 0 12px; font-size:0.85rem; }
+  .lineup-box button{ margin:6px 0 0; width:auto; }
   .tumbler-row .row-actions{ display:flex; gap:4px; }
   .tumbler-row .row-actions button{ margin:0; padding:6px 9px; font-size:0.8rem; }
   .promo-switch{ display:flex; align-items:center; gap:10px; font-weight:700; margin:6px 0 12px; cursor:pointer; }
@@ -257,6 +262,21 @@
   .also-in-row .also-in-picker{ margin:0; }
   .also-in-row select{ font-size:0.72rem; padding:3px 6px; }
   .group-helper:empty{ display:none; }
+  /* 🔤 code letters + auto-number panel */
+  .letters-box{ margin:0 0 14px; background:#fbf7f1; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-size:0.85rem; }
+  .letters-box summary{ cursor:pointer; font-weight:800; color:var(--brown-dark); padding:4px 0; }
+  .letters-table{ width:100%; border-collapse:collapse; margin-top:6px; }
+  .letters-table td, .letters-table th{ padding:4px 6px; border-bottom:1px dashed var(--line); text-align:left; vertical-align:top; }
+  .letters-table th{ font-size:0.72rem; color:var(--muted); font-weight:700; }
+  .letters-table td.lt b{ display:inline-block; min-width:34px; text-align:center; background:var(--brown); color:#fff; border-radius:6px; padding:2px 6px; }
+  .letters-table td.num{ text-align:right; white-space:nowrap; color:var(--muted); }
+  .letters-table .warn{ color:#b0452f; font-weight:700; font-size:0.78rem; }
+  .letters-free{ margin-top:8px; background:#f3fbf6; border:1px solid #bfe8cf; border-radius:10px; padding:7px 10px; }
+  .letters-alert{ margin-top:6px; background:#fdf1ec; border:1px solid #f3c9b8; border-radius:10px; padding:7px 10px; color:#8a3a22; }
+  .num-panel .np-row{ border:2px solid #e8d9c2; border-radius:12px; padding:8px 12px; margin:8px 0 0; background:#fffaf2; font-size:0.84rem; }
+  .num-panel .np-row.ok{ background:#f3fbf6; border-color:#bfe8cf; }
+  .num-panel .np-row button{ width:auto; margin:4px 4px 0 0; padding:4px 11px; font-size:0.82rem; font-weight:800; }
+  .num-panel .np-row input{ width:90px; margin:4px 4px 0 0; padding:5px 8px; font-size:0.85rem; text-transform:uppercase; display:inline-block; }
   .gh-box{ margin:10px 0 4px; background:#fbf7f1; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:0.85rem; }
   .gh-line{ margin-top:6px; }
   .gh-line button{ margin:0 0 0 4px; padding:4px 10px; font-size:0.78rem; width:auto; }
@@ -404,6 +424,7 @@
 
     <div class="card">
       <h2 style="margin-top:0;font-size:1.1rem;">Add stickers</h2>
+      <details class="letters-box" id="codeLettersBox"><summary>🔤 Code letters — which letter is which</summary><div id="codeLettersBody">Loading…</div></details>
       <div class="add-tabs">
         <button type="button" class="add-tab active" id="tabSingleBtn">Single photo</button>
         <button type="button" class="add-tab" id="tabBulkBtn">Bulk add (multiple photos)</button>
@@ -457,7 +478,7 @@
           <input type="checkbox" id="bulkWatermarkToggle">
           <label for="bulkWatermarkToggle">Add watermark to all of these (tiled "SIPS BY EVVE")</label>
         </div>
-        <label for="bulkCategory">Default category (used for any photo below that doesn't set its own)</label>
+        <label for="bulkCategory">Default category (used for any photo below that doesn't set its own — leave empty if every photo has its own)</label>
         <input type="text" id="bulkCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
         <label for="bulkSubcategory">Default sub-category (optional)</label>
         <input type="text" id="bulkSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
@@ -476,6 +497,7 @@
           <label for="bulkHideToggle">🙈 Hide this whole batch for now — open them later (all at once, a few at a time, or at a set time) in "🙈 Hidden stickers" below</label>
         </div>
         <button type="button" class="secondary" id="bulkAutoNumberBtn" style="display:none;">🔢 Auto-number the photos below</button>
+        <div class="num-panel" id="bulkNumberPanel"></div>
         <div class="batch-grid" id="bulkBatchGrid"></div>
         <button id="bulkUploadBtn" style="display:none;">Upload all (0)</button>
         <p class="msg" id="bulkUploadMsg"></p>
@@ -585,6 +607,7 @@
     <div class="card" id="tumblersCard">
       <h2 style="margin-top:0;font-size:1.1rem;">🥤 Tumblers</h2>
       <p class="hint">The tumbler styles customers can pick in step ①. Change a price, mark a style <b>Sold Out</b> (greyed out, can't be picked) or <b>Preorder</b> (can still be ordered, marked "Preorder"), or add a new style. Press <b>Save tumblers</b> when you're done.</p>
+      <div class="lineup-box" id="lineupBox">📥 <b>New 8-bottle lineup</b> (01 470ml RM65 … 08 1200ml Glow RM109) — tap to fill it in below, check it, then press <b>Save tumblers</b>. Nothing changes for customers until you save.<br><button type="button" class="secondary" id="useLineupBtn">📥 Fill in the new 8 bottles</button></div>
       <div id="tumblerRows"></div>
       <button class="add-new-btn" id="addTumblerBtn" type="button">+ Add tumbler style</button>
       <button id="saveTumblersBtn" type="button" style="margin-top:10px;">Save tumblers</button>
@@ -839,6 +862,11 @@
     categoriesData.forEach(c => add(c.name, null));
     subcategoriesData.forEach(sc => add(sc.category, sc.name));
     allStickersAdmin.forEach(st => { add(st.category, null); if (st.subcategory) add(st.category, st.subcategory); });
+    // Places typed into the upload boxes but not saved yet (a brand-new category / sub-category).
+    const val = id => ((document.getElementById(id) || {}).value || '').trim();
+    [[val('stickerCategory'), val('stickerSubcategory')], [val('bulkCategory'), val('bulkSubcategory')],
+     ...(typeof bulkBatch !== 'undefined' ? bulkBatch.map(it => [(it.category || '').trim(), (it.subcategory || '').trim()]) : [])]
+      .forEach(([c, sc]) => { if (c) { add(c, null); if (sc) add(c, sc); } });
     return [...map.values()].sort((a, b) => placeLabel(a).localeCompare(placeLabel(b)));
   }
   // Chips of the chosen places (✕ to remove) + a dropdown to add one.
@@ -858,6 +886,16 @@
         const next = list.filter((_, i) => i !== Number(b.dataset.i));
         if ((await setList(next)) !== false) draw();
       }));
+      // Re-read the places every time the menu is opened, so a category added a moment ago shows up.
+      const sel = el.querySelector('.also-add');
+      const refreshOptions = () => {
+        const nowTaken = new Set(normAlsoIn(getList()).map(placeKey));
+        const pr = getPrimary ? getPrimary() : null;
+        if (pr && pr.category) nowTaken.add(placeKey(pr));
+        const html = `<option value="">${sel.options[0] ? sel.options[0].textContent : '➕ Add a place…'}</option>` + allPlaces().filter(p => !nowTaken.has(placeKey(p))).map(p => `<option value="${placeKey(p).replace(/"/g, '&quot;')}">${placeLabel(p)}</option>`).join('');
+        if (sel.innerHTML !== html) sel.innerHTML = html;
+      };
+      ['focus', 'mousedown', 'touchstart'].forEach(ev => sel.addEventListener(ev, refreshOptions, { passive: true }));
       el.querySelector('.also-add').addEventListener('change', async (e) => {
         const p = allPlaces().find(x => placeKey(x) === e.target.value);
         if (!p) return;
@@ -920,11 +958,19 @@
     if (!el) return;
     if (!category) { el.innerHTML = ''; return; }
     const known = allStickersAdmin.some(st => st.category === category) || categoriesData.some(c => c.name === category);
-    if (!known) { el.innerHTML = `<div class="gh-box"><b>📂 New category "${escAttr(category)}"</b><div class="gh-line">No stickers here yet — type the first code yourself (e.g. P001); after that the next code is suggested for you.</div></div>`; return; }
+    const ideaLine = () => {
+      const ideas = suggestPrefixes(category, subcategory);
+      return `<div class="gh-line">No codes here yet. Free letters for it: ${ideas.map(p => onUse ? `<button type="button" class="gh-use gh-idea" data-c="${p}001">Use ${p}001</button>` : `<b>${p}</b>`).join(' ')}${onUse ? '' : ' — press 🔢 Auto-number below and pick one'}</div>`;
+    };
+    if (!known) {
+      el.innerHTML = `<div class="gh-box"><b>📂 New category "${escAttr(category)}"</b>${ideaLine()}</div>`;
+      el.querySelectorAll('.gh-idea').forEach(b => b.addEventListener('click', () => onUse(b.dataset.c)));
+      return;
+    }
     const info = nextCodeInfo(category, subcategory);
     const title = `📂 ${escAttr(category)}${subcategory ? ' › ' + escAttr(subcategory) : ''} — ${info.group.length} sticker${info.group.length === 1 ? '' : 's'}`;
     let codeLine = '';
-    if (info.empty) codeLine = `<div class="gh-line">No codes here yet — type the first one yourself (e.g. P001).</div>`;
+    if (info.empty) codeLine = ideaLine();
     else if (info.choose) codeLine = `<div class="gh-line">This category uses more than one code letter — which one is this sticker? ${info.choose.map(p => `<button type="button" class="gh-prefix" data-p="${p}">${p}…</button>`).join(' ')}<br><span class="gh-muted">(or pick a sub-category above)</span></div>`;
     else codeLine = `<div class="gh-line">Last code: <b>${escAttr(info.last)}</b> → next: <b>${info.code}</b> ${onUse ? `<button type="button" class="gh-use">Use ${info.code}</button>` : ''}${info.prefixes.length > 1 ? ` <button type="button" class="gh-switch">change letter</button>` : ''}</div>`
       + (info.gaps.length ? `<div class="gh-line gh-warn">⚠️ Skipped number${info.gaps.length === 1 ? '' : 's'}: ${info.gaps.join(', ')} — forgot to upload?</div>` : '');
@@ -936,7 +982,8 @@
     const key = placeKey({ category, subcategory });
     el.querySelectorAll('.gh-prefix').forEach(b => b.addEventListener('click', () => { chosenPrefix[key] = b.dataset.p; renderGroupHelper(el, category, subcategory, onUse); }));
     const sw = el.querySelector('.gh-switch'); if (sw) sw.addEventListener('click', () => { delete chosenPrefix[key]; const i = nextCodeInfo(category, subcategory); if (!i.choose) { const ps = i.prefixes; chosenPrefix[key] = ps[(ps.indexOf(i.prefix) + 1) % ps.length]; } renderGroupHelper(el, category, subcategory, onUse); });
-    const use = el.querySelector('.gh-use'); if (use && onUse) use.addEventListener('click', () => onUse(info.code));
+    el.querySelectorAll('.gh-idea').forEach(b => b.addEventListener('click', () => onUse(b.dataset.c)));
+    const use = el.querySelector('.gh-use:not(.gh-idea)'); if (use && onUse) use.addEventListener('click', () => onUse(info.code));
   }
   const escAttr = (t) => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function renderSingleGroupHelper(){
@@ -963,33 +1010,171 @@
     lastBulkGroup = k;
     renderBulkGroupHelper();
   })));
-  // Fill in codes for the batch, following each photo's own category (or the batch default).
-  document.getElementById('bulkAutoNumberBtn').addEventListener('click', () => {
+  // ---- 🔢 Auto-number (bulk) ----
+  // Each photo follows its own category (or the batch default). Groups that already have codes
+  // carry on from their last number. A group with no codes yet asks once which letter to use
+  // (suggesting letters nobody uses). A group with two letters uses the one it uses most.
+  const newGroupPrefix = {}; // placeKey -> letter chosen for a group that has no codes yet
+  function usedPrefixes(){
+    const set = new Set(allStickersAdmin.map(st => codeParts(st.code)).filter(Boolean).map(c => c.prefix));
+    Object.values(newGroupPrefix).forEach(p => set.add(p));
+    return set;
+  }
+  // Letter ideas from the group's English name, e.g. "Animals · 动物" -> AN, AM, AL…
+  function suggestPrefixes(category, subcategory){
+    const used = usedPrefixes();
+    const name = (subcategory || category || '').replace(/[^A-Za-z\s]/g, ' ').trim().toUpperCase();
+    const words = name.split(/\s+/).filter(Boolean);
+    const out = [];
+    const push = p => { if (p && /^[A-Z]{1,3}$/.test(p) && !used.has(p) && !out.includes(p)) out.push(p); };
+    if (words.length) {
+      const w = words[0];
+      if (w.length === 1) push(w);
+      for (let i = 1; i < w.length && out.length < 4; i++) if (w[i] !== w[0]) push(w[0] + w[i]);
+      if (words[1]) push(w[0] + words[1][0]);
+    }
+    for (const a of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') { if (out.length >= 3) break; push(a); }
+    for (const a of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') for (const b of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') { if (out.length >= 3) break; push(a + b); }
+    return out.slice(0, 3);
+  }
+  function bulkItemPlace(it){
     const defCat = document.getElementById('bulkCategory').value.trim();
     const defSub = document.getElementById('bulkSubcategory').value.trim();
-    if (bulkBatch.some(it => !(it.category.trim() || defCat))) { showToast('Pick the default category above first (or a category on each photo)', true); return; }
-    let targets = bulkBatch.filter(it => !it.code.trim());
-    if (!targets.length) {
-      if (!confirm('Every photo already has a code. Number them all again from the next free code?')) return;
-      targets = bulkBatch.slice();
-    }
-    const takenByPrefix = {}; // codes handed out in this batch, so two groups sharing a letter don't clash
+    const cat = it.category.trim() || defCat;
+    const sub = it.category.trim() ? it.subcategory.trim() : (it.subcategory.trim() || defSub);
+    return { category: cat, subcategory: sub || null };
+  }
+  function runBulkAutoNumber(renumberAll){
+    const panel = document.getElementById('bulkNumberPanel');
+    let targets = renumberAll ? bulkBatch.slice() : bulkBatch.filter(it => !it.code.trim());
+    const takenByPrefix = {}; // codes handed out in this batch, so groups sharing a letter don't clash
     bulkBatch.filter(it => !targets.includes(it)).forEach(it => { const c = codeParts(it.code); if (c) (takenByPrefix[c.prefix] = takenByPrefix[c.prefix] || new Set()).add(c.num); });
-    const problems = new Set();
+    const groups = new Map(); // key -> { place, items:[], codes:[], status }
+    let noCategory = 0;
     for (const it of targets) {
-      const cat = it.category.trim() || defCat;
-      const sub = it.category.trim() ? it.subcategory.trim() : (it.subcategory.trim() || defSub);
-      const peek = nextCodeInfo(cat, sub || null);
-      if (peek.empty || peek.choose) { problems.add(placeLabel({ category: cat, subcategory: sub || null }) + (peek.choose ? ' (more than one code letter — pick a sub-category, or choose the letter in the box above)' : ' (no codes yet — type the first one)')); continue; }
-      const taken = takenByPrefix[peek.prefix] || (takenByPrefix[peek.prefix] = new Set());
-      const info = nextCodeInfo(cat, sub || null, taken);
-      it.code = info.code;
-      taken.add(info.next);
+      const place = bulkItemPlace(it);
+      if (!place.category) { noCategory++; continue; }
+      const key = placeKey(place);
+      if (!groups.has(key)) groups.set(key, { place, key, items: [], codes: [] });
+      groups.get(key).items.push(it);
+    }
+    for (const g of groups.values()) {
+      let info = nextCodeInfo(g.place.category, g.place.subcategory);
+      if (info.choose) { chosenPrefix[g.key] = info.choose[0]; info = nextCodeInfo(g.place.category, g.place.subcategory); g.mixed = info.prefixes; }
+      else if (!info.empty && info.prefixes && info.prefixes.length > 1) g.mixed = info.prefixes;
+      let prefix, width = 3;
+      if (info.empty) {
+        prefix = newGroupPrefix[g.key];
+        if (!prefix) { g.needLetter = true; continue; }
+      } else { prefix = info.prefix; width = info.code.length - info.prefix.length; }
+      const taken = takenByPrefix[prefix] || (takenByPrefix[prefix] = new Set());
+      const usedNums = new Set(allStickersAdmin.map(st => codeParts(st.code)).filter(c => c && c.prefix === prefix).map(c => c.num));
+      taken.forEach(n => usedNums.add(n));
+      let n = Math.max(0, ...usedNums);
+      for (const it of g.items) {
+        n++;
+        it.code = prefix + String(n).padStart(width, '0');
+        taken.add(n);
+        g.codes.push(it.code);
+      }
+      g.prefix = prefix;
     }
     renderBulkBatch();
-    if (problems.size) showToast('Couldn\'t number: ' + [...problems].join('; '), true);
-    else showToast('🔢 Codes filled in — check them before uploading');
+    // What the whole batch looks like now, per group (not just the photos numbered this time)
+    const shown = new Map();
+    bulkBatch.forEach(it => {
+      const place = bulkItemPlace(it);
+      if (!place.category) return;
+      const key = placeKey(place);
+      if (!shown.has(key)) shown.set(key, { place, key, items: [] });
+      shown.get(key).items.push(it);
+    });
+    const rows = [...shown.values()].map(g => {
+      const label = escAttr(placeLabel(g.place));
+      const missing = g.items.filter(it => !it.code.trim());
+      const info = nextCodeInfo(g.place.category, g.place.subcategory);
+      if (missing.length && info.empty && !newGroupPrefix[g.key]) {
+        const ideas = suggestPrefixes(g.place.category, g.place.subcategory);
+        return `<div class="np-row" data-key="${escAttr(g.key)}">🆕 <b>${label}</b> has no code letter yet (${missing.length} photo${missing.length === 1 ? '' : 's'}) — which letter?<br>
+          ${ideas.map(p => `<button type="button" class="secondary np-pick" data-p="${p}">${p} → ${p}001</button>`).join('')}
+          <input type="text" class="np-own" maxlength="3" placeholder="own…"><button type="button" class="secondary np-own-btn">Use</button></div>`;
+      }
+      const prefixes = info.prefixes || (info.choose || []);
+      const current = chosenPrefix[g.key] || info.prefix;
+      const mixed = prefixes.length > 1 ? ` <span class="hint" style="margin:0;">(this group uses ${prefixes.join(' and ')} — using ${current}${prefixes.filter(p => p !== current).map(p => ` · <button type="button" class="secondary np-switch" data-key="${escAttr(g.key)}" data-p="${p}">use ${p} instead</button>`).join('')})</span>` : '';
+      const codes = g.items.map(it => it.code.trim()).filter(Boolean);
+      return `<div class="np-row ${missing.length ? '' : 'ok'}">${missing.length ? '⚠️' : '✅'} <b>${label}</b> → ${codes.map(escAttr).join(', ') || '—'}${missing.length ? ` (${missing.length} without a code)` : ''}${mixed}</div>`;
+    });
+    if (noCategory) rows.push(`<div class="np-row">⚠️ ${noCategory} photo${noCategory === 1 ? ' has' : 's have'} no category yet — pick one on the photo (or the default above), then press 🔢 Auto-number again.</div>`);
+    panel.innerHTML = rows.join('');
+    panel.querySelectorAll('.np-pick').forEach(b => b.addEventListener('click', () => { newGroupPrefix[b.closest('.np-row').dataset.key] = b.dataset.p; runBulkAutoNumber(false); }));
+    panel.querySelectorAll('.np-own-btn').forEach(b => b.addEventListener('click', () => {
+      const row = b.closest('.np-row');
+      const p = row.querySelector('.np-own').value.trim().toUpperCase();
+      if (!/^[A-Z]{1,3}$/.test(p)) { showToast('Type 1–3 letters, e.g. AN', true); return; }
+      if (usedPrefixes().has(p) && !confirm(`${p} is already used by other stickers — use it anyway? (numbers carry on after the last ${p} code)`)) return;
+      newGroupPrefix[row.dataset.key] = p;
+      runBulkAutoNumber(false);
+    }));
+    panel.querySelectorAll('.np-switch').forEach(b => b.addEventListener('click', () => {
+      chosenPrefix[b.dataset.key] = b.dataset.p;
+      bulkBatch.filter(it => placeKey(bulkItemPlace(it)) === b.dataset.key).forEach(it => { it.code = ''; });
+      runBulkAutoNumber(false);
+    }));
+    const filled = [...groups.values()].reduce((a, g) => a + g.codes.length, 0);
+    if (filled) showToast(`🔢 ${filled} code${filled === 1 ? '' : 's'} filled in — check them before uploading`);
+    else if ([...groups.values()].some(g => g.needLetter)) showToast('Pick a letter for the new group below 👇');
+    else if (!targets.length) showToast('Every photo already has a code');
+  }
+  document.getElementById('bulkAutoNumberBtn').addEventListener('click', () => {
+    if (!bulkBatch.some(it => !it.code.trim())) {
+      if (!confirm('Every photo already has a code. Number them all again from the next free code?')) return;
+      runBulkAutoNumber(true);
+    } else runBulkAutoNumber(false);
   });
+
+  // ---- 🔤 Code letters: which letter belongs to which category ----
+  function renderCodeLetters(){
+    const body = document.getElementById('codeLettersBody');
+    if (!body) return;
+    const byPrefix = new Map(); // prefix -> Map(placeKey -> { place, codes:[] })
+    let noCode = 0;
+    allStickersAdmin.forEach(st => {
+      const c = codeParts(st.code);
+      if (!c) { noCode++; return; }
+      const place = { category: st.category, subcategory: st.subcategory || null };
+      const k = placeKey(place);
+      if (!byPrefix.has(c.prefix)) byPrefix.set(c.prefix, new Map());
+      const m = byPrefix.get(c.prefix);
+      if (!m.has(k)) m.set(k, { place, codes: [] });
+      m.get(k).codes.push(st);
+    });
+    const prefixes = [...byPrefix.keys()].sort((a, b) => a.length - b.length || a.localeCompare(b));
+    const rowsHtml = prefixes.map(p => {
+      const groups = [...byPrefix.get(p).values()].sort((a, b) => b.codes.length - a.codes.length);
+      const main = groups[0];
+      const all = groups.flatMap(g => g.codes);
+      const last = all.slice().sort(naturalCode).pop();
+      const strays = groups.slice(1).map(g => `+ ${g.codes.length} in ${escAttr(placeLabel(g.place))} (${g.codes.slice(0, 3).map(st => escAttr(st.code)).join(', ')}${g.codes.length > 3 ? '…' : ''})`);
+      return `<tr><td class="lt"><b>${p}</b></td><td>${escAttr(placeLabel(main.place))}${strays.length ? `<br><span class="warn">⚠️ ${strays.join('<br>⚠️ ')}</span>` : ''}</td><td class="num">${all.length}</td><td class="num"><b>${escAttr(last ? last.code : '')}</b></td></tr>`;
+    }).join('');
+    const freeSingle = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].filter(a => !byPrefix.has(a));
+    const freeLine = freeSingle.length
+      ? `✅ <b>Single letters still free:</b> ${freeSingle.join(' ')}`
+      : `✅ All single letters A–Z are used — give new groups two letters (e.g. <b>AN</b> for Animals). 🔢 Auto-number suggests free ones for you.`;
+    // A name used both as its own category and as a sub-category somewhere (e.g. "Animals").
+    const bare = t => String(t || '').trim().toLowerCase();
+    const dupes = categoriesData.filter(c => subcategoriesData.some(sc => bare(sc.name) === bare(c.name))).map(c => {
+      const sc = subcategoriesData.find(x => bare(x.name) === bare(c.name));
+      const n = allStickersAdmin.filter(st => st.category === c.name).length;
+      return `⚠️ <b>${escAttr(c.name)}</b> is its own category (${n} sticker${n === 1 ? '' : 's'}) AND a sub-category under <b>${escAttr(sc.category)}</b> — you probably only need one.`;
+    });
+    body.innerHTML = `
+      <p class="hint" style="margin:4px 0 0;">Every code's letter and the category it belongs to (hidden stickers included). The last code is the highest number used.</p>
+      ${prefixes.length ? `<table class="letters-table"><tr><th>Letter</th><th>Category › Sub-category</th><th style="text-align:right">Stickers</th><th style="text-align:right">Last code</th></tr>${rowsHtml}</table>` : '<p class="hint">No codes yet.</p>'}
+      <div class="letters-free">${freeLine}${noCode ? `<br>📝 ${noCode} sticker${noCode === 1 ? ' has' : 's have'} no code.` : ''}</div>
+      ${dupes.length ? `<div class="letters-alert">${dupes.join('<br>')}</div>` : ''}`;
+  }
 
   // ---- 🙈 Hidden stickers: uploaded but not shown to customers yet ----
   // release_at empty = shown as normal; a future time = hidden until then (HIDDEN_UNTIL = until opened by hand).
@@ -1500,6 +1685,7 @@
     bulkUploadBtn.style.display = bulkBatch.length ? '' : 'none';
     bulkUploadBtn.textContent = `Upload all (${bulkBatch.length})`;
     document.getElementById('bulkAutoNumberBtn').style.display = bulkBatch.length ? '' : 'none';
+    if (!bulkBatch.length) { const np = document.getElementById('bulkNumberPanel'); if (np) np.innerHTML = ''; }
   }
 
   bulkFilesInput.addEventListener('change', () => {
@@ -1748,6 +1934,7 @@
     }
     allStickersAdmin = data || [];
     updateNoQtyCount();
+    renderCodeLetters();
     if (allStickersAdmin.length === 0) {
       listMsg.textContent = 'No stickers uploaded yet.';
       return;
@@ -2604,6 +2791,7 @@
     const container = document.getElementById('subcategoriesList');
     if (error) { container.textContent = error.message; return; }
     subcategoriesData = data || [];
+    renderCodeLetters();
     populateSubcategoryDatalist();
     populateSubcatCategoryPicker();
     renderSubcategoriesForSelectedCategory();
@@ -2923,10 +3111,14 @@
   // Tumbler styles — the same list customers see, managed in the 🥤 Tumblers card
   // (saved in the "settings" table). The orders dropdown is built from it.
   const DEFAULT_TUMBLERS = [
-    { id: 't1', label: '01 · 300ml Acrylic', detail: 'Leak-Proof', price: 55, status: 'available' },
+    { id: 't5', label: '01 · 470ml Acrylic', detail: '', price: 65, status: 'available' },
     { id: 't2', label: '02 · 700ml Acrylic', detail: '', price: 70, status: 'available' },
     { id: 't3', label: '03 · 600ml Acrylic', detail: 'With Handle', price: 75, status: 'available', glitter_price: 10 },
-    { id: 't4', label: '04 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85, status: 'available' },
+    { id: 't6', label: '04 · 500ml Cap Bottle Acrylic', detail: 'Leak-Proof', price: 79, status: 'available' },
+    { id: 't7', label: '05 · 700ml Boba Acrylic', detail: 'Leak-Proof', price: 83, status: 'available' },
+    { id: 't4', label: '06 · 600ml Stainless Steel', detail: 'Leak-Proof', price: 85, status: 'available' },
+    { id: 't8', label: '07 · 600ml Stainless Steel', detail: 'With Handle · Leak-Proof', price: 95, status: 'available' },
+    { id: 't9', label: '08 · 1200ml Glow in the Dark Acrylic', detail: '', price: 109, status: 'available', no_glitter: true },
   ];
   let tumblerListAdmin = DEFAULT_TUMBLERS.map(t => ({ ...t }));
   const tumblerOrderText = t => `${t.label} (RM${t.price})`;
@@ -3983,11 +4175,12 @@
   function renderTumblerRows(){
     const wrap = document.getElementById('tumblerRows');
     wrap.innerHTML = tumblerListAdmin.map((t, i) => `
-      <div class="tumbler-row is-${t.status}" data-index="${i}">
+      <div class="tumbler-row is-${t.status} ${t.no_glitter ? 'no-glitter' : ''}" data-index="${i}">
         <input type="text" class="t-label" value="${(t.label || '').replace(/"/g, '&quot;')}" placeholder="e.g. 05 · 500ml Glass">
         <input type="text" class="t-detail" value="${(t.detail || '').replace(/"/g, '&quot;')}" placeholder="Detail (optional)">
         <input type="number" class="t-price" value="${t.price ?? ''}" min="0" step="1" placeholder="RM">
         <label class="t-glitter-wrap" title="Extra charge for the Full Glitter pattern on this style">✨ Glitter +RM <input type="number" class="t-glitter" value="${glitterPriceOf(t)}" min="0" step="1"></label>
+        <label class="t-noglitter-wrap" title="Customers can't pick Full Glitter for this style"><input type="checkbox" class="t-noglitter" ${t.no_glitter ? 'checked' : ''}> No Full Glitter</label>
         <select class="t-status">
           <option value="available" ${t.status === 'available' ? 'selected' : ''}>In Stock</option>
           <option value="preorder" ${t.status === 'preorder' ? 'selected' : ''}>Preorder</option>
@@ -4006,7 +4199,8 @@
       row.querySelector('.t-detail').addEventListener('input', e => { t.detail = e.target.value; });
       row.querySelector('.t-price').addEventListener('input', e => { t.price = e.target.value === '' ? '' : Number(e.target.value); });
       row.querySelector('.t-glitter').addEventListener('input', e => { t.glitter_price = e.target.value === '' ? '' : Number(e.target.value); });
-      row.querySelector('.t-status').addEventListener('change', e => { t.status = e.target.value; row.className = `tumbler-row is-${t.status}`; });
+      row.querySelector('.t-status').addEventListener('change', e => { t.status = e.target.value; row.classList.remove('is-available', 'is-preorder', 'is-sold_out'); row.classList.add(`is-${t.status}`); });
+      row.querySelector('.t-noglitter').addEventListener('change', e => { t.no_glitter = e.target.checked; row.classList.toggle('no-glitter', t.no_glitter); });
       row.querySelector('.t-up').addEventListener('click', () => { [tumblerListAdmin[i - 1], tumblerListAdmin[i]] = [tumblerListAdmin[i], tumblerListAdmin[i - 1]]; renderTumblerRows(); });
       row.querySelector('.t-down').addEventListener('click', () => { [tumblerListAdmin[i + 1], tumblerListAdmin[i]] = [tumblerListAdmin[i], tumblerListAdmin[i + 1]]; renderTumblerRows(); });
       row.querySelector('.t-remove').addEventListener('click', () => {
@@ -4032,6 +4226,18 @@
     msg.textContent = row && row.updated_at ? `Last saved ${new Date(row.updated_at).toLocaleString()}` : 'Showing the current styles — press Save tumblers once to start managing them here.';
     renderTumblerRows();
   }
+  // One tap fills in the new lineup (from the new price photo). Keeps each style's In Stock /
+  // Sold Out setting where the style already existed. Not saved until "Save tumblers".
+  document.getElementById('useLineupBtn').addEventListener('click', () => {
+    const removed = tumblerListAdmin.filter(t => !DEFAULT_TUMBLERS.some(d => d.id === t.id)).map(t => t.label).filter(Boolean);
+    if (!confirm('Fill in the new 8 bottles below?' + (removed.length ? `\n\nThis takes off: ${removed.join(', ')} (past orders keep their details).` : '') + '\n\nNothing changes for customers until you press Save tumblers.')) return;
+    tumblerListAdmin = DEFAULT_TUMBLERS.map(d => {
+      const old = tumblerListAdmin.find(t => t.id === d.id);
+      return { ...d, status: old ? old.status : d.status };
+    });
+    renderTumblerRows();
+    showToast('📥 New lineup filled in — check it, then press Save tumblers');
+  });
   document.getElementById('addTumblerBtn').addEventListener('click', () => {
     tumblerListAdmin.push({ id: 't' + Date.now().toString(36), label: '', detail: '', price: '', status: 'available' });
     renderTumblerRows();
@@ -4046,7 +4252,7 @@
     if (bad) { showToast('Every style needs a name and a price (a number)', true); return; }
     const badGlitter = list.find(t => t.glitter_price !== undefined && t.glitter_price !== '' && (!Number.isFinite(Number(t.glitter_price)) || Number(t.glitter_price) < 0));
     if (badGlitter) { showToast('Glitter +RM must be a number (or leave it empty for +RM5)', true); return; }
-    const clean = list.map(t => ({ id: t.id, label: t.label, detail: t.detail, price: Number(t.price), status: t.status || 'available', glitter_price: glitterPriceOf({ ...t, glitter_price: t.glitter_price === '' ? GLITTER_DEFAULT_PRICE : t.glitter_price }) }));
+    const clean = list.map(t => ({ id: t.id, label: t.label, detail: t.detail, price: Number(t.price), status: t.status || 'available', glitter_price: glitterPriceOf({ ...t, glitter_price: t.glitter_price === '' ? GLITTER_DEFAULT_PRICE : t.glitter_price }), ...(t.no_glitter ? { no_glitter: true } : {}) }));
     const { error } = await client.from('settings').upsert({ key: 'tumblers', value: { list: clean }, updated_at: new Date().toISOString() });
     if (error) { showToast(error.message, true); return; }
     tumblerListAdmin = clean;
