@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-11-02-2">
+<meta name="sbe-build" content="2026-11-02-4">
 <title>Sips by Evve — Sticker Admin</title>
 <style>
   :root{
@@ -381,6 +381,9 @@
   .pop-add{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
   .pop-add input{ width:auto; flex:1; min-width:120px; margin:0; }
   .pop-add button{ margin:0; }
+  .o-no{ font-family:ui-monospace,Menlo,monospace; font-weight:900; background:#3a2e22; color:#fff; border-radius:8px; padding:3px 9px; letter-spacing:1px; font-size:0.85rem; }
+  .o-no.dupe{ background:#b23b3b; }
+  .o-top{ flex:1 1 100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .o-group{ flex:1 1 100%; font-size:0.8rem; font-weight:700; color:#6a3fb0; background:#f1eafb; border-radius:8px; padding:4px 8px; }
   .addon-check-label{ display:inline-flex; align-items:center; gap:4px; font-size:0.82rem; color:var(--ink); }
   .addon-legacy-note{ font-size:0.78rem; color:var(--muted); font-style:italic; }
@@ -744,7 +747,7 @@
       <h2 style="margin-top:0;font-size:1.1rem;">📦 Orders</h2>
       <p class="hint">Orders sent from the catalogue show up here automatically. Check them against your WhatsApp chats, then press Mark Paid.</p>
       <div class="orders-toolbar">
-        <input type="search" id="ordersSearch" placeholder="Search name, TikTok, sticker…">
+        <input type="search" id="ordersSearch" placeholder="Search order no (1102K05), name, TikTok, sticker…">
         <select id="ordersPeriod">
           <option value="all">All dates</option>
           <option value="today">Today</option>
@@ -1531,6 +1534,8 @@
     await renderSubcategories(); // needs categoriesData for the category picker
     await loadWatermarkMap(); // which stickers got a watermark added later (so rows show 💧)
     await refreshList(); // needs to finish (populates allStickersAdmin) before renderOrders builds its sticker dropdown
+    await markExistingAsWatermarkedOnce();
+    if (allStickersAdmin.length) renderStickerCategoryGrid();
     renderCatalogueSlots();
     await renderAddons(); // needs to finish (populates allAddonsAdmin) before renderOrders builds its add-ons checkboxes
     await loadTumblersAdmin(); // the orders tumbler dropdown + promo tumbler picker use this list
@@ -1621,17 +1626,24 @@
     ctx.restore();
 
     // Stickers with a see-through background stay see-through (JPEG would turn it black).
+    let out;
     if (canvasHasTransparency(ctx, canvas.width, canvas.height)) {
       const webp = await canvasToBlob(canvas, 'image/webp', 0.9);
-      return (webp && webp.type === 'image/webp') ? webp : canvasToBlob(canvas, 'image/png');
+      out = (webp && webp.type === 'image/webp') ? webp : await canvasToBlob(canvas, 'image/png');
+    } else {
+      out = await canvasToBlob(canvas, 'image/jpeg', 0.9);
     }
-    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    freeCanvas(canvas); img.src = '';
+    return out;
   }
 
   // ---- shrink + re-compress before upload (invisible to you — same photo, smaller file) ----
   // Caps the longer side (stickers 1000px, covers 800px, catalogue photos 1400px — still sharp on
   // phones) and re-encodes. Photos with a see-through background keep it (WebP/PNG); everything
   // else becomes a JPEG at ~80% quality. If the result isn't smaller, the original is used.
+  // Safari keeps a canvas's memory until it's shrunk, so every canvas is emptied once its
+  // picture has been saved (this is what kept making Safari reload the page on big batches).
+  function freeCanvas(c){ try { c.width = 0; c.height = 0; } catch (e) {} }
   function canvasToBlob(canvas, type, quality){
     return new Promise(resolve => canvas.toBlob(resolve, type, quality));
   }
@@ -1661,6 +1673,7 @@
       } else {
         out = await canvasToBlob(canvas, 'image/jpeg', quality);
       }
+      freeCanvas(canvas); img.src = '';
       return (out && out.size < sourceBlob.size) ? out : sourceBlob;
     } catch (e) {
       console.error('Compression skipped:', e.message || e);
@@ -1832,6 +1845,7 @@
 
     uploadMsg.textContent = 'Sticker added!';
     uploadMsg.className = 'msg ok';
+    const singleWm = watermarkToggle.checked;
     clearCurrentFile();
     watermarkToggle.checked = false;
     document.getElementById('stickerCode').value = '';
@@ -1844,6 +1858,7 @@
     mountAlsoInPicker(document.getElementById('stickerAlsoIn'), () => singleAlsoIn, v => { singleAlsoIn = v; }, () => singlePrimaryPlace());
     uploadBtn.disabled = false;
     await refreshList();
+    if (singleWm) await rememberUploadWatermarks([path]);
     renderSingleGroupHelper();
   });
 
@@ -1910,6 +1925,7 @@
       c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
       if (src.close) src.close();
       const blob = await canvasToBlob(c, 'image/webp', 0.7) || await canvasToBlob(c, 'image/png');
+      freeCanvas(c);
       return blob ? URL.createObjectURL(blob) : '';
     } catch (e) { return ''; }
   }
@@ -2163,6 +2179,7 @@
       siblingMaxByGroup.set(key, next);
       return next;
     }
+    const wmPaths = [];
     const fail = (item, reason) => { failCount++; failed.push({ code: item.code.trim(), reason }); markBulkItemResult(item.id, false, reason); };
 
     for (let i = 0; i < items.length; i++) {
@@ -2199,6 +2216,7 @@
             : (/also_in/i.test(insertError.message || '') ? 'Run supabase-setup-also-show-in.sql in Supabase first' : insertError.message));
         } else {
           markBulkItemResult(item.id, true);
+          if (watermark) wmPaths.push(path);
           bulkDoneIds.add(item.id);
           saveBulkDraft(); // the saved draft now only holds what's still to upload
         }
@@ -2235,7 +2253,8 @@
     bulkDoneIds = new Set();
     if (bulkBatch.length) saveBulkDraft(); else clearBulkDraft();
     bulkUploadBtn.disabled = false;
-    refreshList();
+    await refreshList();
+    await rememberUploadWatermarks(wmPaths);
   });
 
   let allStickersAdmin = [];
@@ -2478,7 +2497,7 @@
           <button type="button" class="reorder-btn move-up" title="Move up">▲</button>
           <button type="button" class="reorder-btn move-down" title="Move down">▼</button>
         </div>
-        <img ${thumbOrFull(s.image_path)} alt="${s.name}" onerror="handleImgError(this)">
+        <img ${thumbOrFull(s.image_path)} alt="${s.name}" loading="lazy" onerror="handleImgError(this)">
         <div class="info">
           <div class="n">${s.name}</div>
           <div class="c">${s.category}</div>
@@ -2717,8 +2736,8 @@
       renderBatchMove(categoryName, subcategoryName, backFn);
     });
     document.getElementById('bmWmOffBtn').addEventListener('click', async () => {
-      const list = selected().map(id => allStickersAdmin.find(x => x.id === id)).filter(st => st && isWatermarked(st.id));
-      if (!list.length) { showToast('None of the ticked ones has a watermark added here', true); return; }
+      const list = selected().map(id => allStickersAdmin.find(x => x.id === id)).filter(st => st && canRemoveWatermark(st.id));
+      if (!list.length) { showToast('None of the ticked ones has a watermark that was added here later (watermarks from uploading can only be removed with 📷 Change photo)', true); return; }
       if (!confirm(`Remove the watermark from ${list.length} sticker${list.length === 1 ? '' : 's'}?`)) return;
       await removeWatermarks(list);
       renderBatchMove(categoryName, subcategoryName, backFn);
@@ -2759,16 +2778,36 @@
   // so "Remove watermark" can switch back.
   // ==================================================================
   let watermarkMap = {};
+  // Values: the original photo path (watermark added later — can be removed), or 'upload'
+  // (watermark printed when it was uploaded — there's no clean copy to go back to).
   const isWatermarked = (id) => !!watermarkMap[id];
+  const canRemoveWatermark = (id) => typeof watermarkMap[id] === 'string' && watermarkMap[id] !== 'upload';
+  let watermarkFlags = {};
   async function loadWatermarkMap(){
     try {
       const { data } = await client.from('settings').select('*');
       const row = (data || []).find(r => r.key === 'watermarks');
       watermarkMap = (row && row.value && typeof row.value.map === 'object' && row.value.map) || {};
-    } catch (e) { watermarkMap = {}; }
+      watermarkFlags = (row && row.value && row.value.flags) || {};
+    } catch (e) { watermarkMap = {}; watermarkFlags = {}; }
+  }
+  // One time (Nov 2026, per Evvyne): every sticker that already existed has a watermark.
+  async function markExistingAsWatermarkedOnce(){
+    if (watermarkFlags.all_existing_marked) return;
+    let n = 0;
+    allStickersAdmin.forEach(st => { if (!watermarkMap[st.id]) { watermarkMap[st.id] = 'upload'; n++; } });
+    watermarkFlags.all_existing_marked = new Date().toISOString();
+    if (await saveWatermarkMap()) { if (n) showToast(`☑ ${n} sticker${n === 1 ? '' : 's'} marked as already having a watermark`); }
+  }
+  // After an upload with the watermark ticked: remember those stickers (found by their photo path).
+  async function rememberUploadWatermarks(paths){
+    if (!paths || !paths.length) return;
+    const set = new Set(paths);
+    allStickersAdmin.forEach(st => { if (set.has(st.image_path)) watermarkMap[st.id] = 'upload'; });
+    await saveWatermarkMap();
   }
   async function saveWatermarkMap(){
-    const { error } = await client.from('settings').upsert({ key: 'watermarks', value: { map: watermarkMap }, updated_at: new Date().toISOString() });
+    const { error } = await client.from('settings').upsert({ key: 'watermarks', value: { map: watermarkMap, flags: watermarkFlags }, updated_at: new Date().toISOString() });
     if (error) showToast(error.message, true);
     return !error;
   }
@@ -2810,7 +2849,7 @@
     let ok = 0;
     for (const st of list) {
       const original = watermarkMap[st.id];
-      if (!original) continue;
+      if (!canRemoveWatermark(st.id)) continue;
       try { await setStickerPhoto(st, original); delete watermarkMap[st.id]; ok++; } catch (e) { showToast(e.message || 'Could not switch back', true); }
     }
     await saveWatermarkMap();
@@ -2841,7 +2880,8 @@
         if (up.error) throw up.error;
         await uploadThumb(path, blob, THUMB_DIM.sticker);
         await setStickerPhoto(st, path);
-        if (watermarkMap[st.id]) { delete watermarkMap[st.id]; await saveWatermarkMap(); }
+        if (addWm) watermarkMap[st.id] = 'upload'; else delete watermarkMap[st.id];
+        await saveWatermarkMap();
         showToast(`📷 New photo saved for ${st.code || st.name}${addWm ? ' (with watermark)' : ''}`);
       } catch (e) { showToast((e && e.message) || 'Upload failed', true); }
       if (btn) { btn.disabled = false; btn.textContent = '📷 Change photo'; }
@@ -2884,6 +2924,10 @@
       if (photoBtn) photoBtn.addEventListener('click', () => changeStickerPhoto(sticker, row));
       const wmBtn = row.querySelector('.wm-btn');
       if (wmBtn) wmBtn.addEventListener('click', async () => {
+        if (isWatermarked(sticker.id) && !canRemoveWatermark(sticker.id)) {
+          alert(`${sticker.code || sticker.name} got its watermark when it was uploaded, so there's no photo without it to go back to.\n\nTo remove it: tap 📷 Change photo and pick the original photo (choose "without watermark").`);
+          return;
+        }
         if (isWatermarked(sticker.id)) {
           if (!confirm(`Remove the watermark from ${sticker.code || sticker.name}? (Goes back to the photo you uploaded.)`)) return;
           wmBtn.disabled = true; wmBtn.textContent = '…';
@@ -3210,7 +3254,7 @@
             </span>
           </div>
           ${coverUrl
-            ? `<img class="slot-preview" id="catPreview-${idx}" src="${coverUrl}" alt="${cat.name}">`
+            ? `<img class="slot-preview" id="catPreview-${idx}" ${thumbOrFull(cat.cover_image_path)} onerror="handleImgError(this)" loading="lazy" alt="${cat.name}">`
             : `<div class="slot-preview no-cover-box" id="catPreview-${idx}">🎀 No cover photo yet</div>`}
           <input type="file" id="catFile-${idx}" accept="image/*">
           <div class="paste-zone" tabindex="0" id="catPaste-${idx}">📋 or click here then paste an image (Ctrl+V / Cmd+V)</div>
@@ -3438,7 +3482,7 @@
             <button type="button" class="secondary subcat-move-cancel">Cancel</button>
           </div>
           ${coverUrl
-            ? `<img class="slot-preview" id="subcatPreview-${idx}" src="${coverUrl}" alt="${sc.name}">`
+            ? `<img class="slot-preview" id="subcatPreview-${idx}" ${thumbOrFull(sc.cover_image_path)} onerror="handleImgError(this)" loading="lazy" alt="${sc.name}">`
             : `<div class="slot-preview no-cover-box" id="subcatPreview-${idx}">🎀 No cover photo yet</div>`}
           <input type="file" id="subcatFile-${idx}" accept="image/*">
           <div class="paste-zone" tabindex="0" id="subcatPaste-${idx}">📋 or click here then paste an image (Ctrl+V / Cmd+V)</div>
@@ -4128,12 +4172,23 @@
     return warnings.length ? warnings.join(' ') : null;
   }
 
+  let orderNoDupes = new Set();
   async function renderOrders(){
     const el = document.getElementById('ordersList');
     const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
     if (error) { el.textContent = error.message; return; }
     allOrdersAdmin = data || [];
     ordersLoadedOnce = true;
+    // The same order number on two different orders (only possible with the stand-in numbers).
+    orderNoDupes = new Set();
+    const firstKey = {};
+    allOrdersAdmin.forEach(o => {
+      if (!o.order_no) return;
+      const g = orderGroup(o);
+      const key = g ? 'g' + g.tag : 'o' + o.id;
+      if (firstKey[o.order_no] && firstKey[o.order_no] !== key) orderNoDupes.add(o.order_no);
+      else firstKey[o.order_no] = key;
+    });
     syncAutoPopular();
     emptyOrderIds = allOrdersAdmin.filter(isEmptyOrder).map(o => o.id);
     updateClearEmptyButton();
@@ -4144,8 +4199,8 @@
       const isPaid = o.status === 'paid';
       return `
       <div class="addon-row order-row" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
+        <div class="o-top">${o.order_no ? `<span class="o-no ${orderNoDupes.has(o.order_no) ? 'dupe' : ''}" title="${orderNoDupes.has(o.order_no) ? 'Two different orders have this number — check them' : 'Order number — customers write this when they pay'}">${escAttr(o.order_no)}</span>` : ''}<span class="o-date">📅 ${fmtOrderDate(o.created_at)}</span></div>
         ${orderGroupBadge(o)}
-        <span class="o-date">📅 ${fmtOrderDate(o.created_at)}</span>
         <input type="text" class="o-name" value="${o.customer_name || ''}" placeholder="Name" disabled style="flex:1;min-width:90px;">
         <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" disabled style="flex:1;min-width:90px;">
         <select class="o-tumbler" disabled style="flex:1;min-width:130px;">${tumblerOptionsHtml(o.tumbler)}</select>
@@ -4335,7 +4390,7 @@
     if (status === 'paid' && o.status !== 'paid') return false;
     if (status === 'pending' && o.status === 'paid') return false;
     if (q) {
-      const hay = [o.customer_name, o.tiktok_handle, o.sticker_code, o.tumbler, o.pattern, o.addons].join(' ').toLowerCase();
+      const hay = [o.order_no, o.customer_name, o.tiktok_handle, o.sticker_code, o.tumbler, o.pattern, o.addons].join(' ').toLowerCase();
       if (!q.split(/\s+/).every(w => hay.includes(w))) return false;
     }
     return true;
@@ -4361,10 +4416,10 @@
   document.getElementById('ordersCsvBtn').addEventListener('click', () => {
     const list = allOrdersAdmin.filter(o => !isEmptyOrder(o) && orderMatches(o));
     if (!list.length) { showToast('No orders to export with these filters.', true); return; }
-    const header = ['Date', 'Name', 'TikTok', 'Tumbler', 'Sticker', 'Pattern', 'Add-ons', 'Delivery', 'Total (RM)', 'Status'];
+    const header = ['Order no', 'Date', 'Name', 'TikTok', 'Tumbler', 'Sticker', 'Pattern', 'Add-ons', 'Delivery', 'Total (RM)', 'Status'];
     const rows = list.map(o => {
       const total = orderDataTotal(o);
-      return [fmtOrderDate(o.created_at), o.customer_name, o.tiktok_handle, o.tumbler, o.sticker_code, o.pattern, o.addons, o.delivery,
+      return [o.order_no || '', fmtOrderDate(o.created_at), o.customer_name, o.tiktok_handle, o.tumbler, o.sticker_code, o.pattern, o.addons, o.delivery,
         total === null ? '' : total, o.status === 'paid' ? 'Paid' : 'Unpaid'].map(csvEscape).join(',');
     });
     // The BOM at the start makes Excel show Chinese / emoji correctly.

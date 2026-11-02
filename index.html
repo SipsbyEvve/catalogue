@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-11-02-1">
+<meta name="sbe-build" content="2026-11-02-5">
 <title>Sips by Evve — Custom Snowglobe Tumblers Catalogue</title>
 <meta property="og:title" content="Sips by Evve — Custom Snowglobe Tumblers Catalogue">
 <meta property="og:description" content="Pick your tumbler, sticker &amp; pattern, then send your order on WhatsApp 🎀 Free shipping West Malaysia.">
@@ -554,6 +554,13 @@
   }
   .send-warning ul{ margin:6px 0; padding-left:20px; }
   .cta-row .btn-whatsapp.incomplete{ background:#a9bfb1; box-shadow:none; }
+  .order-no-line{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin:0 0 8px; padding:8px 10px; background:#e8f9ee; border:1.5px dashed var(--wa-dark); border-radius:12px; font-size:0.84rem; }
+  .order-no-line b{ font-family:ui-monospace,Menlo,monospace; font-size:1.05rem; letter-spacing:1px; color:#1e5c3a; }
+  .order-no-big{ border:2px dashed var(--wa-dark); background:#e8f9ee; border-radius:16px; padding:12px 14px; margin-top:12px; text-align:center; }
+  .order-no-big small{ display:block; color:#2f7a4f; font-weight:800; font-size:0.78rem; }
+  .order-no-big .num{ font-size:1.7rem; font-weight:900; letter-spacing:2px; margin:4px 0; color:#1e5c3a; font-family:ui-monospace,Menlo,monospace; }
+  .order-no-big button{ border:1.5px solid var(--wa-dark); background:#fff; color:#1e7a45; border-radius:999px; padding:6px 14px; font-weight:800; font-size:0.82rem; font-family:inherit; cursor:pointer; }
+  .order-no-big p{ margin:8px 0 0; font-size:0.8rem; }
   .send-backup{
     margin-top:14px; background:#fff; border:2px dashed var(--wa); border-radius:14px; padding:14px 16px;
     font-size:0.88rem; color:var(--ink);
@@ -869,6 +876,7 @@
 
     <div class="order-summary" id="orderSummary">
       <h3 id="orderSummaryTitle">📝 My order</h3>
+      <div class="order-no-line" id="orderNoLine" style="display:none;"><span>Order no · 订单号</span><b id="orderNoText"></b></div>
       <div id="bottlesBefore"></div>
       <div id="curBottle">
       <div class="bottle-head" id="bottle1Lbl" style="display:none;"></div>
@@ -919,6 +927,12 @@
       </a>
     </div>
     <p class="note" style="margin-top:10px;">This opens WhatsApp with your order already filled in — just press send! 💛</p>
+    <div class="order-no-big" id="orderNoBig" style="display:none;">
+      <small>YOUR ORDER NUMBER · 你的订单号</small>
+      <div class="num" id="orderNoBigText"></div>
+      <button type="button" id="copyOrderNoBtn">📋 Copy · 复制</button>
+      <p>When you pay, write this in the <b>reference / 备注</b> so we can match your payment 💛<br>转账时请把订单号写在备注里</p>
+    </div>
     <div class="send-backup" id="sendBackup" style="display:none;">
       <div class="sb-title">WhatsApp didn't open? · WhatsApp 没打开？</div>
       <p>Copy your order, then paste it to us on WhatsApp <b>@evvyne</b> 💛<br>复制订单，再贴到 WhatsApp 发给我们就可以了。</p>
@@ -1435,9 +1449,9 @@
     const list = orderBottles();
     let lines;
     if (list.length === 1) {
-      lines = ["Hi! I'd like to order 🐳", '', ...withBottle(list[0], bottleMessageLines)];
+      lines = ["Hi! I'd like to order 🐳", ...(orderNo ? [`Order no: ${orderNo}`] : []), '', ...withBottle(list[0], bottleMessageLines)];
     } else {
-      lines = [`Hi! I'd like to order 🐳 (${list.length} tumblers)`];
+      lines = [`Hi! I'd like to order 🐳 (${list.length} tumblers)`, ...(orderNo ? [`Order no: ${orderNo}`] : [])];
       list.forEach((b, i) => {
         const part = withBottle(b, bottleMessageLines);
         while (part.length && part[part.length - 1] === '') part.pop();
@@ -2073,9 +2087,42 @@
   // 2) When it does send, the order is also logged into the orders table so it shows up
   //    in admin as "pending" — Evvyne reviews it and marks it Paid (which is what deducts
   //    stock). Logging never blocks or delays opening WhatsApp; a failure is console-only.
+  // ---- 🔢 Order number, e.g. 1102K05 (date in Malaysia + K + that day's running number) ----
+  // Supabase hands out the next number (function next_order_no — see supabase-setup-order-number.sql),
+  // so two customers never get the same one. It's asked for once the order is filled in (so it's
+  // ready the moment they tap Send) and kept for this visit, so sending again (or fixing the order)
+  // keeps the same number. If Supabase can't be reached, a stand-in like 1102Z7Q is used.
+  let orderNo = null, orderNoBusy = false;
+  try { const v = JSON.parse(sessionStorage.getItem('sbe_order_no') || 'null'); if (v && v.no && Date.now() - v.t < 12 * 3600e3) orderNo = v.no; } catch (e) {}
+  function keepOrderNo(no){ orderNo = no; try { sessionStorage.setItem('sbe_order_no', JSON.stringify({ no, t: Date.now() })); } catch (e) {} }
+  function myDateCode(){
+    const d = new Date(Date.now() + 8 * 3600e3); // Malaysia time
+    return String(d.getUTCMonth() + 1).padStart(2, '0') + String(d.getUTCDate()).padStart(2, '0');
+  }
+  function standInOrderNo(){
+    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let r = ''; for (let i = 0; i < 3; i++) r += A[Math.floor(Math.random() * A.length)];
+    return myDateCode() + 'Z' + r;
+  }
+  async function reserveOrderNo(){
+    if (orderNo || orderNoBusy || !client || typeof client.rpc !== 'function') return;
+    orderNoBusy = true;
+    try {
+      const { data, error } = await client.rpc('next_order_no');
+      if (!error && typeof data === 'string' && /^[0-9A-Z]{5,12}$/.test(data)) { keepOrderNo(data); updateOrderSummary(); }
+      else if (error) console.warn('order number:', error.message || error);
+    } catch (e) { console.warn('order number:', e && e.message); }
+    orderNoBusy = false;
+  }
+  function showOrderNo(){
+    const line = document.getElementById('orderNoLine');
+    if (line) { line.style.display = orderNo ? '' : 'none'; document.getElementById('orderNoText').textContent = orderNo || ''; }
+  }
   let sendAttempted = false; // becomes true after the first tap on Send, so the missing list stays visible
   function refreshSendState(){
     const missing = missingOrderBits();
+    if (!missing.length) reserveOrderNo();
+    showOrderNo();
     const btn = document.getElementById('whatsappOrderBtn');
     if (btn) {
       btn.classList.toggle('incomplete', missing.length > 0); // greyed look only — still tappable, to show what's missing
@@ -2121,6 +2168,7 @@
         pattern: myOrder.pattern ? patternText(myOrder.pattern) : null,
         addons,
         delivery: i === 0 && myOrder.delivery ? DELIVERY_OPTIONS[myOrder.delivery].label : null,
+        order_no: orderNo || null,
         status: 'pending',
       };
     }));
@@ -2145,7 +2193,7 @@
 
     // If a newer column ("delivery") hasn't been added in Supabase yet, don't lose
     // the order — save it again without that field.
-    const OPTIONAL_COLS = ['delivery'];
+    const OPTIONAL_COLS = ['delivery', 'order_no'];
     const insert = (payload, triesLeft = OPTIONAL_COLS.length) => client.from('orders').insert(payload).then(({ error }) => {
       if (!error) return;
       const col = OPTIONAL_COLS.find(c => c in payload[0] && new RegExp(c, 'i').test(error.message || ''));
@@ -2171,8 +2219,16 @@
         document.getElementById('sendWarning').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
+      if (!orderNo) { keepOrderNo(standInOrderNo()); showOrderNo(); }
+      whatsappOrderBtn.href = `https://wa.me/evvyne?text=${encodeURIComponent(buildWhatsAppMessage())}`; // make sure the number is in it
       logOrder();
       showSendBackup();
+      const big = document.getElementById('orderNoBig');
+      if (big) { document.getElementById('orderNoBigText').textContent = orderNo; big.style.display = ''; }
+    });
+    document.getElementById('copyOrderNoBtn').addEventListener('click', async (e) => {
+      const ok = await copyText(orderNo || '');
+      e.target.textContent = ok ? '✓ Copied · 已复制' : orderNo;
     });
   }
 
@@ -2467,8 +2523,16 @@
     sold_out: 'Showing: Sold Out',
   };
 
+  // Code order: letters first, then the number — A001, A002 … B001 … CT001 (stickers without a code go last).
+  function byCode(a, b){
+    const pa = /^([A-Za-z]+)(\d+)$/.exec((a.code || '').trim()), pb = /^([A-Za-z]+)(\d+)$/.exec((b.code || '').trim());
+    if (pa && pb) return pa[1].toUpperCase().localeCompare(pb[1].toUpperCase()) || (parseInt(pa[2], 10) - parseInt(pb[2], 10));
+    if (pa) return -1;
+    if (pb) return 1;
+    return String(a.code || a.name || '').localeCompare(String(b.code || b.name || ''));
+  }
   function renderFilteredList(filterKey, withBack){
-    const list = filterKey === 'new' ? allStickers.filter(isNew)
+    const list = filterKey === 'new' ? allStickers.filter(isNew).sort(byCode)
       : filterKey === 'popular' ? popularStickers()
       : allStickers.filter(s => s.status === filterKey);
     catGrid.className = '';
