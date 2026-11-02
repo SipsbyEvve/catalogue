@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-11-02-1">
+<meta name="sbe-build" content="2026-11-02-2">
 <title>Sips by Evve — Sticker Admin</title>
 <style>
   :root{
@@ -100,17 +100,31 @@
 
   .batch-grid{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
   .batch-item{
-    display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:12px;
+    display:flex; align-items:flex-start; gap:10px; border:1px solid var(--line); border-radius:12px;
     padding:8px 10px;
   }
+  .batch-item select{ padding:7px 9px; font-size:0.82rem; margin:0; width:auto; }
+  .batch-item .apply-all{ margin:0; padding:5px 8px; font-size:0.72rem; font-weight:700; background:#fff; color:var(--brown-dark); border:1px dashed var(--brown); border-radius:8px; flex:none; }
+  .batch-item .fld{ display:flex; gap:4px; align-items:center; }
+  .batch-item .batch-reason{ flex-basis:100%; font-size:0.75rem; color:#b23b3b; font-weight:600; }
+  .batch-item.batch-done{ opacity:0.55; }
+  .code-dup{ border-color:#e0524f !important; background:#fff1f0 !important; }
+  .dup-note{ flex-basis:100%; font-size:0.74rem; color:#b23b3b; font-weight:600; }
+  .dup-note:empty{ display:none; }
+  .draft-banner{ background:#fff7e6; border:1px solid #f1d999; color:#7a5a10; border-radius:12px; padding:10px 12px; margin:0 0 12px; font-size:0.86rem; }
+  .draft-banner button{ margin:6px 6px 0 0; padding:7px 12px; font-size:0.82rem; width:auto; }
+  .bulk-results{ margin-top:10px; border-radius:12px; padding:10px 12px; font-size:0.86rem; background:#f3fbf6; border:1px solid #bfe8cf; }
+  .bulk-results.has-fail{ background:#fff4f2; border-color:#f3c9b8; }
+  .bulk-results button{ margin:8px 0 0; width:auto; padding:7px 12px; font-size:0.82rem; }
+  .bulk-results ul{ margin:6px 0 0; padding-left:18px; }
   .batch-item img{ width:52px; height:52px; object-fit:cover; border-radius:8px; flex:none; background:var(--bg); }
-  .batch-item .fields{ flex:1; display:flex; flex-wrap:wrap; gap:8px; }
+  .batch-item .fields{ flex:1; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .batch-item input{ padding:7px 9px; font-size:0.82rem; margin:0; }
   .batch-item .code-field{ width:80px; flex:none; }
   .batch-item .keyword-field{ flex:1 1 120px; }
   .batch-item .stock-field{ width:90px; flex:none; }
-  .batch-item .category-field{ flex:1 1 130px; }
-  .batch-item .subcategory-field{ flex:1 1 130px; }
+  .batch-item .category-field{ flex:1 1 140px; max-width:100%; }
+  .batch-item .subcategory-field{ flex:1 1 140px; max-width:100%; }
   .batch-item .remove-btn{
     flex:none; width:26px; height:26px; border-radius:50%; border:1px solid var(--line);
     background:#fff; color:var(--muted); font-size:0.8rem; cursor:pointer; display:flex;
@@ -196,9 +210,14 @@
   .restock-row .cat{ font-size:0.75rem; color:var(--muted); }
   .restock-actions{ display:flex; gap:10px; }
   .sticker-row{
-    display:flex; flex-wrap:wrap; align-items:center; gap:12px; border:1px solid var(--line);
+    display:flex; flex-direction:column; align-items:stretch; gap:8px; border:1px solid var(--line);
     border-radius:12px; padding:10px 12px;
   }
+  .sticker-row .sr-top{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .sticker-row .sr-fields{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .sticker-row .sr-fields .keyword-input{ flex:1 1 120px; }
+  .wm-toggle{ background:#fff !important; color:var(--brown-dark) !important; border:1px solid var(--line) !important; }
+  .wm-toggle.on{ background:#1fa395 !important; color:#fff !important; border-color:#1fa395 !important; }
   .sticker-row .reorder-btns{ display:flex; flex-direction:column; gap:3px; flex:none; }
   .sticker-row .reorder-btn{
     margin-top:0; padding:2px 7px; font-size:0.7rem; line-height:1.4;
@@ -212,9 +231,12 @@
   .sticker-row select{ width:auto; padding:6px 8px; font-size:0.82rem; }
   .sticker-row .code-input{ width:64px; padding:6px 8px; font-size:0.8rem; text-align:center; }
   .sticker-row .keyword-input{ width:100px; padding:6px 8px; font-size:0.8rem; }
+  #stickerSearchInput{ font-size:1rem; padding:12px 14px; border:2px solid var(--line); border-radius:12px; }
+  .search-wrap{ position:relative; margin:4px 0 10px; }
+  .search-wrap button{ position:absolute; right:8px; top:50%; transform:translateY(-50%); margin:0; padding:4px 10px; font-size:0.8rem; width:auto; }
   .sticker-row .stock-input{ width:64px; padding:6px 8px; font-size:0.8rem; text-align:center; }
   .sticker-row .row-actions{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
-  .sticker-row .row-actions.more{ flex-basis:100%; justify-content:flex-end; padding-top:6px; border-top:1px dashed var(--line); }
+  .sticker-row .row-actions.more{ justify-content:flex-end; padding-top:6px; border-top:1px dashed var(--line); }
   .sticker-row .row-actions.more button{ padding:5px 9px; font-size:0.76rem; }
   .sticker-row .hidden-check{ width:20px; height:20px; flex:none; margin:0; }
   .hidden-list .reorder-btns{ display:none; }
@@ -295,7 +317,7 @@
   .bm-actions button{ margin:0; }
   .also-in-picker select{ width:auto; max-width:100%; margin:0; padding:6px 8px; font-size:0.8rem; }
   .also-in-picker.small select{ font-size:0.75rem; padding:5px 7px; }
-  .also-chip{ display:inline-flex; align-items:center; gap:4px; background:#eef6ff; border:1px solid #b9d6f5; color:#245a8d; border-radius:999px; padding:3px 4px 3px 9px; font-size:0.75rem; font-weight:700; }
+  .also-chip{ display:inline-flex; align-items:center; gap:4px; background:#eef6ff; border:1px solid #b9d6f5; color:#245a8d; border-radius:10px; padding:3px 4px 3px 9px; font-size:0.75rem; font-weight:700; }
   .also-chip button{ margin:0; padding:0 6px; border:none; background:none; color:#245a8d; font-size:0.8rem; cursor:pointer; }
   .also-in-row{ margin-top:4px; }
   .also-in-row .also-in-picker{ margin:0; }
@@ -475,6 +497,7 @@
     <div class="card" id="addCard">
       <h2 style="margin-top:0;font-size:1.1rem;">Add stickers</h2>
       <details class="letters-box" id="codeLettersBox"><summary>🔤 Code letters — which letter is which</summary><div id="codeLettersBody">Loading…</div></details>
+      <div class="draft-banner" id="bulkDraftBanner" style="display:none;"></div>
       <div class="add-tabs">
         <button type="button" class="add-tab active" id="tabSingleBtn">Single photo</button>
         <button type="button" class="add-tab" id="tabBulkBtn">Bulk add (multiple photos)</button>
@@ -494,12 +517,13 @@
           <label for="watermarkToggle">Add watermark (tiled "SIPS BY EVVE", protects photo from being copied)</label>
         </div>
         <label for="stickerCategory">Category</label>
-        <input type="text" id="stickerCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
+        <select id="stickerCategory" class="cat-select" data-first="— choose a category —"><option value="">— choose a category —</option></select>
         <label for="stickerSubcategory">Sub-category (optional — only if this category has smaller groups, e.g. "Stitch" inside Disney)</label>
-        <input type="text" id="stickerSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
+        <select id="stickerSubcategory" class="sub-select" data-cat-from="stickerCategory" data-first="(no sub-category)"><option value="">(no sub-category)</option></select>
         <div class="group-helper" id="stickerGroupHelper"></div>
         <label for="stickerCode">Code (shown to customers — e.g. from your supplier's sticker sheet)</label>
         <input type="text" id="stickerCode" placeholder="e.g. K001">
+        <div class="dup-note" id="stickerCodeDup"></div>
         <label for="stickerKeyword">Search keyword (optional — only needed for a generic category like "Cartoons" or "Cute Stuff", so customers can search the character name)</label>
         <input type="text" id="stickerKeyword" placeholder="e.g. Doraemon — leave blank if not needed">
         <label>➕ Also show in (optional — the same sticker also appears in another category / sub-category; still one code and one stock)</label>
@@ -531,9 +555,9 @@
         <details class="batch-defaults" id="batchDefaults">
         <summary>📂 Same category for the whole batch? <small>(optional — fill it once here instead of on every photo)</small></summary>
         <label for="bulkCategory">Category for every photo (a photo's own box wins)</label>
-        <input type="text" id="bulkCategory" list="categoryList" placeholder="e.g. Popmart · 泡泡玛特">
+        <select id="bulkCategory" class="cat-select" data-first="— none (each photo has its own) —"><option value="">— none (each photo has its own) —</option></select>
         <label for="bulkSubcategory">Sub-category for every photo (optional)</label>
-        <input type="text" id="bulkSubcategory" list="subcategoryList" placeholder="e.g. Stitch 史迪奇 — leave blank if none">
+        <select id="bulkSubcategory" class="sub-select" data-cat-from="bulkCategory" data-first="(no sub-category)"><option value="">(no sub-category)</option></select>
         <div class="group-helper" id="bulkGroupHelper"></div>
         <label>➕ Also show in — every photo (optional)</label>
         <div class="also-in-picker" id="bulkAlsoIn"></div>
@@ -553,6 +577,7 @@
         <div class="batch-grid" id="bulkBatchGrid"></div>
         <button id="bulkUploadBtn" style="display:none;">Upload all (0)</button>
         <p class="msg" id="bulkUploadMsg"></p>
+        <div class="bulk-results" id="bulkResults" style="display:none;"></div>
       </div>
 
       <datalist id="categoryList">
@@ -601,8 +626,8 @@
         <button class="secondary" id="hiddenModeBtn" type="button">🙈 Hidden stickers</button>
         <button class="secondary" id="exportCsvBtn" type="button">⬇️ Export CSV</button>
       </div>
-      <p class="hint">Browse by category, just like customers do — click a category to see and manage its stickers. Or search across every category at once:</p>
-      <input type="text" id="stickerSearchInput" placeholder="🔍 Search all stickers by name, code, keyword or category…" style="margin-bottom:10px;">
+      <div class="search-wrap"><input type="text" id="stickerSearchInput" placeholder="🔍 Find a sticker — type a code (Z019) or keyword (unicorn)…" autocomplete="off"><button type="button" class="secondary" id="stickerSearchClear" style="display:none;">✕</button></div>
+      <p class="hint" style="margin-bottom:10px;">Or browse by category — tap a category to see and change its stickers.</p>
       <p class="msg" id="listMsg">Loading…</p>
       <div id="stickerList"></div>
     </div>
@@ -907,6 +932,117 @@
     if (hiddenMode) { hiddenMode = false; updateHiddenCount(); }
   });
 
+  // ---- 📂 Category / sub-category dropdowns ----
+  // Real dropdowns everywhere a sticker's place is chosen. The list is re-read every time a
+  // dropdown is opened (so a category added a moment ago is there), sub-categories only show the
+  // chosen category's own, and "➕ New…" creates one on the spot.
+  const NEW_OPT = '__new__';
+  function allCategoryNames(){
+    const out = [];
+    const add = n => { if (n && !out.includes(n)) out.push(n); };
+    categoriesData.forEach(c => add(c.name));
+    allStickersAdmin.forEach(st => add(st.category));
+    return out;
+  }
+  function subNamesFor(cat){
+    const out = [];
+    const add = n => { if (n && !out.includes(n)) out.push(n); };
+    subcategoriesData.filter(sc => sc.category === cat).forEach(sc => add(sc.name));
+    allStickersAdmin.filter(st => st.category === cat).forEach(st => add(st.subcategory));
+    return out;
+  }
+  function selectOptionsHtml(list, value, first, newLabel){
+    const vals = list.slice();
+    if (value && value !== NEW_OPT && !vals.includes(value)) vals.push(value);
+    return `<option value="">${escAttr(first)}</option>` + vals.map(v => `<option value="${escAttr(v)}"${v === value ? ' selected' : ''}>${escAttr(v)}</option>`).join('')
+      + (newLabel ? `<option value="${NEW_OPT}">${newLabel}</option>` : '');
+  }
+  const catOptionsHtml = (value, first) => selectOptionsHtml(allCategoryNames(), value, first, '➕ New category…');
+  function subOptionsHtml(cat, value, first){
+    if (!cat) return `<option value="">${escAttr(first)}</option>` + (value ? `<option value="${escAttr(value)}" selected>${escAttr(value)}</option>` : '');
+    return selectOptionsHtml(subNamesFor(cat), value, first, '➕ New sub-category…');
+  }
+  function catForSubSelect(sel){
+    const item = sel.closest('.batch-item');
+    if (item) return item.querySelector('.category-field').value || document.getElementById('bulkCategory').value;
+    const from = document.getElementById(sel.dataset.catFrom || '');
+    return from ? from.value : '';
+  }
+  function subFirstLabel(sel){
+    const item = sel.closest('.batch-item');
+    if (item) return item.querySelector('.category-field').value ? '(no sub-category)' : '— batch sub-category —';
+    return sel.dataset.first || '(no sub-category)';
+  }
+  function refillPlaceSelect(sel){
+    if (!sel || sel.value === NEW_OPT) return;
+    const html = sel.classList.contains('cat-select') ? catOptionsHtml(sel.value, sel.dataset.first || '— choose —') : subOptionsHtml(catForSubSelect(sel), sel.value, subFirstLabel(sel));
+    if (sel.innerHTML !== html) { const v = sel.value; sel.innerHTML = html; sel.value = v; }
+  }
+  function refreshAllPlaceSelects(){ document.querySelectorAll('select.cat-select, select.sub-select').forEach(refillPlaceSelect); }
+  // The sub-category dropdowns that follow a category dropdown.
+  function dependentSubSelects(catSel){
+    const item = catSel.closest('.batch-item');
+    if (item) return [item.querySelector('.subcategory-field')];
+    const list = [...document.querySelectorAll(`select.sub-select[data-cat-from="${catSel.id}"]`)];
+    if (catSel.id === 'bulkCategory') bulkBatchGrid.querySelectorAll('.batch-item').forEach(el => { if (!el.querySelector('.category-field').value) list.push(el.querySelector('.subcategory-field')); });
+    return list;
+  }
+  function refillSubsAfterCatChange(catSel){
+    dependentSubSelects(catSel).forEach(sub => {
+      if (!sub) return;
+      const cat = catForSubSelect(sub);
+      const keep = cat && subNamesFor(cat).includes(sub.value) ? sub.value : '';
+      const before = sub.value;
+      sub.innerHTML = subOptionsHtml(cat, keep, subFirstLabel(sub));
+      sub.value = keep;
+      if (before !== keep) setTimeout(() => sub.dispatchEvent(new Event('change', { bubbles: true })), 0);
+    });
+  }
+  async function createCategoryRow(name){
+    if (categoriesData.some(c => c.name === name)) return;
+    const maxSort = categoriesData.reduce((m, c) => Math.max(m, c.sort_order || 0), 0);
+    const { error } = await client.from('categories').insert({ name, sort_order: maxSort + 1 });
+    if (error) { showToast(error.message, true); return; }
+    showToast(`✅ Category "${name}" added`);
+    await renderCategories();
+  }
+  async function createSubcategoryRow(cat, name){
+    if (subcategoriesData.some(sc => sc.category === cat && sc.name === name)) return;
+    if (!categoriesData.some(c => c.name === cat)) await createCategoryRow(cat);
+    const maxSort = subcategoriesData.filter(sc => sc.category === cat).reduce((m, sc) => Math.max(m, sc.sort_order || 0), 0);
+    const { error } = await client.from('subcategories').insert({ category: cat, name, sort_order: maxSort + 1 });
+    if (error) { showToast(error.message, true); return; }
+    showToast(`✅ Sub-category "${name}" added to ${cat}`);
+    await renderSubcategories();
+  }
+  // Runs first (capture), so "➕ New…" is turned into the real name before anything else reads it.
+  function onPlaceSelectPick(e){
+    const sel = e.target;
+    if (!(sel instanceof HTMLSelectElement) || !(sel.classList.contains('cat-select') || sel.classList.contains('sub-select'))) return;
+    if (sel.value === NEW_OPT) {
+      const isCat = sel.classList.contains('cat-select');
+      const cat = isCat ? '' : catForSubSelect(sel);
+      if (!isCat && !cat) { showToast('Choose the category first', true); sel.value = sel.dataset.prev || ''; e.stopImmediatePropagation(); return; }
+      const name = (prompt(isCat ? 'Name of the new category (e.g. Animals · 动物):' : `Name of the new sub-category in "${cat}":`) || '').trim();
+      if (!name) { sel.value = sel.dataset.prev || ''; e.stopImmediatePropagation(); return; }
+      const opt = document.createElement('option'); opt.value = name; opt.textContent = name;
+      sel.insertBefore(opt, sel.querySelector(`option[value="${NEW_OPT}"]`));
+      sel.value = name;
+      if (isCat) createCategoryRow(name); else createSubcategoryRow(cat, name);
+    }
+    sel.dataset.prev = sel.value;
+    if (sel.classList.contains('cat-select')) refillSubsAfterCatChange(sel);
+  }
+  document.addEventListener('change', onPlaceSelectPick, true);
+  document.addEventListener('input', (e) => { // nobody else should ever see the "➕ New…" placeholder value
+    const sel = e.target;
+    if (sel instanceof HTMLSelectElement && sel.value === NEW_OPT) e.stopImmediatePropagation();
+  }, true);
+  ['mousedown', 'focusin', 'touchstart'].forEach(ev => document.addEventListener(ev, (e) => {
+    const sel = e.target;
+    if (sel instanceof HTMLSelectElement && (sel.classList.contains('cat-select') || sel.classList.contains('sub-select'))) { sel.dataset.prev = sel.value; refillPlaceSelect(sel); }
+  }, true));
+
   // ---- ➕ "Also show in": one sticker (one code, one stock) shown in extra categories / sub-categories ----
   const placeKey = p => `${p.category}||${p.subcategory || ''}`;
   const placeLabel = p => p.subcategory ? `${p.category} › ${p.subcategory}` : p.category;
@@ -1059,6 +1195,11 @@
   function renderBulkGroupHelper(){
     renderGroupHelper(document.getElementById('bulkGroupHelper'), document.getElementById('bulkCategory').value.trim(), document.getElementById('bulkSubcategory').value.trim() || null, null);
   }
+  document.getElementById('stickerCode').addEventListener('input', (e) => {
+    const d = findStickerByCode(e.target.value);
+    e.target.classList.toggle('code-dup', !!d);
+    document.getElementById('stickerCodeDup').textContent = d ? `${e.target.value.trim()} is already used (${d.category}${d.subcategory ? ' › ' + d.subcategory : ''})` : '';
+  });
   let lastSingleGroup = null, lastBulkGroup = null;
   ['stickerCategory', 'stickerSubcategory'].forEach(id => ['input', 'change'].forEach(ev => document.getElementById(id).addEventListener(ev, () => {
     const k = placeKey(singlePrimaryPlace());
@@ -1405,6 +1546,7 @@
     refreshGithubPhotoStatus();
     loadLiveAdmin();
     loadPopularAdmin();
+    checkBulkDraft();
   }
   function showLogin(){
     loginSection.style.display = 'block';
@@ -1445,9 +1587,10 @@
   function loadImageFromBlob(blob){
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); }; // free the copy as soon as it's decoded
+      img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
     });
   }
 
@@ -1733,32 +1876,98 @@
   const bulkFilesInput = document.getElementById('bulkFiles');
   const bulkPasteZone = document.getElementById('bulkPasteZone');
 
-  function addToBulkBatch(file){
-    bulkBatch.push({ file, id: 'b' + (bulkBatchSeq++), code: '', keyword: '', stockQty: '', category: '', subcategory: '', alsoIn: [] });
-    renderBulkBatch();
+  // ---- 📦 Bulk add ----
+  // Small previews are made once per photo (so a big batch doesn't fill the browser's memory),
+  // photos are processed one at a time with a breather in between (typing stays smooth), and the
+  // batch is kept in this browser (IndexedDB) until it's uploaded — if the page reloads, it can be
+  // put back.
+  function addToBulkBatch(file, render = true){
+    bulkBatch.push({ file, id: 'b' + Date.now().toString(36) + (bulkBatchSeq++), code: '', keyword: '', stockQty: '', category: '', subcategory: '', alsoIn: [], preview: '' });
+    if (render) { renderBulkBatch(); makeBulkPreviews(); saveBulkDraftSoon(); }
   }
+  let previewBusy = false;
+  async function makeBulkPreviews(){
+    if (previewBusy) return;
+    previewBusy = true;
+    try {
+      for (const item of bulkBatch) {
+        if (item.preview || !item.file) continue;
+        item.preview = await smallPreviewUrl(item.file);
+        const img = bulkBatchGrid.querySelector(`.batch-item[data-id="${item.id}"] img`);
+        if (img && item.preview) img.src = item.preview;
+        await new Promise(r => setTimeout(r, 15));
+      }
+    } finally { previewBusy = false; }
+  }
+  async function smallPreviewUrl(file){
+    try {
+      let src;
+      try { src = await createImageBitmap(file, { resizeWidth: 160, resizeQuality: 'medium' }); } catch (e) { src = await loadImageFromBlob(file); }
+      const w0 = src.width || src.naturalWidth, h0 = src.height || src.naturalHeight;
+      const scale = Math.min(1, 160 / Math.max(w0, h0));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w0 * scale)); c.height = Math.max(1, Math.round(h0 * scale));
+      c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+      if (src.close) src.close();
+      const blob = await canvasToBlob(c, 'image/webp', 0.7) || await canvasToBlob(c, 'image/png');
+      return blob ? URL.createObjectURL(blob) : '';
+    } catch (e) { return ''; }
+  }
+  function forgetBulkItem(item){ if (item && item.preview) { try { URL.revokeObjectURL(item.preview); } catch (e) {} item.preview = ''; } }
 
   function markBulkItemResult(id, ok, errorMessage){
     if (!ok) bulkFailedIds.add(id);
     const el = bulkBatchGrid.querySelector(`.batch-item[data-id="${id}"]`);
     if (!el) return;
     el.classList.toggle('batch-error', !ok);
-    if (!ok && errorMessage) el.title = errorMessage;
+    el.classList.toggle('batch-done', ok);
+    if (!ok && errorMessage) {
+      el.title = errorMessage;
+      let r = el.querySelector('.batch-reason');
+      if (!r) { r = document.createElement('div'); r.className = 'batch-reason'; el.querySelector('.fields').appendChild(r); }
+      r.textContent = '❌ ' + errorMessage;
+    }
     const removeBtn = el.querySelector('.remove-btn');
     if (removeBtn) removeBtn.outerHTML = `<span class="batch-status">${ok ? '✅ Done' : '❌ Failed'}</span>`;
   }
 
+  // Red box when a code is already used, or typed twice in this batch.
+  function checkBulkDupes(){
+    const counts = {};
+    bulkBatch.forEach(it => { const c = it.code.trim().toLowerCase(); if (c) counts[c] = (counts[c] || 0) + 1; });
+    bulkBatchGrid.querySelectorAll('.batch-item').forEach(el => {
+      const it = bulkBatch.find(b => b.id === el.dataset.id);
+      if (!it) return;
+      const c = it.code.trim();
+      const existing = c ? findStickerByCode(c) : null;
+      const twice = c && counts[c.toLowerCase()] > 1;
+      el.querySelector('.code-field').classList.toggle('code-dup', !!(existing || twice));
+      const note = el.querySelector('.dup-note');
+      if (note) note.textContent = existing ? `${c} is already used (${existing.category}${existing.subcategory ? ' › ' + existing.subcategory : ''})` : (twice ? `${c} is typed twice in this batch` : '');
+    });
+  }
+  function bulkItemCatHtml(item){
+    return catOptionsHtml(item.category, '— batch category —');
+  }
+  function bulkItemSubHtml(item){
+    const cat = item.category || document.getElementById('bulkCategory').value;
+    return subOptionsHtml(cat, item.subcategory, item.category ? '(no sub-category)' : '— batch sub-category —');
+  }
   function renderBulkBatch(){
     bulkBatchGrid.innerHTML = bulkBatch.map(item => `
       <div class="batch-item" data-id="${item.id}">
-        <img src="${URL.createObjectURL(item.file)}" alt="">
+        <img src="${item.preview || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}" alt="">
         <div class="fields">
-          <input class="code-field" placeholder="Code" value="${item.code}">
-          <input class="keyword-field" placeholder="Keyword (optional)" value="${item.keyword}">
-          <input class="stock-field" type="number" min="0" placeholder="Stock (optional)" value="${item.stockQty}">
-          <input class="category-field" list="categoryList" placeholder="Category (optional, overrides default)" value="${item.category}">
-          <input class="subcategory-field" list="subcategoryList" placeholder="Sub-category (optional)" value="${item.subcategory}">
+          <input class="code-field" placeholder="Code" value="${escAttr(item.code)}">
+          <span class="fld"><input class="keyword-field" placeholder="Keyword (optional)" value="${escAttr(item.keyword)}"><button type="button" class="apply-all" data-f="keyword" title="Copy this keyword to every photo">⤵ all</button></span>
+          <span class="fld"><input class="stock-field" type="number" min="0" placeholder="Stock" value="${escAttr(item.stockQty)}"><button type="button" class="apply-all" data-f="stockQty" title="Copy this stock number to every photo">⤵ all</button></span>
+          <span class="fld" style="flex:1 1 100%;flex-wrap:wrap;">
+            <select class="category-field cat-select" data-first="— batch category —">${bulkItemCatHtml(item)}</select>
+            <select class="subcategory-field sub-select">${bulkItemSubHtml(item)}</select>
+            <button type="button" class="apply-all" data-f="category" title="Put every photo in this category">⤵ all</button>
+          </span>
           <div class="also-in-picker small" data-role="also-in"></div>
+          <div class="dup-note"></div>
         </div>
         <button type="button" class="remove-btn" title="Remove">✕</button>
       </div>
@@ -1768,19 +1977,37 @@
       const id = el.dataset.id;
       const item = bulkBatch.find(b => b.id === id);
       if (!item) return;
-      el.querySelector('.code-field').addEventListener('input', (e) => { item.code = e.target.value; });
-      el.querySelector('.keyword-field').addEventListener('input', (e) => { item.keyword = e.target.value; });
-      el.querySelector('.stock-field').addEventListener('input', (e) => { item.stockQty = e.target.value; });
-      el.querySelector('.category-field').addEventListener('input', (e) => { item.category = e.target.value; });
-      el.querySelector('.subcategory-field').addEventListener('input', (e) => { item.subcategory = e.target.value; });
-      mountAlsoInPicker(el.querySelector('[data-role="also-in"]'), () => item.alsoIn, v => { item.alsoIn = v; },
+      el.querySelector('.code-field').addEventListener('input', (e) => { item.code = e.target.value; checkBulkDupes(); saveBulkDraftSoon(); });
+      el.querySelector('.keyword-field').addEventListener('input', (e) => { item.keyword = e.target.value; saveBulkDraftSoon(); });
+      el.querySelector('.stock-field').addEventListener('input', (e) => { item.stockQty = e.target.value; saveBulkDraftSoon(); });
+      el.querySelector('.category-field').addEventListener('change', (e) => { item.category = e.target.value; saveBulkDraftSoon(); });
+      el.querySelector('.subcategory-field').addEventListener('change', (e) => { item.subcategory = e.target.value; saveBulkDraftSoon(); });
+      el.querySelectorAll('.apply-all').forEach(b => b.addEventListener('click', () => {
+        const f = b.dataset.f;
+        const others = bulkBatch.filter(x => x !== item);
+        if (!others.length) { showToast('Add more photos first'); return; }
+        if (f === 'category') {
+          if (!item.category) { showToast('Choose a category on this photo first', true); return; }
+          others.forEach(x => { x.category = item.category; x.subcategory = item.subcategory; });
+          showToast(`⤵ All ${bulkBatch.length} photos → ${placeLabel({ category: item.category, subcategory: item.subcategory || null })}`);
+        } else {
+          others.forEach(x => { x[f] = item[f]; });
+          showToast(`⤵ ${f === 'stockQty' ? 'Stock' : 'Keyword'} "${item[f] || '(empty)'}" copied to all ${bulkBatch.length} photos`);
+        }
+        renderBulkBatch();
+        saveBulkDraftSoon();
+      }));
+      mountAlsoInPicker(el.querySelector('[data-role="also-in"]'), () => item.alsoIn, v => { item.alsoIn = v; saveBulkDraftSoon(); },
         () => ({ category: item.category.trim() || document.getElementById('bulkCategory').value.trim(), subcategory: (item.category.trim() ? item.subcategory.trim() : (item.subcategory.trim() || document.getElementById('bulkSubcategory').value.trim())) || null }), true);
       const removeBtn = el.querySelector('.remove-btn');
       if (removeBtn) removeBtn.addEventListener('click', () => {
+        forgetBulkItem(item);
         bulkBatch = bulkBatch.filter(b => b.id !== id);
         renderBulkBatch();
+        saveBulkDraftSoon();
       });
     });
+    checkBulkDupes();
 
     bulkUploadBtn.style.display = bulkBatch.length ? '' : 'none';
     bulkUploadBtn.textContent = `Upload all (${bulkBatch.length})`;
@@ -1788,9 +2015,71 @@
     if (!bulkBatch.length) { const np = document.getElementById('bulkNumberPanel'); if (np) np.innerHTML = ''; }
   }
 
+  // ---- keep the batch in this browser until it's uploaded ----
+  const DRAFT_DB = 'sbe-admin', DRAFT_STORE = 'bulkDraft';
+  function draftDb(){
+    return new Promise((resolve, reject) => {
+      try {
+        const req = indexedDB.open(DRAFT_DB, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(DRAFT_STORE, { keyPath: 'id' });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      } catch (e) { reject(e); }
+    });
+  }
+  async function draftTx(fn){
+    const db = await draftDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DRAFT_STORE, 'readwrite');
+      const store = tx.objectStore(DRAFT_STORE);
+      let result;
+      Promise.resolve(fn(store)).then(r => { result = r; });
+      tx.oncomplete = () => { db.close(); resolve(result); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  }
+  let draftTimer = null, bulkDoneIds = new Set();
+  function saveBulkDraftSoon(){ clearTimeout(draftTimer); draftTimer = setTimeout(saveBulkDraft, 400); }
+  async function saveBulkDraft(){
+    try {
+      const keep = bulkBatch.filter(it => !bulkDoneIds.has(it.id));
+      await draftTx(store => {
+        store.clear();
+        keep.forEach((it, i) => store.put({ id: it.id, order: i, file: it.file, name: it.file && it.file.name, code: it.code, keyword: it.keyword, stockQty: it.stockQty, category: it.category, subcategory: it.subcategory, alsoIn: it.alsoIn || [] }));
+      });
+    } catch (e) { console.warn('draft save skipped', e); }
+  }
+  async function loadBulkDraft(){
+    try {
+      return await draftTx(store => new Promise(res => { const r = store.getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => res([]); }));
+    } catch (e) { return []; }
+  }
+  async function clearBulkDraft(){ try { await draftTx(store => { store.clear(); }); } catch (e) {} }
+  async function checkBulkDraft(){
+    const rows = (await loadBulkDraft()).filter(r => r && r.file).sort((a, b) => a.order - b.order);
+    const banner = document.getElementById('bulkDraftBanner');
+    if (!rows.length || bulkBatch.length) { banner.style.display = 'none'; return; }
+    banner.innerHTML = `📦 <b>${rows.length} photo${rows.length === 1 ? '' : 's'} from last time weren't uploaded yet</b> (the page closed or reloaded). Put them back?<br>
+      <button type="button" id="draftRestoreBtn">↩️ Put them back</button><button type="button" class="secondary" id="draftDiscardBtn">Discard</button>`;
+    banner.style.display = '';
+    document.getElementById('draftRestoreBtn').addEventListener('click', () => {
+      rows.forEach(r => bulkBatch.push({ file: r.file, id: r.id, code: r.code || '', keyword: r.keyword || '', stockQty: r.stockQty || '', category: r.category || '', subcategory: r.subcategory || '', alsoIn: r.alsoIn || [], preview: '' }));
+      banner.style.display = 'none';
+      document.getElementById('tabBulkBtn').click();
+      renderBulkBatch(); makeBulkPreviews();
+      showToast(`↩️ ${rows.length} photo${rows.length === 1 ? '' : 's'} back in Bulk add`);
+    });
+    document.getElementById('draftDiscardBtn').addEventListener('click', async () => {
+      if (!confirm('Discard those photos from last time? (Only this unfinished batch — nothing on your catalogue is touched.)')) return;
+      await clearBulkDraft();
+      banner.style.display = 'none';
+    });
+  }
+
   bulkFilesInput.addEventListener('change', () => {
-    Array.from(bulkFilesInput.files).forEach(addToBulkBatch);
+    Array.from(bulkFilesInput.files).forEach(f => addToBulkBatch(f, false));
     bulkFilesInput.value = '';
+    renderBulkBatch(); makeBulkPreviews(); saveBulkDraftSoon();
   });
 
   let activeBulkPaste = false;
@@ -1812,56 +2101,55 @@
     if (added) e.preventDefault();
   });
 
+  let bulkUploading = false;
+  window.addEventListener('beforeunload', (e) => { if (bulkUploading) { e.preventDefault(); e.returnValue = ''; } });
   bulkUploadBtn.addEventListener('click', async () => {
     const defaultCategory = document.getElementById('bulkCategory').value.trim();
     const defaultSubcategory = document.getElementById('bulkSubcategory').value.trim();
     const status = document.getElementById('bulkStatus').value;
     const watermark = document.getElementById('bulkWatermarkToggle').checked;
+    const resultsEl = document.getElementById('bulkResults');
+    resultsEl.style.display = 'none';
 
-    // Each photo can override the category/sub-category just for itself —
-    // otherwise it falls back to the batch default set above.
     const resolved = bulkBatch.map(item => ({
       item,
       category: item.category.trim() || defaultCategory,
-      subcategory: item.subcategory.trim() || defaultSubcategory,
+      subcategory: item.category.trim() ? item.subcategory.trim() : (item.subcategory.trim() || defaultSubcategory),
     }));
 
     if (resolved.some(r => !r.category)) {
-      bulkUploadMsg.textContent = 'Every photo needs a category — fill in the default above, or set one per-photo.';
+      bulkUploadMsg.textContent = 'Every photo needs a category — choose one on each photo (or "Same category for the whole batch").';
       bulkUploadMsg.className = 'msg error';
       return;
     }
     if (bulkBatch.some(item => !item.code.trim())) {
-      bulkUploadMsg.textContent = 'Every photo needs its own code before uploading.';
+      bulkUploadMsg.textContent = 'Every photo needs its own code before uploading (🔢 Auto-number can fill them in).';
       bulkUploadMsg.className = 'msg error';
       return;
     }
 
-    const dupesAgainstExisting = bulkBatch.filter(item => findStickerByCode(item.code));
-    const seenInBatch = new Set();
-    const dupesWithinBatch = new Set();
-    bulkBatch.forEach(item => {
-      const c = item.code.trim().toLowerCase();
-      if (seenInBatch.has(c)) dupesWithinBatch.add(c); else seenInBatch.add(c);
-    });
-    if (dupesAgainstExisting.length || dupesWithinBatch.size) {
-      const codeList = [...new Set([
-        ...dupesAgainstExisting.map(item => item.code.trim()),
-        ...dupesWithinBatch,
-      ])].join(', ');
-      if (!confirm(`These codes are already used or repeated in this batch: ${codeList}. Upload anyway?`)) {
-        return;
-      }
-    }
+    // ✅ Check before uploading: what goes where
+    const byPlace = new Map();
+    resolved.forEach(r => { const k = placeLabel({ category: r.category, subcategory: r.subcategory || null }); if (!byPlace.has(k)) byPlace.set(k, []); byPlace.get(k).push(r.item.code.trim()); });
+    const counts = {}; bulkBatch.forEach(it => { const c = it.code.trim().toLowerCase(); counts[c] = (counts[c] || 0) + 1; });
+    const dupes = [...new Set(bulkBatch.filter(it => findStickerByCode(it.code) || counts[it.code.trim().toLowerCase()] > 1).map(it => it.code.trim()))];
+    const hideBatch = document.getElementById('bulkHideToggle').checked;
+    const statusLabel = { available: 'In Stock', preorder: 'Preorder', sold_out: 'Sold Out' }[status] || status;
+    const summary = `Upload ${bulkBatch.length} sticker${bulkBatch.length === 1 ? '' : 's'}?\n\n`
+      + [...byPlace.entries()].map(([k, codes]) => { const sorted = codes.slice().sort((a, b) => naturalCode({ code: a }, { code: b })); return `• ${k}: ${codes.length} (${sorted.length > 3 ? sorted[0] + ' … ' + sorted[sorted.length - 1] : sorted.join(', ')})`; }).join('\n')
+      + `\n\n${hideBatch ? '🙈 Hidden from customers for now' : '👀 Customers see them straight away'}\n💧 Watermark: ${watermark ? 'yes' : 'no'}\n📦 Status: ${statusLabel}`
+      + (dupes.length ? `\n\n⚠️ These codes are already used or typed twice: ${dupes.join(', ')}` : '');
+    if (!confirm(summary)) return;
 
     bulkUploadBtn.disabled = true;
+    bulkUploading = true;
     bulkFailedIds.clear();
+    bulkDoneIds = new Set();
     const items = [...resolved]; // snapshot — button is disabled so this can't shift mid-upload
     const total = items.length;
     let done = 0;
     let failCount = 0;
-    // sort_order continues per category+sub-category group, not globally — a batch
-    // mixing several categories shouldn't scramble any of their existing ordering.
+    const failed = []; // { code, reason }
     const siblingMaxByGroup = new Map();
     function nextSortOrder(cat, subcat){
       const key = cat + '||' + (subcat || '');
@@ -1875,59 +2163,77 @@
       siblingMaxByGroup.set(key, next);
       return next;
     }
+    const fail = (item, reason) => { failCount++; failed.push({ code: item.code.trim(), reason }); markBulkItemResult(item.id, false, reason); };
 
     for (let i = 0; i < items.length; i++) {
       const { item, category, subcategory } = items[i];
-      bulkUploadMsg.textContent = `Uploading ${done + 1} of ${total}…`;
+      bulkUploadMsg.textContent = `Uploading ${done + 1} of ${total}… (you can keep typing — please don't close this page)`;
       bulkUploadMsg.className = 'msg';
+      await new Promise(r => setTimeout(r, 20)); // let the page breathe between photos
+      try {
+        let finalBlob = watermark ? await makeWatermarkedBlob(item.file) : item.file;
+        finalBlob = await compressImageBlob(finalBlob);
+        const originalName = item.file.name || 'sticker.jpg';
+        const safeName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const path = `${category.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}-${i}-${safeName}`;
 
-      let finalBlob = watermark ? await makeWatermarkedBlob(item.file) : item.file;
-      finalBlob = await compressImageBlob(finalBlob);
-      const originalName = item.file.name || 'sticker.jpg';
-      const safeName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-      const path = `${category.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}-${i}-${safeName}`;
+        const { error: uploadError } = await client.storage.from('stickers').upload(path, finalBlob, {
+          cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: finalBlob.type || 'image/jpeg',
+        });
+        if (uploadError) { fail(item, uploadError.message); done++; continue; }
+        await uploadThumb(path, finalBlob, THUMB_DIM.sticker);
 
-      const { error: uploadError } = await client.storage.from('stickers').upload(path, finalBlob, {
-        cacheControl: IMAGE_CACHE_SECONDS, upsert: false, contentType: finalBlob.type || 'image/jpeg',
-      });
-      if (uploadError) {
-        failCount++;
-        markBulkItemResult(item.id, false, uploadError.message);
-        done++;
-        continue;
-      }
-      await uploadThumb(path, finalBlob, THUMB_DIM.sticker);
-
-      const code = item.code.trim();
-      const itemStockQty = parseStockQtyInput(item.stockQty);
-      const itemStatus = deriveStatusFromStock(status, itemStockQty, null); // brand-new sticker, no previous status
-      const hideBatch = document.getElementById('bulkHideToggle').checked;
-      const itemAlsoIn = cleanAlsoIn([...bulkAlsoIn, ...(item.alsoIn || [])], category, subcategory);
-      const { error: insertError } = await client.from('stickers').insert({
-        name: code, code: code || null, keyword: item.keyword.trim() || null,
-        category, subcategory: subcategory || null, status: itemStatus, image_path: path,
-        sort_order: nextSortOrder(category, subcategory), stock_qty: itemStockQty,
-        ...(hideBatch ? { release_at: HIDDEN_UNTIL } : {}),
-        ...(itemAlsoIn.length ? { also_in: itemAlsoIn } : {}),
-      });
-      if (insertError) {
-        failCount++;
-        markBulkItemResult(item.id, false, hideBatch && /release_at/i.test(insertError.message || '') ? 'Run supabase-setup-hidden-stickers.sql in Supabase first'
-          : (/also_in/i.test(insertError.message || '') ? 'Run supabase-setup-also-show-in.sql in Supabase first' : insertError.message));
-      } else {
-        markBulkItemResult(item.id, true);
+        const code = item.code.trim();
+        const itemStockQty = parseStockQtyInput(item.stockQty);
+        const itemStatus = deriveStatusFromStock(status, itemStockQty, null); // brand-new sticker, no previous status
+        const itemAlsoIn = cleanAlsoIn([...bulkAlsoIn, ...(item.alsoIn || [])], category, subcategory);
+        const { error: insertError } = await client.from('stickers').insert({
+          name: code, code: code || null, keyword: item.keyword.trim() || null,
+          category, subcategory: subcategory || null, status: itemStatus, image_path: path,
+          sort_order: nextSortOrder(category, subcategory), stock_qty: itemStockQty,
+          ...(hideBatch ? { release_at: HIDDEN_UNTIL } : {}),
+          ...(itemAlsoIn.length ? { also_in: itemAlsoIn } : {}),
+        });
+        if (insertError) {
+          fail(item, hideBatch && /release_at/i.test(insertError.message || '') ? 'Run supabase-setup-hidden-stickers.sql in Supabase first'
+            : (/also_in/i.test(insertError.message || '') ? 'Run supabase-setup-also-show-in.sql in Supabase first' : insertError.message));
+        } else {
+          markBulkItemResult(item.id, true);
+          bulkDoneIds.add(item.id);
+          saveBulkDraft(); // the saved draft now only holds what's still to upload
+        }
+      } catch (err) {
+        fail(item, (err && err.message) || 'Something went wrong with this photo');
       }
       done++;
     }
+    bulkUploading = false;
 
-    bulkUploadMsg.textContent = failCount
-      ? `Done — ${total - failCount} of ${total} uploaded, ${failCount} failed (still listed below — fix and try again).`
-      : `All ${total} sticker${total === 1 ? '' : 's'} uploaded!`;
-    bulkUploadMsg.className = failCount ? 'msg error' : 'msg ok';
+    const okCount = total - failCount;
+    bulkUploadMsg.textContent = '';
+    resultsEl.className = 'bulk-results' + (failCount ? ' has-fail' : '');
+    resultsEl.innerHTML = failCount
+      ? `<b>✅ ${okCount} uploaded · ❌ ${failCount} failed</b><ul>${failed.map(f => `<li><b>${escAttr(f.code)}</b> — ${escAttr(f.reason)}</li>`).join('')}</ul>The failed ones are still below.<br><button type="button" id="bulkRetryBtn">🔁 Try the failed ones again</button>`
+      : `<b>✅ All ${total} sticker${total === 1 ? '' : 's'} uploaded!</b>${hideBatch ? ' They\'re hidden for now — open them in 🙈 Hidden stickers.' : ''}`;
+    resultsEl.style.display = '';
+    const retry = document.getElementById('bulkRetryBtn');
+    if (retry) retry.addEventListener('click', () => bulkUploadBtn.click());
 
     // Keep only the failed ones staged so they're easy to retry; drop the ones that succeeded.
+    bulkBatch.filter(b => !bulkFailedIds.has(b.id)).forEach(forgetBulkItem);
     bulkBatch = bulkBatch.filter(b => bulkFailedIds.has(b.id));
-    renderBulkBatch();
+    const failedReasons = Object.fromEntries(failed.map(f => [f.code, f.reason]));
+    renderBulkBatch(); makeBulkPreviews();
+    bulkBatch.forEach(b => {
+      const why = failedReasons[b.code.trim()];
+      const el = bulkBatchGrid.querySelector(`.batch-item[data-id="${b.id}"]`);
+      if (!why || !el) return;
+      el.classList.add('batch-error');
+      const r = document.createElement('div'); r.className = 'batch-reason'; r.textContent = '❌ ' + why;
+      el.querySelector('.fields').appendChild(r);
+    });
+    bulkDoneIds = new Set();
+    if (bulkBatch.length) saveBulkDraft(); else clearBulkDraft();
     bulkUploadBtn.disabled = false;
     refreshList();
   });
@@ -2035,6 +2341,7 @@
     allStickersAdmin = data || [];
     updateNoQtyCount();
     renderCodeLetters();
+    refreshAllPlaceSelects();
     if (allStickersAdmin.length === 0) {
       listMsg.textContent = 'No stickers uploaded yet.';
       return;
@@ -2071,26 +2378,41 @@
   // handy once you have a lot of categories and just remember the code/name.
   function renderStickerSearchResults(query){
     const q = query.trim().toLowerCase();
-    const matches = allStickersAdmin.filter(s =>
-      (s.name || '').toLowerCase().includes(q) ||
-      (s.code || '').toLowerCase().includes(q) ||
-      (s.keyword || '').toLowerCase().includes(q) ||
-      (s.category || '').toLowerCase().includes(q) ||
-      (s.subcategory || '').toLowerCase().includes(q)
-    );
+    const rank = (s) => {
+      const code = (s.code || '').toLowerCase();
+      if (code === q) return 0;
+      if (code.startsWith(q)) return 1;
+      if (code.includes(q)) return 2;
+      if ((s.keyword || '').toLowerCase().includes(q)) return 3;
+      if ((s.name || '').toLowerCase().includes(q)) return 4;
+      if (`${s.category || ''} ${s.subcategory || ''}`.toLowerCase().includes(q)) return 5;
+      return 99;
+    };
+    const all = allStickersAdmin.map(s => [s, rank(s)]).filter(([, r]) => r < 99).sort((a, b) => a[1] - b[1] || naturalCode(a[0], b[0])).map(([s]) => s);
+    const matches = all.slice(0, 60);
     stickerList.className = '';
     stickerList.innerHTML = `
-      <p class="hint">${matches.length} sticker${matches.length === 1 ? '' : 's'} match "${query.trim()}".</p>
+      <p class="hint">${all.length} sticker${all.length === 1 ? '' : 's'} match "${escAttr(query.trim())}"${all.length > matches.length ? ` — showing the first ${matches.length}, type more to narrow it down` : ''}.</p>
       <div class="sticker-list">
         ${matches.length ? matches.map(stickerRowHtml).join('') : '<p class="hint">No matches — try a different search term.</p>'}
       </div>
     `;
     wireStickerRows(matches, () => renderStickerSearchResults(stickerSearchInput.value));
   }
+  let stickerSearchTimer = null;
   stickerSearchInput.addEventListener('input', () => {
     const q = stickerSearchInput.value;
-    if (!q.trim()) { renderStickerCategoryGrid(); return; }
-    renderStickerSearchResults(q);
+    document.getElementById('stickerSearchClear').style.display = q ? '' : 'none';
+    clearTimeout(stickerSearchTimer);
+    stickerSearchTimer = setTimeout(() => {
+      if (!q.trim()) { renderStickerCategoryGrid(); return; }
+      renderStickerSearchResults(q);
+    }, 200);
+  });
+  document.getElementById('stickerSearchClear').addEventListener('click', () => {
+    stickerSearchInput.value = '';
+    stickerSearchInput.dispatchEvent(new Event('input'));
+    stickerSearchInput.focus();
   });
 
   // Exports every sticker currently loaded as a CSV file (name/code/keyword/
@@ -2150,6 +2472,7 @@
     const wm = isWatermarked(s.id);
     return `
       <div class="sticker-row" data-id="${s.id}">
+        <div class="sr-top">
         ${withCheck ? '<input type="checkbox" class="hidden-check" title="Select">' : ''}
         <div class="reorder-btns">
           <button type="button" class="reorder-btn move-up" title="Move up">▲</button>
@@ -2157,11 +2480,13 @@
         </div>
         <img ${thumbOrFull(s.image_path)} alt="${s.name}" onerror="handleImgError(this)">
         <div class="info">
-          <div class="n">${s.name}${wm ? '<span class="wm-tag">💧 watermark</span>' : ''}</div>
+          <div class="n">${s.name}</div>
           <div class="c">${s.category}</div>
           ${hiddenLabel(s) ? `<div class="hidden-when">${hiddenLabel(s)}</div>` : ''}
           <div class="also-in-row" data-role="row-also-in"></div>
         </div>
+        </div>
+        <div class="sr-fields">
         <input type="text" class="code-input" value="${s.code || ''}" placeholder="Code">
         <input type="text" class="keyword-input" value="${s.keyword || ''}" placeholder="Keyword (optional)">
         <input type="number" class="stock-input" min="0" value="${s.stock_qty ?? ''}" placeholder="Stock" title="Leave blank to not track a number — set a number and it'll auto Sold Out at 0">
@@ -2170,14 +2495,14 @@
           <option value="preorder" ${s.status === 'preorder' ? 'selected' : ''}>Preorder</option>
           <option value="sold_out" ${s.status === 'sold_out' ? 'selected' : ''}>Sold Out</option>
         </select>
-        <div class="row-actions">
           <button class="save-btn">Save</button>
+          <span class="dup-note"></span>
         </div>
         <div class="row-actions more">
           <button class="secondary hide-btn" title="${isHiddenNow(s) ? 'Show it on the catalogue now' : 'Hide it from customers for now'}">${isHiddenNow(s) ? '🎉 Open' : '🙈 Hide'}</button>
           <button class="secondary hot-btn ${isPushedPopular(s.id) ? 'on' : ''}" title="Show it as 🔥 Popular on the catalogue">${isPushedPopular(s.id) ? '🔥 Pushed ✓' : '🔥 Push'}</button>
           <button class="secondary photo-btn" title="Replace this sticker's photo (the old file is kept)">📷 Change photo</button>
-          <button class="secondary wm-btn" title="${wm ? 'Go back to the photo without the watermark' : 'Add the SIPS BY EVVE watermark'}">${wm ? '💧 Remove watermark' : '💧 Watermark'}</button>
+          <button class="secondary wm-btn wm-toggle ${wm ? 'on' : ''}" title="${wm ? 'Has the watermark — tap to remove it' : 'No watermark — tap to add it'}">${wm ? '☑ Watermark' : '☐ Watermark'}</button>
           <button class="secondary move-btn">Move</button>
           <button class="danger delete-btn">Delete</button>
         </div>
@@ -2495,10 +2820,8 @@
   function updateStickerRowPhoto(row, st){
     const img = row.querySelector('img');
     if (img) { const m = thumbOrFull(st.image_path).match(/src="([^"]+)"\s+data-full="([^"]+)"/); if (m) { img.dataset.full = m[2]; img.src = m[1] + (m[1].includes('?') ? '&' : '?') + 't=' + Date.now(); } }
-    const n = row.querySelector('.info .n');
-    if (n) n.innerHTML = `${escAttr(st.name)}${isWatermarked(st.id) ? '<span class="wm-tag">💧 watermark</span>' : ''}`;
     const b = row.querySelector('.wm-btn');
-    if (b) { b.disabled = false; b.textContent = isWatermarked(st.id) ? '💧 Remove watermark' : '💧 Watermark'; }
+    if (b) { b.disabled = false; b.classList.toggle('on', isWatermarked(st.id)); b.textContent = isWatermarked(st.id) ? '☑ Watermark' : '☐ Watermark'; }
   }
   function changeStickerPhoto(st, row){
     const input = document.createElement('input');
@@ -2550,6 +2873,13 @@
         hotBtn.disabled = false;
       });
 
+      const codeIn = row.querySelector('.code-input');
+      if (codeIn) codeIn.addEventListener('input', () => {
+        const d = findStickerByCode(codeIn.value, id);
+        codeIn.classList.toggle('code-dup', !!d);
+        const note = row.querySelector('.sr-fields .dup-note');
+        if (note) note.textContent = d ? `${codeIn.value.trim()} is already used (${d.category}${d.subcategory ? ' › ' + d.subcategory : ''})` : '';
+      });
       const photoBtn = row.querySelector('.photo-btn');
       if (photoBtn) photoBtn.addEventListener('click', () => changeStickerPhoto(sticker, row));
       const wmBtn = row.querySelector('.wm-btn');
@@ -2819,6 +3149,7 @@
   let activeCatForPaste = null;
 
   function populateCategoryDatalist(){
+    refreshAllPlaceSelects();
     if (!categoriesData.length) return; // keep the built-in fallback list in the HTML
     const dl = document.getElementById('categoryList');
     dl.innerHTML = categoriesData.map(c => `<option value="${c.name}">`).join('');
@@ -3045,6 +3376,7 @@
   let activeSubcatForPaste = null;
 
   function populateSubcategoryDatalist(){
+    refreshAllPlaceSelects();
     if (!subcategoriesData.length) return;
     const dl = document.getElementById('subcategoryList');
     dl.innerHTML = subcategoriesData.map(sc => `<option value="${sc.name}">`).join('');
