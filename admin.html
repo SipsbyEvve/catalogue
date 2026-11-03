@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="sbe-build" content="2026-11-02-4">
+<meta name="sbe-build" content="2026-11-03-1">
 <title>Sips by Evve — Sticker Admin</title>
 <style>
   :root{
@@ -274,6 +274,20 @@
   /* hide the empty name box in view mode; it shows up when you press Edit */
   .custom-name-label:has(input:disabled:placeholder-shown){ display:none; }
   .noqty-heading{ font-size:0.92rem; margin:14px 0 8px; color:#b0452f; }
+  .noqty-banner{ display:flex; justify-content:space-between; align-items:center; gap:10px; background:#fff4e5; border:1px solid #f3cf9a; color:#7a4a10; border-radius:12px; padding:9px 12px; margin:0 0 10px; font-size:0.86rem; font-weight:600; }
+  .noqty-banner button{ margin:0; padding:7px 12px; font-size:0.82rem; width:auto; white-space:nowrap; }
+  .qf-list{ display:flex; flex-direction:column; gap:6px; }
+  .qf-row{ display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:10px; padding:6px 10px; background:#fff; }
+  .qf-row.filled{ border-color:#8fd3a8; background:#f3fbf6; }
+  .qf-row img{ width:44px; height:44px; object-fit:cover; border-radius:8px; flex:none; }
+  .qf-row .qf-info{ flex:1; min-width:0; font-size:0.85rem; }
+  .qf-row .qf-info span{ display:block; color:var(--muted); font-size:0.75rem; }
+  .qf-row input{ width:90px; margin:0; padding:8px 10px; font-size:0.95rem; text-align:center; flex:none; }
+  .qf-save{ position:sticky; bottom:10px; margin-top:12px; width:100%; box-shadow:0 6px 18px rgba(0,0,0,0.15); }
+  .order-row.is-archived{ opacity:0.6; }
+  .o-read{ font-size:0.75rem; font-weight:700; color:var(--muted); background:#f1ece4; border-radius:999px; padding:2px 8px; }
+  .archive-bar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 10px; }
+  .archive-bar button{ margin:0; padding:7px 12px; font-size:0.82rem; width:auto; }
   .noqty-heading.muted{ color:var(--muted); }
   .tumbler-row{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; background:#fff; }
   .tumbler-row.is-sold_out{ background:#f3eee7; }
@@ -629,6 +643,7 @@
         <button class="secondary" id="hiddenModeBtn" type="button">🙈 Hidden stickers</button>
         <button class="secondary" id="exportCsvBtn" type="button">⬇️ Export CSV</button>
       </div>
+      <div class="noqty-banner" id="noQtyBanner" style="display:none;"><span id="noQtyBannerText"></span><button type="button" id="noQtyBannerBtn">✏️ Fill them in</button></div>
       <div class="search-wrap"><input type="text" id="stickerSearchInput" placeholder="🔍 Find a sticker — type a code (Z019) or keyword (unicorn)…" autocomplete="off"><button type="button" class="secondary" id="stickerSearchClear" style="display:none;">✕</button></div>
       <p class="hint" style="margin-bottom:10px;">Or browse by category — tap a category to see and change its stickers.</p>
       <p class="msg" id="listMsg">Loading…</p>
@@ -759,9 +774,11 @@
           <option value="all">Paid + unpaid</option>
           <option value="pending">Unpaid only</option>
           <option value="paid">Paid only</option>
+          <option value="archived">📥 Read (old unpaid)</option>
         </select>
         <button type="button" class="secondary" id="ordersCsvBtn">⬇️ Export CSV</button>
       </div>
+      <div class="archive-bar"><button type="button" class="secondary" id="archiveUnpaidBtn">📥 Mark all unpaid as read</button><span class="hint" id="archiveInfo" style="margin:0;"></span></div>
       <p class="hint" id="ordersCount" style="margin:0 0 10px;"></p>
       <button class="clear-empty-btn" id="clearEmptyOrdersBtn" style="display:none;"></button>
       <div id="ordersList">Loading…</div>
@@ -894,9 +911,16 @@
     if (noQtyMode) return;
     const n = allStickersAdmin.filter(hasNoQty).length;
     noQtyBtn.textContent = n ? `📋 No quantity set (${n})` : '📋 No quantity set ✓';
+    const banner = document.getElementById('noQtyBanner');
+    if (banner) {
+      banner.style.display = n ? '' : 'none';
+      document.getElementById('noQtyBannerText').textContent = `📋 ${n} sticker${n === 1 ? ' has' : 's have'} no stock number yet`;
+    }
   }
   function setNoQtyMode(on){
     noQtyMode = on;
+    const banner = document.getElementById('noQtyBanner');
+    if (banner && on) banner.style.display = 'none';
     if (on) {
       if (restockMode) { restockMode = false; restockModeBtn.textContent = '📦 Restock: Preorder → In Stock'; }
       stickerSearchInput.value = '';
@@ -907,27 +931,61 @@
       renderStickerCategoryGrid();
     }
   }
+  // Quick fill: every sticker without a stock number, one small row each — type the number,
+  // Enter jumps to the next box, then "Save all" saves every one that has a number.
   function renderNoQtyList(){
     const missing = allStickersAdmin.filter(hasNoQty);
-    const orderable = missing.filter(s => s.status !== 'sold_out');
-    const soldOut = missing.filter(s => s.status === 'sold_out');
+    const orderable = missing.filter(s => s.status !== 'sold_out').sort(naturalCode);
+    const soldOut = missing.filter(s => s.status === 'sold_out').sort(naturalCode);
     stickerList.className = '';
     if (!missing.length) {
-      stickerList.innerHTML = '<p class="hint">Every sticker has a quantity. 🎉</p>';
+      stickerList.innerHTML = '<p class="hint">Every sticker has a stock number. 🎉</p>';
       return;
     }
+    const rowHtml = st => `<div class="qf-row" data-id="${st.id}">
+        <img ${thumbOrFull(st.image_path)} alt="" loading="lazy" onerror="handleImgError(this)">
+        <div class="qf-info"><b>${escAttr(st.code || st.name)}</b>${isHiddenNow(st) ? ' 🙈' : ''}<span>${escAttr(placeLabel({ category: st.category, subcategory: st.subcategory || null }))} · ${st.status === 'sold_out' ? 'Sold Out' : st.status === 'preorder' ? 'Preorder' : 'In Stock'}</span></div>
+        <input type="number" class="qf-input" min="0" inputmode="numeric" placeholder="Stock">
+      </div>`;
     stickerList.innerHTML = `
-      <p class="hint">${missing.length} sticker${missing.length === 1 ? '' : 's'} with no quantity yet. Type a number in the qty box and press Save — it disappears from this list.</p>
-      ${orderable.length ? `
-        <h3 class="noqty-heading">⚠️ Customers can still order these (${orderable.length}) — fill these first</h3>
-        <div class="sticker-list">${orderable.map(stickerRowHtml).join('')}</div>` : ''}
-      ${soldOut.length ? `
-        <h3 class="noqty-heading muted">Sold Out (${soldOut.length}) — fill in when you restock</h3>
-        <div class="sticker-list">${soldOut.map(stickerRowHtml).join('')}</div>` : ''}
+      <p class="hint">${missing.length} sticker${missing.length === 1 ? '' : 's'} with no stock number yet. Type the number (Enter jumps to the next one), then press <b>💾 Save all</b>. Leave a box empty to skip it. 0 = Sold Out.</p>
+      ${orderable.length ? `<h3 class="noqty-heading">⚠️ Customers can order these (${orderable.length}) — fill these first</h3><div class="qf-list">${orderable.map(rowHtml).join('')}</div>` : ''}
+      ${soldOut.length ? `<h3 class="noqty-heading muted">Sold Out (${soldOut.length}) — fill in when you restock</h3><div class="qf-list">${soldOut.map(rowHtml).join('')}</div>` : ''}
+      <button type="button" class="qf-save" id="qfSaveAll">💾 Save all (0)</button>
     `;
-    // After a save, redraw so stickers that now have a quantity drop off the list.
-    wireStickerRows(missing, renderNoQtyList, () => { if (noQtyMode) renderNoQtyList(); });
+    const inputs = [...stickerList.querySelectorAll('.qf-input')];
+    const filled = () => inputs.filter(i => i.value.trim() !== '');
+    const update = () => {
+      inputs.forEach(i => i.closest('.qf-row').classList.toggle('filled', i.value.trim() !== ''));
+      document.getElementById('qfSaveAll').textContent = `💾 Save all (${filled().length})`;
+    };
+    inputs.forEach((inp, i) => {
+      inp.addEventListener('input', update);
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const next = inputs[i + 1]; if (next) next.focus(); else document.getElementById('qfSaveAll').focus(); } });
+    });
+    document.getElementById('qfSaveAll').addEventListener('click', async () => {
+      const list = filled();
+      if (!list.length) { showToast('Type a stock number first', true); return; }
+      const btn = document.getElementById('qfSaveAll');
+      btn.disabled = true;
+      let ok = 0; const failed = [];
+      for (const inp of list) {
+        const st = allStickersAdmin.find(x => x.id === inp.closest('.qf-row').dataset.id);
+        const qty = parseStockQtyInput(inp.value);
+        if (!st || qty === null) continue;
+        const status = deriveStatusFromStock(st.status, qty, st.status);
+        btn.textContent = `Saving ${ok + failed.length + 1} of ${list.length}…`;
+        const { error } = await client.from('stickers').update({ stock_qty: qty, status }).eq('id', st.id);
+        if (error) { failed.push(st.code || st.name); continue; }
+        st.stock_qty = qty; st.status = status; ok++;
+      }
+      showToast(failed.length ? `Saved ${ok} · couldn't save: ${failed.join(', ')}` : `✅ Saved stock for ${ok} sticker${ok === 1 ? '' : 's'}`, !!failed.length);
+      updateNoQtyCount();
+      renderNoQtyList();
+      noQtyBtn.textContent = '← Back to categories';
+    });
   }
+  document.getElementById('noQtyBannerBtn').addEventListener('click', () => { if (hiddenMode) setHiddenMode(false); setNoQtyMode(true); document.getElementById('existingCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   noQtyBtn.addEventListener('click', () => { if (hiddenMode) setHiddenMode(false); setNoQtyMode(!noQtyMode); });
   // Typing in the search box leaves the filter.
   stickerSearchInput.addEventListener('input', () => {
@@ -1520,7 +1578,7 @@
   (() => { let t = 'stickers'; try { t = localStorage.getItem('sbe_admin_tab') || t; } catch (e) {} showTab(t); })();
   document.getElementById('livePill').addEventListener('click', () => document.getElementById('liveToggleBtn').click());
   function updateOrdersTabBadge(){
-    const n = allOrdersAdmin.filter(o => !isEmptyOrder(o) && o.status !== 'paid').length;
+    const n = allOrdersAdmin.filter(o => !isEmptyOrder(o) && o.status !== 'paid' && !isArchivedOrder(o)).length;
     const el = document.getElementById('ordersTabBadge');
     if (el) { el.textContent = n ? String(n) : ''; el.title = n ? `${n} unpaid` : ''; }
   }
@@ -4175,6 +4233,7 @@
   let orderNoDupes = new Set();
   async function renderOrders(){
     const el = document.getElementById('ordersList');
+    await loadOrdersArchive();
     const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
     if (error) { el.textContent = error.message; return; }
     allOrdersAdmin = data || [];
@@ -4194,12 +4253,13 @@
     updateClearEmptyButton();
     renderSalesStats();
     updateOrdersTabBadge();
+    renderArchiveInfo();
     if (!data || data.length === 0) { el.innerHTML = '<p class="hint">No orders logged yet.</p>'; applyOrderFilters(); return; }
     el.innerHTML = data.map(o => {
       const isPaid = o.status === 'paid';
       return `
-      <div class="addon-row order-row" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
-        <div class="o-top">${o.order_no ? `<span class="o-no ${orderNoDupes.has(o.order_no) ? 'dupe' : ''}" title="${orderNoDupes.has(o.order_no) ? 'Two different orders have this number — check them' : 'Order number — customers write this when they pay'}">${escAttr(o.order_no)}</span>` : ''}<span class="o-date">📅 ${fmtOrderDate(o.created_at)}</span></div>
+      <div class="addon-row order-row ${isArchivedOrder(o) ? 'is-archived' : ''}" data-id="${o.id}" style="flex-wrap:wrap;gap:6px;align-items:stretch;">
+        <div class="o-top">${o.order_no ? `<span class="o-no ${orderNoDupes.has(o.order_no) ? 'dupe' : ''}" title="${orderNoDupes.has(o.order_no) ? 'Two different orders have this number — check them' : 'Order number — customers write this when they pay'}">${escAttr(o.order_no)}</span>` : ''}<span class="o-date">📅 ${fmtOrderDate(o.created_at)}</span>${isArchivedOrder(o) ? '<span class="o-read">📥 read</span>' : ''}</div>
         ${orderGroupBadge(o)}
         <input type="text" class="o-name" value="${o.customer_name || ''}" placeholder="Name" disabled style="flex:1;min-width:90px;">
         <input type="text" class="o-tiktok" value="${o.tiktok_handle || ''}" placeholder="TikTok" disabled style="flex:1;min-width:90px;">
@@ -4382,10 +4442,53 @@
     return t;
   }
   const fmtRMAdmin = (n) => 'RM' + (Number.isInteger(n) ? n : n.toFixed(2));
+  // 📥 "Mark all unpaid as read": unpaid orders up to that moment are put away (nothing is deleted
+  // or changed on the order itself) — they leave the list, the unpaid count and the 🛒 badge.
+  // Saved in settings "orders_archive" = { before, prev }. Marking one Paid later still works.
+  let ordersArchive = { before: null, prev: null };
+  async function loadOrdersArchive(){
+    try {
+      const { data } = await client.from('settings').select('*');
+      const row = (data || []).find(r => r.key === 'orders_archive');
+      if (row && row.value) ordersArchive = { before: row.value.before || null, prev: row.value.prev || null };
+    } catch (e) {}
+  }
+  const isArchivedOrder = (o) => !!ordersArchive.before && o.status !== 'paid' && new Date(o.created_at) <= new Date(ordersArchive.before);
+  function renderArchiveInfo(){
+    const el = document.getElementById('archiveInfo');
+    if (!el) return;
+    const n = allOrdersAdmin.filter(o => !isEmptyOrder(o) && isArchivedOrder(o)).length;
+    el.innerHTML = ordersArchive.before ? `${n} old unpaid order${n === 1 ? '' : 's'} marked read on ${fmtOrderDate(ordersArchive.before)} · <a href="#" id="archiveUndo">↩️ Undo</a>` : '';
+    const undo = document.getElementById('archiveUndo');
+    if (undo) undo.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!confirm('Bring the orders you marked as read back into the list?')) return;
+      await saveOrdersArchive({ before: ordersArchive.prev || null, prev: null });
+    });
+  }
+  async function saveOrdersArchive(next){
+    const { error } = await client.from('settings').upsert({ key: 'orders_archive', value: next, updated_at: new Date().toISOString() });
+    if (error) { showToast(error.message, true); return false; }
+    ordersArchive = next;
+    renderArchiveInfo(); applyOrderFilters(); renderSalesStats(); updateOrdersTabBadge();
+    document.querySelectorAll('#ordersList .order-row').forEach(row => {
+      const o = allOrdersAdmin.find(x => x.id === row.dataset.id);
+      row.classList.toggle('is-archived', !!o && isArchivedOrder(o));
+    });
+    return true;
+  }
+  document.getElementById('archiveUnpaidBtn').addEventListener('click', async () => {
+    const n = allOrdersAdmin.filter(o => !isEmptyOrder(o) && o.status !== 'paid' && !isArchivedOrder(o)).length;
+    if (!n) { showToast('No unpaid orders to mark as read'); return; }
+    if (!confirm(`Mark all ${n} unpaid order${n === 1 ? '' : 's'} as read?\n\nThey leave the list and the unpaid count, so new orders start fresh from now. Nothing is deleted — you can still see them under "📥 Read (old unpaid)", Mark Paid still works, and you can Undo.`)) return;
+    if (await saveOrdersArchive({ before: new Date().toISOString(), prev: ordersArchive.before })) showToast(`📥 ${n} order${n === 1 ? '' : 's'} marked as read — counting fresh from now`);
+  });
   function orderMatches(o){
     const q = (document.getElementById('ordersSearch').value || '').trim().toLowerCase();
     const period = document.getElementById('ordersPeriod').value;
     const status = document.getElementById('ordersStatus').value;
+    if (status === 'archived') { if (!isArchivedOrder(o)) return false; }
+    else if (isArchivedOrder(o)) return false;
     if (!inPeriod(o.created_at, period)) return false;
     if (status === 'paid' && o.status !== 'paid') return false;
     if (status === 'pending' && o.status === 'paid') return false;
@@ -4402,6 +4505,7 @@
       const o = allOrdersAdmin.find(x => x.id === row.dataset.id);
       const ok = !o || orderMatches(o);
       row.style.display = ok ? '' : 'none';
+      row.classList.toggle('is-archived', !!o && isArchivedOrder(o));
       if (ok) shown++;
     });
     const total = allOrdersAdmin.length;
@@ -4442,7 +4546,7 @@
     const period = document.getElementById('salesPeriod').value;
     const inRange = allOrdersAdmin.filter(o => !isEmptyOrder(o) && inPeriod(o.created_at, period));
     const paid = inRange.filter(o => o.status === 'paid');
-    const unpaid = inRange.filter(o => o.status !== 'paid');
+    const unpaid = inRange.filter(o => o.status !== 'paid' && !isArchivedOrder(o));
     const sum = (list) => list.reduce((a, o) => a + (orderDataTotal(o) || 0), 0);
     const shipping = paid.reduce((a, o) => a + amountIn(o.delivery), 0);
 
